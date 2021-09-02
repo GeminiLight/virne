@@ -1,0 +1,10 @@
+numpy
+pandas
+matplotlib
+
+scipy
+networkx
+
+tensorflow
+tensorflow_probability
+spektral
