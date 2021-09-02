@@ -43,6 +43,3 @@ If you only need to run heuristic-based algorithms, that is to say without the D
 ```powershell
 pip install numpy pandas matplotlib scipy networkx
 ```
-=======
-# easy-sfc
->>>>>>> origin/main
