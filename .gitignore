@@ -1,0 +1,26 @@
+# cache
+*.py[cod]
+__pycache__/
+.DS_Store
+*/.DS_Store
+.ipynb_checkpoints
+*/.ipynb_checkpoints
+
+# records
+records/
+save/
+logs/
+other/
+
+# other
+resource/shortest_path
+resource/visualization
+
+# dataset
+dataset/vns/
+dataset/pn/
+
+# unfinished
+solver/learning/
+
+# restore
