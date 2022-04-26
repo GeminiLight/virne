@@ -1,7 +1,7 @@
 num_vns: 2000
 topology:
   random_prob: 0.5
-  type: path
+  type: random
 vn_size:
   distribution: uniform
   dtype: int
