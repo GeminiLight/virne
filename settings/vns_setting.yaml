@@ -1,0 +1,41 @@
+num_vns: 2000
+topology:
+  random_prob: 0.5
+  type: path
+vn_size:
+  distribution: uniform
+  dtype: int
+  low: 2
+  high: 10
+arrival_rate:
+  distribution: possion
+  dtype: float
+  lam: 0.1
+  reciprocal: true
+lifetime:
+  distribution: exponential
+  dtype: float
+  scale: 500
+node_attrs_setting:
+  - name: cpu
+    distribution: uniform
+    dtype: int
+    generative: true
+    low: 0
+    high: 50
+    owner: node
+    type: resource
+edge_attrs_setting:
+  - name: bw
+    distribution: uniform
+    dtype: int
+    generative: true
+    low: 0
+    high: 50
+    owner: edge
+    type: resource
+save_dir: dataset/vns
+vns_file_name: vn.gml
+vns_save_dir: vns
+events_file_name: events.yaml
+setting_file_name: vns_setting.yaml

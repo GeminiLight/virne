@@ -44,6 +44,13 @@ undo_deploy: release and reset the solution
 class Controller:
     
     @classmethod
+    def check_graph_constraints(cls, vn, pn):
+        for n_attr in vn.get_graph_attrs():
+            if not n_attr.check(vn, pn):
+                return False
+        return True
+
+    @classmethod
     def check_node_constraints(cls, vn, pn, v_node_id, p_node_id):
         assert p_node_id in list(pn.nodes)
         for n_attr in vn.get_node_attrs():
@@ -53,7 +60,7 @@ class Controller:
 
     @classmethod
     def check_link_constraints(cls, vn, pn, v_link, p_link):
-        for e_attr in vn.edge_attrs:
+        for e_attr in vn.get_edge_attrs():
             if not e_attr.check(vn, pn, v_link, p_link):
                 return False
         return True
@@ -75,12 +82,12 @@ class Controller:
     
     @classmethod
     def update_link_resources(cls, vn, pn, v_link, p_link, operator='-'):
-        for e_attr in vn.edge_attrs:
+        for e_attr in vn.get_edge_attrs('resource'):
             e_attr.update_path(vn.edges[v_link], pn, p_link, operator)
 
     @classmethod
     def update_path_resources(cls, vn, pn, v_link, p_path, operator='-'):
-        for e_attr in vn.edge_attrs:
+        for e_attr in vn.get_edge_attrs('resource'):
             e_attr.update_path(vn.edges[v_link], pn, p_path, operator)
 
     @classmethod

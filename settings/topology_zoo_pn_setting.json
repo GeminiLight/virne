@@ -1,10 +1,6 @@
-{
-    "num_nodes": 100,
-    "topology": {
-        "type": "waxman",
-        "wm_alpha": 0.5,
-        "wm_beta": 0.2
-    },
+{   
+    "file_path": "./dataset/raw_topylogy_zoo/Bellsouth.gml",
+    "topylogy_name": "Bellsouth",
     "node_attrs_setting": [
         {
             "name": "cpu", 

@@ -1,9 +1,8 @@
 import os
 import copy
-import json
 import numpy as np
 
-from .utils import read_json, generate_data_with_distribution
+from .utils import read_setting, write_setting, generate_data_with_distribution
 from .virtual_network import VirtualNetwork
 
 
@@ -12,8 +11,8 @@ class VNSimulator(object):
     def __init__(self, vns_setting, **kwargs):
         super(VNSimulator, self).__init__()
         self.vns_setting = copy.deepcopy(vns_setting)
-        self.num_vns = vns_setting.get('num_vns', 2000)
-        self.topology = kwargs.get('topology', {'type': 'random', 'random_prob': 0.5})
+        self.num_vns = self.vns_setting.get('num_vns', 2000)
+        self.topology = self.vns_setting.get('topology', {'type': 'random', 'random_prob': 0.5})
         self.max_vn_size = self.vns_setting['vn_size']['high']
         self.min_vn_size = self.vns_setting['vn_size']['low']
         self.aver_arrival_rate = self.vns_setting['arrival_rate']['lam']
@@ -40,7 +39,7 @@ class VNSimulator(object):
             vn = VirtualNetwork(
                 node_attrs_setting=copy.deepcopy(self.vns_setting['node_attrs_setting']), 
                 edge_attrs_setting=copy.deepcopy(self.vns_setting['edge_attrs_setting']),
-                id=i, arrival_time=self.vns_arrival_time[i], lifetime=self.vns_lifetime[i])
+                id=int(i), arrival_time=float(self.vns_arrival_time[i]), lifetime=float(self.vns_lifetime[i]))
             vn.generate_topology(num_nodes=self.vns_size[i], **self.topology)
             vn.generate_attrs_data()
             self.vns.append(vn)
@@ -48,8 +47,8 @@ class VNSimulator(object):
 
     def renew_events(self):
         self.events = []
-        enter_list = [{'vn_id': vn.id, 'time': vn.arrival_time, 'type': 1} for vn in self.vns]
-        leave_list = [{'vn_id': vn.id, 'time': vn.arrival_time + vn.lifetime, 'type': 0} for vn in self.vns]
+        enter_list = [{'vn_id': int(vn.id), 'time': float(vn.arrival_time), 'type': 1} for vn in self.vns]
+        leave_list = [{'vn_id': int(vn.id), 'time': float(vn.arrival_time + vn.lifetime), 'type': 0} for vn in self.vns]
         event_list = enter_list + leave_list
         self.events = sorted(event_list, key=lambda e: e.__getitem__('time'))
         for i, e in enumerate(self.events): 
@@ -77,17 +76,20 @@ class VNSimulator(object):
         for vn in self.vns:
             vn.to_gml(os.path.join(vns_dir, f'vn-{vn.id:05d}.gml'))
         # save events
-        with open(os.path.join(save_dir, 'events.json'), 'w+') as f:
-            json.dump(self.events, f)
-        # save setting
-        self.save_setting(os.path.join(save_dir, 'vns_setting.json'))
+        write_setting(self.events, os.path.join(save_dir, self.vns_setting['events_file_name']), mode='w+')
+        self.save_setting(os.path.join(save_dir, self.vns_setting['setting_file_name']))
 
     @staticmethod
     def load_dataset(dataset_dir):
         # load setting
         if not os.path.exists(dataset_dir):
             raise ValueError(f'Find no dataset in {dataset_dir}.\nPlease firstly generating it.')
-        vns_setting = read_json(os.path.join(dataset_dir, 'vns_setting.json'))
+        try:
+            setting_fpath = os.path.join(dataset_dir, 'vns_setting.yaml')
+            vns_setting = read_setting(setting_fpath)
+        except:
+            setting_fpath = os.path.join(dataset_dir, 'vns_setting.json')
+            vns_setting = read_setting(setting_fpath)
         vn_simulator = VNSimulator.from_setting(vns_setting)
         # load vns
         vn_fnames_list = os.listdir(os.path.join(dataset_dir, 'vns'))
@@ -96,7 +98,7 @@ class VNSimulator(object):
             vn = VirtualNetwork.from_gml(os.path.join(dataset_dir, 'vns', vn_fname))
             vn_simulator.vns.append(vn)
         # load events
-        events = read_json(os.path.join(dataset_dir, 'events.json'))
+        events = read_setting(os.path.join(dataset_dir, vns_setting['events_file_name']))
         vn_simulator.events = events
         return vn_simulator
 
@@ -105,8 +107,7 @@ class VNSimulator(object):
         # for k, v in self.__dict__.items():
         #     if k not in ['events', 'vns', 'vns_size', 'vns_lifetime', 'vns_arrival_time']:
         #         setting[k] = v
-        with open(fpath, 'w+') as f:
-            json.dump(self.vns_setting, f)
+        write_setting(self.vns_setting, fpath, mode='w+')
 
 
 if __name__ == '__main__':

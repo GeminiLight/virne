@@ -1,9 +1,7 @@
-import unittest
-
 from config import get_config
 
 
-class Tester(unittest.TestCase):
+class Tester:
     
     def __init__(self):
         self.config = get_config()

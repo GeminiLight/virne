@@ -21,17 +21,18 @@ class Environment:
         self.controller = Controller()
         self.recorder = recorder
         self.verbose = verbose
-        self.pn_dataset_dir = kwargs.get('pn_dataset_dir', '')
-        self.vns_dataset_dir = kwargs.get('vns_dataset_dir', '')
+        self.pn_dataset_dir = kwargs.get('pn_dataset_dir', 'unknown_pn_dataset_dir')
+        self.vns_dataset_dir = kwargs.get('vns_dataset_dir', 'unknown_vns_dataset_dir')
         self.renew_vn_simulator = kwargs.get('renew_vn_simulator', False)
 
-        self.player = kwargs.get('player', '')
-        self.pn_config_str = kwargs.get('pn_config_str', '')
-        self.vns_config_str = kwargs.get('vns_config_str', '')
+        self.solver_name = kwargs.get('solver_name', 'unknown_slover')
+        self.run_id = kwargs.get('run_id', 'unknown_device-unknown_run_time')
         self.if_save_records = kwargs.get('if_save_records', True)
         self.random_seed = kwargs.get('random_seed', 1234)
         self.summary_file_name = kwargs.get('summary_file_name', 'global_summary.csv')
 
+        self.extra_summary_info = {}
+        self.extra_record_info = {}
 
     @classmethod
     def from_config(cls, config):
@@ -39,26 +40,21 @@ class Environment:
         if not isinstance(config, dict): config = vars(config)
         config = copy.deepcopy(config)
 
-        player = config.pop('solver_name', 'unknown')
-        summary_dir = config.pop('summary_dir', 'records/')
-        record_dir = os.path.join(summary_dir, player)
+        solver_name = config.get('solver_name', 'unknown_solver')
+        run_id = config.get('run_id', 'unknown_host-unknown_run_time')
+        summary_dir = config.get('save', 'save/')
+        record_dir = os.path.join(summary_dir, solver_name, run_id, 'records')
 
         verbose = config.pop('verbose', 1)
         if_temp_save_records = config.pop('if_temp_save_records', True)
 
-        pn_dataset_dir = config.pop('pn_dataset_dir')
-        vns_dataset_dir = config.pop('vns_dataset_dir')
-        renew_vn_simulator = config.pop('renew_vn_simulator')
+        pn_dataset_dir = config.get('pn_dataset_dir')
+        vns_dataset_dir = config.get('vns_dataset_dir')
 
-        pn_config_str = pn_dataset_dir
-        vns_config_str = vns_dataset_dir
-        
         pn = PhysicalNetwork.load_dataset(pn_dataset_dir)
         vn_simulator = VNSimulator.from_setting(config.pop('vns_setting'))
         recorder = Recorder(summary_dir=summary_dir, save_dir=record_dir, if_temp_save_records=if_temp_save_records)
-        return cls(pn, vn_simulator, recorder, verbose, pn_dataset_dir=pn_dataset_dir, vns_dataset_dir=vns_dataset_dir, 
-                    renew_vn_simulator=renew_vn_simulator, player=player, pn_config_str=pn_config_str, vns_config_str=vns_config_str, 
-                    **config)
+        return cls(pn, vn_simulator, recorder, verbose, **config)
 
     def ready(self, event_id=0):
         r"""Ready to attempt to execuate the current events."""
@@ -66,8 +62,13 @@ class Environment:
         self.curr_vn = self.vn_simulator.vns[int(self.curr_event['vn_id'])]
         self.curr_vnf_id = 0
         self.curr_solution = Solution(self.curr_vn)
-        self.pn_backup = copy.deepcopy(self.pn)
-        self.recorder.ready(self.curr_event)
+        self.pn_backup = copy.deepcopy(self.pn) if self.curr_event['type'] == 1 else None
+        self.recorder.update_state({
+            'event_id': self.curr_event['id'],
+            'event_type': self.curr_event['type'],
+            'event_time': self.curr_event['time'],
+        })
+        # self.recorder.ready(self.curr_event)
         self.curr_vn_reward = 0
         if self.verbose >= 2:
             print(f"\nEvent: id={event_id}, type={self.curr_event['type']}")
@@ -80,15 +81,14 @@ class Environment:
         self.recorder.reset()
         self.recorder.count_init_pn_info(self.pn)
         if self.recorder.if_temp_save_records and self.verbose >= 1:
-            print(f'\ntemp save record in {self.recorder.temp_save_path}\n')
+            print(f'temp save record in {self.recorder.temp_save_path}\n')
         if self.renew_vn_simulator:
             self.vn_simulator.renew(vns=True, events=True)
         else:
             self.vn_simulator = self.vn_simulator.load_dataset(self.vns_dataset_dir)
         self.cumulative_reward = 0
 
-        
-        self.start_time = time.time()
+        self.start_run_time = time.time()
 
         self.ready(event_id=0)
         return self.get_observation()
@@ -153,24 +153,6 @@ class Environment:
             next_event_id = int(self.curr_event['id'] + 1)
             # episode finished
             if next_event_id > self.num_events - 1:
-                self.end_time = time.time()
-
-                clock_running_time = self.end_time - self.start_time
-
-                host_name = socket.gethostname()
-                run_time = time.strftime('%Y%m%dT%H%M%S')
-                if self.if_save_records:
-                    self.save_records(f'{self.player}-{host_name}-{run_time}.csv')
-                extra_dict = {
-                    'player': self.player,
-                    # 'random_seed': self.random_seed,
-                    'pn_config': self.pn_config_str,
-                    'vns_config': self.vns_config_str,
-                    'host_name': host_name,
-                    'run_time': run_time, 
-                    'clock_running_time': clock_running_time
-                }
-                self.save_summary(file_name=self.summary_file_name, **extra_dict)
                 return True
             self.ready(next_event_id)
             if self.curr_event['type'] == 0:
@@ -203,17 +185,38 @@ class Environment:
         display_items = display_items + extra_items
         print(''.join([f'{k}: {v}\n' for k, v in record.items() if k in display_items]))
 
-    def save_records(self, file_name):
-        save_path = self.recorder.save_records(file_name)
-        print(f'save records to {save_path}') if self.verbose >= 1 else None
-
-    def save_summary(self, file_name='global_summary.csv', **extra_info):
+    def summary_records(self, extra_summary_info={}, summary_file_name=None, record_file_name=None):
+        start_run_time = time.strftime('%Y%m%dT%H%M%S', time.localtime(self.start_run_time))
+        if summary_file_name is None:
+            summary_file_name = self.summary_file_name
+        if record_file_name is None:
+            record_file_name = f'{self.solver_name}-{self.run_id}-{start_run_time}.csv'
         summary_info = self.recorder.summary_records(self.recorder.memory)
-        for k, v in extra_info.items():
-            summary_info[k] = v
-        summary_path = self.recorder.save_summary(summary_info, file_name)
-        if self.verbose >= 1: pprint(summary_info)
-        print(f'save summary to {summary_path}\n') if self.verbose >= 1 else None
+        end_run_time = time.time()
+        clock_running_time = end_run_time - self.start_run_time
+        run_info_dict = {
+            'solver_name': self.solver_name,
+            # 'random_seed': self.random_seed,
+            'pn_dataset_dir': self.pn_dataset_dir,
+            'vns_dataset_dir': self.vns_dataset_dir,
+            'run_id': self.run_id,
+            'start_run_time': start_run_time, 
+            'clock_running_time': clock_running_time
+        }
+        for k, v in extra_summary_info.items():
+            run_info_dict[k] = v
+        info = {**summary_info, **run_info_dict}
+
+        if self.if_save_records:
+            record_path = self.recorder.save_records(record_file_name)
+            summary_path = self.recorder.save_summary(info, summary_file_name)
+                
+        if self.verbose >= 1:
+            pprint(info)
+            if self.if_save_records:
+                print(f'save records to {record_path}')
+                print(f'save summary to {summary_path}')
+        return info
 
 
 class SolutionStepEnvironment(Environment):

@@ -54,6 +54,9 @@ class Attribute(object):
         AttributeClass = ATTRIBUTES_DICT.get((owner, type))
         return AttributeClass(name, **dict_copy)
 
+    def check(self, *args, **kwargs):
+        return True
+
     def _generate_data_with_dist(self, network):
         assert self.generative
         size = network.num_nodes if self.owner == 'node' else network.num_edges
@@ -75,6 +78,23 @@ class Attribute(object):
     def __repr__(self):
         info = [f'{key}={self._size_repr(item)}' for key, item in self.__dict__]
         return f"{self.__class__.__name__}({', '.join(info)})"
+
+
+class InfoAttribute(Attribute):
+
+    def __init__(self, name, owner, *args, **kwargs):
+        super().__init__(name, owner, 'info', *args, **kwargs)
+
+
+class NodeInfoAttribute(InfoAttribute):
+
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name, 'node', *args, **kwargs)
+
+class EdgeInfoAttribute(InfoAttribute):
+
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name, 'edge', *args, **kwargs)
 
 
 ### Public Methods ###
@@ -117,9 +137,9 @@ class ExtremaMethod:
 
     def generate_data(self, network):
         if self.owner == 'node':
-            originator_attribute = network.get_node_attribute_by_name(self.originator)
+            originator_attribute = network.node_attrs[self.originator]
         else:
-            originator_attribute = network.get_edge_attribute_by_name(self.originator)
+            originator_attribute = network.edge_attrs[self.originator]
         attribute_data = originator_attribute.get_data(network)
         return attribute_data
 

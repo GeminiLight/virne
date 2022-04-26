@@ -10,12 +10,6 @@ class DataTester(Tester):
     def __init__(self):
         super(DataTester, self).__init__()
 
-    def test_all(self):
-        self.test_network()
-        self.test_physical_network()
-        self.test_vn_simulator()
-        print(f'Success: {self.__module__}\n')
-
     def test_attribute(self):
         pass
 
@@ -34,20 +28,17 @@ class DataTester(Tester):
         net.generate_attrs_data()
         net.to_gml('test.gml')
         new_net = Network.from_gml('test.gml')
-        print(f'Success: {sys._getframe().f_code.co_name}')
 
     def test_physical_network(self):
         pn_setting = self.config.pn_setting
         pn = PhysicalNetwork.from_setting(pn_setting)
-        print(f'Success: {sys._getframe().f_code.co_name}')
 
     def test_vn_simulator(self):
         vns_setting = self.config.vns_setting
         vn_simulator = VNSimulator.from_setting(vns_setting)
         vn_simulator.renew()
         vn_simulator.renew()
-        print(f'Success: {sys._getframe().f_code.co_name}')
 
     def test_generator(self, config):
         Generator.generate_dataset(config)
-        print(f'Success: {sys._getframe().f_code.co_name}')
+        # print(f'Success: {sys._getframe().f_code.co_name}')

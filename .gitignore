@@ -19,8 +19,9 @@ resource/visualization
 # dataset
 dataset/vns/
 dataset/pn/
+dataset/raw_topylogy_zoo/
 
 # unfinished
-solver/learning/
+# solver/
 
 # restore

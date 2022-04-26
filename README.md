@@ -1,9 +1,5 @@
 # Virne
 
-> Developing & News
-> 
-> `v0.1` Release the environment and various heuristics-based solvers of virtual network embedding problem
-
 **Virne** is a framework for Virtual Network Embedding (VNE) problem with the following characteristics:
 
 - **Lightweight**: Environments and algorithms are implemented concisely, using three necessary dependencies (networkx, numpy, pandas).
@@ -298,20 +294,3 @@ Under constructing ...
 - [x] `solver.heuristics`
 - [x] `solver.learning.mcts`
 - [ ] ...
-
-## Citation
-
-If the project helped you with your paper, please consider citing:
-
-```
-@INPROCEEDINGS{9500964,
-  author={Wang, Tianfu and Fan, Qilin and Li, Xiuhua and Zhang, Xu and Xiong, Qingyu and Fu, Shu and Gao, Min},
-  booktitle={ICC 2021 - IEEE International Conference on Communications}, 
-  title={DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning}, 
-  year={2021},
-  volume={},
-  number={},
-  pages={1-6},
-  doi={10.1109/ICC42927.2021.9500964}
-}
-```

@@ -1,6 +1,5 @@
 from .tester import Tester
 
-
 class solver_Tester(Tester):
 
     def __init__(self):

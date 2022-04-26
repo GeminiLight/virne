@@ -1,7 +1,9 @@
 import os
 import copy
+import networkx as nx
 
 from .network import Network
+from .attribute import NodeInfoAttribute, EdgeInfoAttribute
 
 
 class PhysicalNetwork(Network):
@@ -21,6 +23,28 @@ class PhysicalNetwork(Network):
         net = PhysicalNetwork(node_attrs_setting=node_attrs_setting, edge_attrs_setting=edge_attrs_setting, **setting)
         topology_type = topology_setting.pop('type')
         net.generate_topology(num_nodes, topology_type, **topology_setting)
+        net.generate_attrs_data()
+        return net
+
+    @staticmethod
+    def from_topology_zoo_setting(topology_zoo_setting):
+        setting = copy.deepcopy(topology_zoo_setting)
+        node_attrs_setting = setting.pop('node_attrs_setting')
+        edge_attrs_setting = setting.pop('edge_attrs_setting')
+        file_path = setting.pop('file_path')
+        net = PhysicalNetwork(node_attrs_setting=node_attrs_setting, edge_attrs_setting=edge_attrs_setting, **setting)
+        G = nx.read_gml(file_path, label='id')
+        net.__dict__['graph'].update(G.__dict__['graph'])
+        net.__dict__['_node'] = G.__dict__['_node']
+        net.__dict__['_adj'] = G.__dict__['_adj']
+        n_attr_names = net.nodes[list(net.nodes)[0]].keys()
+        for n_attr_name in n_attr_names:
+            if n_attr_name not in net.node_attrs.keys():
+                net.node_attrs[n_attr_name] = NodeInfoAttribute(n_attr_name)
+        e_attr_names = net.edges[list(net.edges)[0]].keys()
+        for e_attr_name in e_attr_names:
+            if e_attr_name not in net.edge_attrs.keys():
+                net.edge_attrs[e_attr_name] = EdgeInfoAttribute(e_attr_name)
         net.generate_attrs_data()
         return net
 

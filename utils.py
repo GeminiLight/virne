@@ -1,5 +1,7 @@
 import os
 import json
+import yaml
+import shutil
 
 from base import SolutionStepEnvironment
 from solver.heuristics.node_rank import *
@@ -7,14 +9,29 @@ from solver.heuristics.joint_pr import *
 from solver.heuristics.bfs_trials import *
 
 
-def read_json(fpath):
-    with open(fpath, 'r') as f:
-        attrs_dict = json.load(f)
-    return attrs_dict
+def read_setting(fpath):
+    with open(fpath, 'r', encoding='utf-8') as f:
+        if fpath[-4:] == 'json':
+            setting_dict = json.load(f)
+        elif fpath[-4:] == 'yaml':
+            setting_dict = yaml.load(f, Loader=yaml.Loader)
+        else:
+            return ValueError('Only supports settings files in yaml and json format!')
+    return setting_dict
 
-def write_json(dict_data, fpath):
-    with open(fpath, 'w+') as f:
-        json.dump(dict_data, f)
+def write_setting(setting_dict, fpath):
+    with open(fpath, 'w+', encoding='utf-8') as f:
+        if fpath[-4:] == 'json':
+            json.dump(setting_dict, f)
+        elif fpath[-4:] == 'yaml':
+            yaml.dump(setting_dict, f)
+        else:
+            return ValueError('Only supports settings files in yaml and json format!')
+    return setting_dict
+
+def conver_format(fpath_1, fpath_2):
+    setting_dict = read_setting(fpath_1)
+    write_setting(setting_dict, fpath_2)
 
 def load_solver(solver_name):
     # rank
@@ -81,6 +98,12 @@ def load_solver(solver_name):
     elif solver_name == 'a2c_gat':
         from solver.learning.a2c_gat import A2CGATSolver
         Env, Solver = SolutionStepEnvironment, A2CGATSolver
+    elif solver_name == 'a2c_gcn':
+        from solver.learning.a2c_gcn import A2CGCNSolver
+        Env, Solver = SolutionStepEnvironment, A2CGCNSolver
+    elif solver_name == 'a3c_gcn':
+        from solver.learning.a3c_gcn import A3CGCNSolver
+        Env, Solver = SolutionStepEnvironment, A3CGCNSolver
     elif solver_name == 'ppo_gat':
         from solver.learning.ppo_gat import PPOGATSolver
         Env, Solver = SolutionStepEnvironment, PPOGATSolver
@@ -134,3 +157,14 @@ def delete_temp_files(file_path):
         file_path = os.path.join(del_list, f)
         if os.path.isfile(file_path) and 'temp' in file_path:
             os.remove(file_path)
+
+def clean_save_dir(dir):
+    sub_dirs = ['model', 'records', 'log']
+    algo_dir_list = [os.path.join(dir, algo_name) for algo_name in os.listdir(dir) if os.path.isdir(os.path.join(dir, algo_name))]
+    for algo_dir in algo_dir_list:
+        for run_id in os.listdir(algo_dir):
+            run_id_dir = os.path.join(algo_dir, run_id)
+            record_dir = os.path.join(run_id_dir, 'records')
+            if not os.path.exists(record_dir) or not os.listdir(record_dir):
+                shutil.rmtree(run_id_dir)
+                print(f'Delate {run_id_dir}')

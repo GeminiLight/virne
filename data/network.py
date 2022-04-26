@@ -1,6 +1,7 @@
 import copy
-import json
 import networkx as nx
+
+from .utils import write_setting
 
 from .attribute import Attribute
 
@@ -18,19 +19,16 @@ class Network(nx.Graph):
         self.set_graph_attrs_data(kwargs)
 
     def create_attrs_from_setting(self):
-        self.node_attrs = [Attribute.from_dict(n_attr_dict) for n_attr_dict in self.graph['node_attrs_setting']]
-        self.edge_attrs = [Attribute.from_dict(e_attr_dict) for e_attr_dict in self.graph['edge_attrs_setting']]
-        # create attrs_name_dict
-        self.node_attrs_name_dict = {n_attr.name: n_attr for n_attr in self.node_attrs}
-        self.edge_attrs_name_dict = {e_attr.name: e_attr for e_attr in self.edge_attrs}
+        self.node_attrs = {n_attr_dict['name']: Attribute.from_dict(n_attr_dict) for n_attr_dict in self.graph['node_attrs_setting']}
+        self.edge_attrs = {e_attr_dict['name']: Attribute.from_dict(e_attr_dict) for e_attr_dict in self.graph['edge_attrs_setting']}
 
     def check_attrs_existence(self):
         # check node attrs
-        for n_attr in self.node_attrs:
-            assert n_attr.name in self.nodes[list(self.nodes)[0]].keys()
+        for n_attr_name in self.node_attrs.keys():
+            assert n_attr_name in self.nodes[list(self.nodes)[0]].keys(), f'{n_attr_name}'
         # check edge attrs
-        for e_attr in self.edge_attrs:
-            assert e_attr.name in self.edges[list(self.edges)[0]].keys()
+        for e_attr_name in self.edge_attrs.keys():
+            assert e_attr_name in self.edges[list(self.edges)[0]].keys(), f'{e_attr_name}'
 
     ### Generate ###
     def generate_topology(self, num_nodes, type='path', **kwargs):
@@ -63,13 +61,15 @@ class Network(nx.Graph):
     def generate_attrs_data(self, node=True, edge=True):
         r"""Generate the data of network attributes based on attributes."""
         if node:
-            for n_attr in self.node_attrs:
-                attribute_data = n_attr.generate_data(self)
-                n_attr.set_data(self, attribute_data)
+            for n_attr in self.node_attrs.values():
+                if n_attr.generative or n_attr.type == 'extrema':
+                    attribute_data = n_attr.generate_data(self)
+                    n_attr.set_data(self, attribute_data)
         if edge:
-            for e_attr in self.edge_attrs:
-                attribute_data = e_attr.generate_data(self)
-                e_attr.set_data(self, attribute_data)
+            for e_attr in self.edge_attrs.values():
+                if e_attr.generative or n_attr.type == 'extrema':
+                    attribute_data = e_attr.generate_data(self)
+                    e_attr.set_data(self, attribute_data)
 
     ### Number ###
     @property
@@ -92,27 +92,21 @@ class Network(nx.Graph):
         if attrs is None: return self.graph
         return {attr: self.graph[attr] for attr in attrs}
 
-    def get_node_attribute_by_name(self, name):
-        return self.node_attrs_name_dict[name]
-
-    def get_edge_attribute_by_name(self, name):
-        return self.edge_attrs_name_dict[name]
-
     def get_node_attrs(self, types=None):
-        if types is None: return self.node_attrs
+        if types is None: return list(self.node_attrs.values())
         elif isinstance(type, list):
             types = [type]
         selected_node_attrs = []
-        for n_attr in self.node_attrs:
+        for n_attr in self.node_attrs.values():
             selected_node_attrs.append(n_attr) if n_attr.type in types else None
         return selected_node_attrs
 
     def get_edge_attrs(self, types=None):
-        if types is None: return self.edge_attrs
+        if types is None: return list(self.edge_attrs.values())
         if isinstance(type, list):
             types = [type]
         selected_edge_attrs = []
-        for e_attr in self.edge_attrs:
+        for e_attr in self.edge_attrs.values():
             selected_edge_attrs.append(e_attr) if e_attr.type in types else None
         return selected_edge_attrs
 
@@ -168,13 +162,11 @@ class Network(nx.Graph):
         subnet = super().subgraph(nodes)
         subnet.node_attrs = self.node_attrs
         subnet.edge_attrs = self.edge_attrs
-        subnet.node_attrs_name_dict = self.node_attrs_name_dict
-        subnet.edge_attrs_name_dict = self.edge_attrs_name_dict
         return subnet
 
     ### Constraint ###
     def check_node_constraints(self, p_node_id, vn, v_node_id):
-        for n_attr in vn.node_attrs:
+        for n_attr in vn.node_attrs.values():
             if not n_attr.check(vn.nodes[v_node_id], self.nodes[p_node_id]):
                 return False
         return True
@@ -182,7 +174,7 @@ class Network(nx.Graph):
     ### Update ###
     def update_node_resources(self, node_id, vn_node, method='+'):
         r"""Update (increase) the value of node atributes."""
-        for n_attr in self.node_attrs:
+        for n_attr in self.node_attrs.keys():
             if n_attr.type != 'resource':
                 continue
             n_attr.update(self.nodes[node_id], vn_node, method)
@@ -237,11 +229,10 @@ class Network(nx.Graph):
     def save_attrs_dict(self, fpath):
         attrs_dict = {
             'graph_attrs_dict': self.get_graph_attrs(),
-            'node_attrs': [n_attr.to_dict() for n_attr in self.node_attrs],
-            'edge_attrs': [e_attr.to_dict() for e_attr in self.edge_attrs]
+            'node_attrs': [n_attr.to_dict() for n_attr in self.node_attrs.values()],
+            'edge_attrs': [e_attr.to_dict() for e_attr in self.edge_attrs.values()]
         }
-        with open(fpath, 'w+') as f:
-            json.dump(attrs_dict, f)
+        write_setting(attrs_dict, fpath)
 
 
 if __name__ == '__main__':

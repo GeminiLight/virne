@@ -23,7 +23,7 @@ class Recorder:
         self.node_resource_price = node_resource_price
         self.edge_resource_price = edge_resource_price
         if not os.path.exists(self.save_dir):
-            os.mkdir(self.save_dir)
+            os.makedirs(self.save_dir)
         # self.reset()
 
     def reset(self):
@@ -60,10 +60,12 @@ class Recorder:
         self.init_pn_info['pn_node_available_resource'] = self.counter.calculate_sum_network_resource(pn, edge=False)
         self.init_pn_info['pn_edge_available_resource'] = self.counter.calculate_sum_network_resource(pn, node=False)
 
-    def ready(self, event):
-        self.state['event_id'] = event['id']
-        self.state['event_time'] = event['time']
-        self.state['event_type'] = event['type']
+    def update_state(self, info_dict):
+        self.state.update(info_dict)
+    # def ready(self, event):
+    #     self.state['event_id'] = event['id']
+    #     self.state['event_time'] = event['time']
+    #     self.state['event_type'] = event['type']
     
     def add_info(self, info_dict, **kwargs):
         self.curr_record.update(info_dict)
@@ -241,26 +243,22 @@ class Counter(object):
         # ac rate
         summary_info['success_count'] = records.iloc[-1]['success_count']
         summary_info['acceptance_rate'] = records.iloc[-1]['success_count'] / records.iloc[-1]['vn_count']
-
         # revenue / cost
         summary_info['total_cost'] = records.iloc[-1]['total_cost']
         summary_info['total_revenue'] = records.iloc[-1]['total_revenue']
         summary_info['total_time_cost'] = records.iloc[-1]['total_time_cost']
         summary_info['total_time_revenue'] = records.iloc[-1]['total_time_revenue']
-        summary_info['running_time'] = records[records['event_type']==1].iloc[-1]['arrival_time']
-        summary_info['long_term_aver_revenue'] = summary_info['total_revenue'] / summary_info['running_time']
-        summary_info['total_running_time'] = records.iloc[-1]['arrival_time']
-
+        summary_info['total_simulation_time'] = records.iloc[-1]['arrival_time']
+        summary_info['long_term_aver_revenue'] = summary_info['total_revenue'] / summary_info['total_simulation_time']
+        # summary_info['total_simulation_time'] = records[records['event_type']==1].iloc[-1]['arrival_time']
         # rc ratio
-        summary_info['rc_ratio'] = records.iloc[-1]['total_revenue'] / records.iloc[-1]['total_cost']
-        summary_info['time_rc_ratio'] = records.iloc[-1]['total_time_revenue'] / records.iloc[-1]['total_time_cost']
-
+        summary_info['rc_ratio'] = records.iloc[-1]['total_revenue'] / records.iloc[-1]['total_cost'] if records.iloc[-1]['total_cost'] else 0
+        summary_info['time_rc_ratio'] = records.iloc[-1]['total_time_revenue'] / records.iloc[-1]['total_time_cost']  if records.iloc[-1]['total_time_cost'] else 0
         # other
         summary_info['min_pn_available_resource'] = records.loc[:, 'pn_available_resource'].min()
         summary_info['min_pn_node_available_resource'] = records.loc[:, 'pn_node_available_resource'].min()
         summary_info['min_pn_edge_available_resource'] = records.loc[:, 'pn_edge_available_resource'].min()
         summary_info['max_inservice_count'] = records.loc[:, 'inservice_count'].max()
-        
         # rl reward
         if 'cumulative_reward' in records.columns:
             cumulative_rewards = records.loc[:, 'cumulative_reward'].dropna()
@@ -348,8 +346,8 @@ class Solution(ClassDict):
         self.vn_id = vn.id
         self.lifetime = vn.lifetime
         self.arrival_time = vn.arrival_time
-        # else:
-            # raise TypeError('')
+        self.vn_num_nodes = vn.num_nodes
+        self.vn_num_egdes = vn.num_edges
         self.reset()
 
     def reset(self):
