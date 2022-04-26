@@ -1,5 +1,12 @@
 # Virne
 
+> Developing ... & News
+> 
+> `v0.2` Release one Model-base RL (MCTS) approach and one Model-free RL (PG-CNN) algorithm
+> 
+> `v0.1` Release the implementation of environment and some heuristics-based solvers for VNE problem
+
+
 **Virne** is a framework for Virtual Network Embedding (VNE) problem with the following characteristics:
 
 - **Lightweight**: Environments and algorithms are implemented concisely, using three necessary dependencies (networkx, numpy, pandas).
