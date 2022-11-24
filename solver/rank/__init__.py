@@ -1,5 +1,5 @@
 from .node_rank import NodeRank, RandomNodeRank, OrderNodeRank, FFDNodeRank, NRMNodeRank, GRCNodeRank, RWNodeRank
-from .edge_rank import EdgeRank, OrderEdgeRank, FFDEdgeRank
+from .link_rank import LinkRank, OrderLinkRank, FFDLinkRank
 
 
 __all__ = [
@@ -10,7 +10,7 @@ __all__ = [
     NRMNodeRank,
     GRCNodeRank,
     RWNodeRank,
-    EdgeRank,
-    OrderEdgeRank,
-    FFDEdgeRank
+    LinkRank,
+    OrderLinkRank,
+    FFDLinkRank
 ]

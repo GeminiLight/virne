@@ -1,8 +1,7 @@
 import copy
 import random
 
-from base.controller import Controller
-from base.recorder import Solution, Counter
+from base.recorder import Solution
 
 
 class State:
@@ -10,19 +9,21 @@ class State:
     The state of MCTS to record the state in one node.
     game score, round count, record
     """
-    def __init__(self, pn, vn):
-        self.pn = copy.deepcopy(pn)
-        self.vn = vn
-        self.vn_node_id = -1  # wait
-        self.pn_node_id = pn.num_nodes
-        self.selected_pn_nodes = []
-        self.max_expansion = pn.num_nodes
+    def __init__(self, p_net, v_net, controller, recorder, counter):
+        self.p_net = copy.deepcopy(p_net)
+        self.v_net = v_net
+        self.controller = controller
+        self.counter = counter
+        self.v_node_id = -1  # wait
+        self.p_node_id = p_net.num_nodes
+        self.selected_p_net_nodes = []
+        self.max_expansion = p_net.num_nodes
 
     def is_terminal(self):
         """Check the state is a terminal state"""
         # Case 1: current virtual node is the lastest one
         # Case 2: there is no node which is capable of accommodate the current virtual node
-        if self.vn_node_id == self.vn.num_nodes - 1 or self.pn_node_id == -1:
+        if self.v_node_id == self.v_net.num_nodes - 1 or self.p_node_id == -1:
             return True
         else:
             return False
@@ -32,36 +33,36 @@ class State:
         Success: reward = revenue - cost
         Failure: reward = -inf
         """
-        solution = Solution(self.vn)
-        for i in range(self.vn.num_nodes):
-            solution['node_slots'].update({i: self.selected_pn_nodes[i]})
-        link_result = Controller.link_mapping(self.vn, self.pn, solution=solution, available_network=True,
+        solution = Solution(self.v_net)
+        for i in range(self.v_net.num_nodes):
+            solution['node_slots'].update({i: self.selected_p_net_nodes[i]})
+        link_result = self.controller.link_mapping(self.v_net, self.p_net, solution=solution,
                                                 shortest_method='bfs_shortest', k=1, inplace=True)
 
         if link_result:
-            vn_cost = Counter.calculate_vn_cost(self.vn, solution)
-            vn_revenue = Counter.calculate_vn_revenue(self.vn)
-            return 1000 + vn_revenue - vn_cost
+            v_net_cost = self.counter.calculate_v_net_cost(self.v_net, solution)
+            v_net_revenue = self.counter.calculate_v_net_revenue(self.v_net)
+            return 1000 + v_net_revenue - v_net_cost
         else:
             return -float('inf')
 
     def random_select_next_state(self):
         """Random select a physical node to accommodate the next virtual node"""
-        candidate_pn_nodes = Controller.find_candidate_nodes(
-            pn=self.pn, 
-            vn=self.vn, 
-            vn_node_id=self.vn_node_id+1, 
-            filter=self.selected_pn_nodes)
+        candidate_p_nodes = self.controller.find_candidate_nodes(
+            v_net=self.v_net, 
+            p_net=self.p_net, 
+            v_node_id=self.v_node_id+1, 
+            filter=self.selected_p_net_nodes)
 
-        self.max_expansion = len(candidate_pn_nodes)
+        self.max_expansion = len(candidate_p_nodes)
         if self.max_expansion > 0:
-            random_choice = random.choice([action for action in candidate_pn_nodes])
+            random_choice = random.choice([action for action in candidate_p_nodes])
         else:
             random_choice = -1
         next_state = copy.deepcopy(self)
-        next_state.vn_node_id = self.vn_node_id + 1
-        next_state.pn_node_id = random_choice
-        next_state.selected_pn_nodes = self.selected_pn_nodes + [random_choice]
+        next_state.v_node_id = self.v_node_id + 1
+        next_state.p_node_id = random_choice
+        next_state.selected_p_net_nodes = self.selected_p_net_nodes + [random_choice]
         return next_state
 
 

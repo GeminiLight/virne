@@ -5,27 +5,7 @@ import numpy as np
 import networkx as nx
 
 
-def read_setting(fpath, mode='r'):
-    with open(fpath, mode) as f:
-        if fpath[-4:] == 'json':
-            setting_dict = json.load(f)
-        elif fpath[-4:] == 'yaml':
-            setting_dict = yaml.load(f, Loader=yaml.Loader)
-        else:
-            return ValueError('Only supports settings files in yaml and json format!')
-    return setting_dict
-
-def write_setting(setting_dict, fpath, mode='w+'):
-    with open(fpath, mode) as f:
-        if fpath[-4:] == 'json':
-            json.dump(setting_dict, f)
-        elif fpath[-4:] == 'yaml':
-            yaml.dump(setting_dict, f)
-        else:
-            return ValueError('Only supports settings files in yaml and json format!')
-    return setting_dict
-
-def path_to_edges(path):
+def path_to_links(path):
     return [(path[i], path[i+1]) for i in range(len(path)-1)]
 
 def generate_data_with_distribution(size, distribution, dtype, **kwargs):
@@ -51,6 +31,9 @@ def generate_data_with_distribution(size, distribution, dtype, **kwargs):
     else:
         raise NotImplementedError(f'Generating {dtype} data following the {distribution} distribution is unsupporrted!')
     return data.astype(dtype).tolist()
+
+def get_distribution_average(self, distribution, dtype, **kwargs):
+    pass
 
 def draw_graph(G, width=0.05, show=True, save_path=None):
     import matplotlib.pyplot as plt

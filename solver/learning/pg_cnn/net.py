@@ -17,9 +17,7 @@ class ActorCritic(nn.Module):
         values = self.critic(obs)
         return values
 
-
 class Actor(nn.Module):
-
     def __init__(self, feature_dim, action_dim, embedding_dim=64):
         super(Actor, self).__init__()
         self.net = nn.Sequential(
@@ -39,7 +37,6 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-
     def __init__(self, feature_dim, action_dim, embedding_dim=64):
         super(Critic, self).__init__()
         self.net = nn.Sequential(

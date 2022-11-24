@@ -1,183 +1,238 @@
-import gym
 import copy
 import numpy as np
 import networkx as nx
 
-from gym import spaces
-
+from base import Solution
+from .rl_environment import VNERLEnv
 from .obs_handler import ObservationHandler
-from base.controller import Controller
-from base.recorder import Solution, Counter
-from data import PhysicalNetwork, VNSimulator
+from ..rank.node_rank import rank_nodes
 
 
-class SubRLEnv(gym.Env):
+class SubRLEnv(VNERLEnv):
 
-    def __init__(self, pn, vn, rejection_action=False, reusable=False):
-        super().__init__()
-        self.rejection_action = rejection_action
-        self.reusable = reusable
-        self.pn = pn
-        self.curr_vn = vn
-        self.pn_backup = copy.deepcopy(pn)
-        self.curr_solution = Solution(vn)
-        self.curr_vnf_id = 0
-        self.counter = Counter()
-        self.controller = Controller()
+    def __init__(self, p_net, v_net, controller, recorder, counter, **kwargs):
+        self.p_net = p_net
+        self.v_net = v_net
+        self.counter = counter
+        self.recorder = recorder
+        self.controller = controller
+        super(SubRLEnv, self).__init__(**kwargs)
+
+        self.p_net_backup = copy.deepcopy(p_net)
+        self.solution = Solution(v_net)
         self.obs_handler = ObservationHandler()
-        self.action_space = spaces.Discrete(self.pn.num_nodes + 1 if rejection_action else self.pn.num_nodes)
-        self.node_extrema_data, self.node_attrs_benchmark = self.obs_handler.get_node_attrs_obs(self.pn, node_attr_types=['extrema'], normalization=True)
-        self.edge_extrema_data, self.edge_attrs_benchmark = self.obs_handler.get_edge_attrs_obs(self.pn, edge_attr_types=['extrema'], normalization=True)
-        self.edge_aggr_extrema_data, self.edge_aggr_attrs_benchmark = self.obs_handler.get_edge_aggr_attrs_obs(self.pn, edge_attr_types=['extrema'], normalization=True)
-        self.curr_vn_reward = 0
-        # Graph theory features
-        # degree
-        pn_node_degrees = np.array([list(nx.degree_centrality(self.pn).values())]).T
-        self.pn_node_degrees = (pn_node_degrees - pn_node_degrees.min()) / (pn_node_degrees.max() - pn_node_degrees.min())
-        # closeness
-        pn_node_closenesses = np.array([list(nx.closeness_centrality(self.pn).values())]).T
-        self.pn_node_closenesses = (pn_node_closenesses - pn_node_closenesses.min()) / (pn_node_closenesses.max() - pn_node_closenesses.min())
-        # eigenvector
-        pn_node_eigenvectors = np.array([list(nx.eigenvector_centrality(self.pn).values())]).T
-        self.pn_node_eigenvectors = (pn_node_eigenvectors - pn_node_eigenvectors.min()) / (pn_node_eigenvectors.max() - pn_node_eigenvectors.min())
-        # betweenness
-        pn_node_betweennesses = np.array([list(nx.betweenness_centrality(self.pn).values())]).T
-        self.pn_node_betweennesses = (pn_node_betweennesses - pn_node_betweennesses.min()) / (pn_node_betweennesses.max() - pn_node_betweennesses.min())
+        # ranking strategy
+        self.reusable = kwargs.get('reusable', False)
+        self.node_ranking_method = kwargs.get('node_ranking_method', 'order')
+        self.link_ranking_method = kwargs.get('link_ranking_method', 'order')
+        # node mapping
+        self.matching_mathod = kwargs.get('matching_mathod', 'greedy')
+        # link mapping
+        self.shortest_method = kwargs.get('shortest_method', 'bfs_shortest')
+        self.k_shortest = kwargs.get('k_shortest', 10)
+        # calcuate graph metrics
+        self.ranked_v_net_nodes = rank_nodes(self.v_net, self.node_ranking_method)
 
+        self.solution['v_net_reward'] = 0
+        self.solution['num_interactions'] = 0
 
     def reset(self):
-        self.curr_solution.reset()
-        self.pn = copy.deepcopy(self.pn_backup)
-        self.curr_vnf_id = 0
+        self.solution.reset()
+        self.p_net = copy.deepcopy(self.p_net_backup)
         return super().reset()
 
-    def step(self, action):
-        pass
+    def calcuate_graph_metrics(self, degree=True, closeness=True, eigenvector=True, betweenness=True):
+        # Graph theory features
+        # degree
+        if degree:
+            p_net_node_degrees = np.array([list(nx.degree_centrality(self.p_net).values())], dtype=np.float32).T
+            self.p_net_node_degrees = (p_net_node_degrees - p_net_node_degrees.min()) / (p_net_node_degrees.max() - p_net_node_degrees.min())
+        # closeness
+        if closeness:
+            p_net_node_closenesses = np.array([list(nx.closeness_centrality(self.p_net).values())], dtype=np.float32).T
+            self.p_net_node_closenesses = (p_net_node_closenesses - p_net_node_closenesses.min()) / (p_net_node_closenesses.max() - p_net_node_closenesses.min())
+        # eigenvector
+        if eigenvector:
+            p_net_node_eigenvectors = np.array([list(nx.eigenvector_centrality(self.p_net).values())], dtype=np.float32).T
+            self.p_net_node_eigenvectors = (p_net_node_eigenvectors - p_net_node_eigenvectors.min()) / (p_net_node_eigenvectors.max() - p_net_node_eigenvectors.min())
+        # betweenness
+        if betweenness:
+            p_net_node_betweennesses = np.array([list(nx.betweenness_centrality(self.p_net).values())], dtype=np.float32).T
+            self.p_net_node_betweennesses = (p_net_node_betweennesses - p_net_node_betweennesses.min()) / (p_net_node_betweennesses.max() - p_net_node_betweennesses.min())
 
-    def get_observation(self):
-        pass
+    def reject(self):
+        self.solution['early_rejection'] = True
+        solution_info = self.solution.to_dict()
+        done = True
+        return self.get_observation(), self.compute_reward(self.solution), done, self.get_info(solution_info)
 
-    def compute_reward(self):
-        pass
-
-    def get_info(self, info={}):
-        info = copy.deepcopy(info)
-        return info
-
-    def render(self):
-        return
-
-    def generate_action_mask(self):
-        candidate_nodes = self.controller.find_candidate_nodes(self.pn, self.curr_vn, self.curr_vnf_id, filter=self.selected_pn_nodes)
-        mask = np.zeros(self.pn.num_nodes, dtype=bool)
-        mask[candidate_nodes] = 1
-        if mask.sum() == 0: mask[0] = True
-        return mask
-
-    def get_curr_place_progress(self):
-        return self.curr_vnf_id / self.curr_vn.num_nodes
-
-    def get_node_load_balance(self, p_node_id):
-        n_attrs = self.pn.get_node_attrs(['resource'])
-        if len(n_attrs) > 1:
-            n_resources = np.array([self.pn.nodes[p_node_id][n_attr.name] for n_attr in n_attrs])
-            load_balance = np.std(n_resources)
-        else:
-            n_attr = self.pn.get_node_attrs(['extrema'])[0]
-            load_balance = self.pn.nodes[p_node_id][n_attr.originator] / self.pn.nodes[p_node_id][n_attr.name]
-        return load_balance
-
-    @property
-    def selected_pn_nodes(self):
-        return list(self.curr_solution['node_slots'].values())
-
-    @property
-    def placed_vn_nodes(self):
-        return list(self.curr_solution['node_slots'].keys())
-
+    def revoke(self):
+        assert len(self.placed_v_net_nodes) != 0
+        self.solution['place_result'] = True
+        self.solution['route_result'] = True
+        self.solution['revoke_times'] += 1
+        last_v_node_id = self.placed_v_net_nodes[-1]
+        paired_p_node_id = self.selected_p_net_nodes[-1]
+        self.controller.undo_place_and_route(self.v_net, self.p_net, last_v_node_id, paired_p_node_id, self.solution)
+        solution_info = self.counter.count_partial_solution(self.v_net, self.solution)
+        self.revoked_actions_dict[str(self.solution.node_slots), last_v_node_id].append(paired_p_node_id)
+        return self.get_observation(), self.compute_reward(self.solution), False, self.get_info(solution_info)
 
 
 class SolutionStepSubRLEnv(SubRLEnv):
     
-    def __init__(self, pn, vn, rejection_action=False, reusable=False, **kwargs):
-        super(SolutionStepSubRLEnv, self).__init__(pn, vn, rejection_action, reusable, **kwargs)
+    def __init__(self, p_net, v_net, controller, recorder, counter, **kwargs):
+        super(SolutionStepSubRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, **kwargs)
 
     def step(self, solution):
         # Success
         if solution['result']:
-            self.curr_solution = solution
-            self.curr_solution['description'] = 'Success'
+            self.solution = solution
+            self.solution['description'] = 'Success'
         # Failure
         else:
-            solution = Solution(self.curr_vn)
+            solution = Solution(self.v_net)
         return self.get_observation(), self.compute_reward(), True, self.get_info(solution.__dict__)
 
-    def get_info(self, record={}):
-        info = copy.deepcopy(record)
-        return info
-
     def get_observation(self):
-        return {'vn': self.curr_vn, 'pn': self.pn}
+        return {'v_net': self.v_net, 'p_net': self.p_net}
 
     def compute_reward(self):
         return 0
 
-    def generate_action_mask(self):
-        return np.arange(self.pn.num_nodes)
+
+class NodeSlotsStepSubRLEnv(SubRLEnv):
+    
+    def __init__(self, p_net, v_net, controller, recorder, counter, **kwargs):
+        super(NodeSlotsStepSubRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, **kwargs)
+
+    def step(self, node_slots):
+        if len(node_slots) == self.v_net.num_nodes:
+            self.controller.deploy_with_node_slots(
+                self.v_net, self.p_net, 
+                node_slots, self.solution, 
+                inplace=True, 
+                shortest_method=self.shortest_method, k_shortest=self.k_shortest
+            )
+            # Success
+            if self.solution['result']:
+                self.solution['description'] = 'Success'
+        return self.get_observation(), self.compute_reward(self.solution), True, self.get_info(self.solution.__dict__)
 
 
 class JointPRStepSubRLEnv(SubRLEnv):
     
-    def __init__(self, pn, vn, rejection_action=False, reusable=False, **kwargs):
-        super(JointPRStepSubRLEnv, self).__init__(pn, vn, rejection_action, reusable, **kwargs)
+    def __init__(self, p_net, v_net, controller, recorder, counter, **kwargs):
+        super(JointPRStepSubRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, **kwargs)
+
 
     def step(self, action):
         """
-        Joint Place and Route with action pn node.
+        Joint Place and Route with action p_net node.
 
         All possible case
             Uncompleted Success: (Node place and Link route successfully)
             Completed Success: (Node Mapping & Link Mapping)
             Falilure: (Node place failed or Link route failed)
         """
+        import time
+        t1 = time.time()
+
+        self.solution['num_interactions'] += 1
         p_node_id = int(action)
-        done = True
-        # Case: Reject Actively
-        if self.rejection_action and p_node_id == self.pn.num_nodes:
-            self.curr_solution['early_rejection'] = True
-            solution_info = self.curr_solution.to_dict()
-        # Case: Place in one same node
-        elif not self.reusable and p_node_id in self.selected_pn_nodes:
-            self.curr_solution['place_result'] = False
-            solution_info = self.curr_solution.to_dict()
+        self.solution.selected_actions.append(p_node_id)
+        if self.solution['num_interactions'] > 10 * self.v_net.num_nodes:
+            # self.solution['description'] += 'Too Many Revokable Actions'
+            return self.reject()
+        # Case: Reject
+        if self.if_rejection(action):
+            return self.reject()
+        # Case: Revoke
+        if self.if_revocable(action):
+            return self.revoke()
+        # Case: reusable = False and place in one same node
+        elif not self.reusable and p_node_id in self.selected_p_net_nodes:
+            self.solution['place_result'] = False
+            solution_info = self.counter.count_solution(self.v_net, self.solution)
+            done = True
+            # solution_info = self.solution.to_dict()
         # Case: Try to Place and Route
         else:
-            assert p_node_id in list(self.pn.nodes)
-            place_and_route_result = self.controller.place_and_route(self.curr_vn, self.pn, self.curr_vnf_id, p_node_id,
-                                                                        self.curr_solution, shortest_method='bfs_shortest', k=50)
+            assert p_node_id in list(self.p_net.nodes)
+            place_and_route_result, place_and_route_info = self.controller.place_and_route(
+                                                                                self.v_net, 
+                                                                                self.p_net, 
+                                                                                self.curr_v_node_id, 
+                                                                                p_node_id,
+                                                                                self.solution, 
+                                                                                shortest_method=self.shortest_method, 
+                                                                                k=self.k_shortest)
+            t3 = time.time()
+            
             # Step Failure
             if not place_and_route_result:
-                solution_info = self.curr_solution.to_dict()
+                if self.allow_revocable and self.solution['num_interactions'] <= self.v_net.num_nodes * 10:
+                    self.solution['selected_actions'].append(self.revocable_action)
+                    return self.revoke()
+                else:
+                    solution_info = self.counter.count_solution(self.v_net, self.solution)
+                    done = True
+    
+                # solution_info = self.solution.to_dict()
             else:
-                self.curr_vnf_id += 1
                 # VN Success ?
-                if self.curr_vnf_id == self.curr_vn.num_nodes:
-                    self.curr_solution['result'] = True
-                    solution_info = self.counter.count_solution(self.curr_vn, self.curr_solution)
+                if self.num_placed_v_net_nodes == self.v_net.num_nodes:
+                    self.solution['result'] = True
+                    solution_info = self.counter.count_solution(self.v_net, self.solution)
+                    done = True
                 # Step Success
                 else:
                     done = False
-                    solution_info = self.counter.count_partial_solution(self.curr_vn, self.curr_solution)
+                    solution_info = self.counter.count_partial_solution(self.v_net, self.solution)
                     
         if done:
-            self.curr_vnf_id = 0
-        return self.get_observation(), self.compute_reward(self.curr_solution), done, self.get_info(solution_info)
+            pass
+        
+        t2 = time.time()
+        # print(f'{t2-t1:.6f}={t3-t1:.6f}+{t2-t3:.6f}')
+        return self.get_observation(), self.compute_reward(self.solution), done, self.get_info(solution_info)
+
+    def compute_reward(self, solution):
+        r"""Calculate deserved reward according to the result of taking action."""
+        reward_weight = 0.1
+        if solution['result'] :
+            # node_load_balance = self.get_node_load_balance(self.selected_p_net_nodes[-1])
+            reward = solution['v_net_r2c_ratio']
+        elif solution['place_result'] and solution['route_result']:
+            # curr_place_progress = self.get_curr_place_progress()
+            # node_load_balance = self.get_node_load_balance(self.selected_p_net_nodes[-1])
+            # reward = curr_place_progress * (solution['v_net_r2c_ratio']) #  - 0.01 * node_load_balance
+            # reward = curr_place_progress * ((solution['v_net_r2c_ratio']) + 0.01 * node_load_balance)
+            # weight = (1 + len(self.v_net.adj[curr_v_node_id - 1])) / (self.v_net.num_nodes + self.v_net.num_links)
+            # reward = 0.01
+            # weight = (1 + len(self.v_net.adj[curr_v_node_id - 1])) / 10
+            # reward = weight * solution['v_net_r2c_ratio']
+            # + 0.01 * node_load_balance
+            reward = 0.
+        else:
+            curr_place_progress = self.get_curr_place_progress()
+            # reward = - self.get_curr_place_progress()
+            # weight = (1 + len(self.v_net.adj[curr_v_node_id - 1])) / (self.v_net.num_nodes + self.v_net.num_links)
+            # weight = (1 + len(self.v_net.adj[curr_v_node_id])) / 10
+            reward = - curr_place_progress
+            # reward = - 0.1
+            # reward = -1. * weight
+        # reward = solution['v_net_r2c_ratio'] if solution['result'] else 0
+        # reward = self.v_net.num_nodes / 10 * reward
+        # reward = self.v_net.total_resource_demand / 500 * reward
+        self.solution['v_net_reward'] += reward
+        return reward
 
 
 class PlaceStepSubRLEnv(SubRLEnv):
 
-    def __init__(self, pn, vn, rejection_action=False, reusable=False, **kwargs):
-        super(PlaceStepSubRLEnv, self).__init__(pn, vn, rejection_action, reusable, **kwargs)
+    def __init__(self, p_net, v_net, controller, recorder, counter, **kwargs):
+        super(PlaceStepSubRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, **kwargs)
 
     def step(self, action):
         """
@@ -191,42 +246,50 @@ class PlaceStepSubRLEnv(SubRLEnv):
         """
         p_node_id = int(action)
         done = True
-        # Case: Reject Actively
-        if self.rejection_action and p_node_id == self.pn.num_nodes:
-            self.curr_solution['early_rejection'] = True
-            solution_info = self.curr_solution.to_dict()
+        # Case: Reject
+        if self.if_rejection(action):
+            return self.reject()
+        # Case: Revoke
+        if self.if_revocable(action):
+            return self.revoke()
         # Case: Place in one same node
-        elif not self.reusable and p_node_id in self.selected_pn_nodes:
-            self.curr_solution['place_result'] = False
-            solution_info = self.curr_solution.to_dict()
+        elif not self.reusable and p_node_id in self.selected_p_net_nodes:
+            self.solution['place_result'] = False
+            solution_info = self.solution.to_dict()
         # Case: Try to Place
         else:
-            assert p_node_id in list(self.pn.nodes)
+            assert p_node_id in list(self.p_net.nodes)
             # Stage 1: Node Mapping
-            node_place_result = self.controller.place(self.curr_vn, self.pn, self.curr_vnf_id, p_node_id, self.curr_solution)
-            self.curr_vnf_id += 1
+            node_place_result, node_place_info = self.controller.place(self.v_net, self.p_net, self.curr_v_node_id, p_node_id, self.solution)
             # Case 1: Node Place Success / Uncompleted
-            if node_place_result and self.curr_vnf_id < self.curr_vn.num_nodes:
+            if node_place_result and self.num_placed_v_net_nodes < self.v_net.num_nodes:
                 done = False
-                solution_info = self.curr_solution.to_dict()
-                return self.get_observation(), self.compute_reward(self.curr_solution), False, self.get_info(self.curr_solution.to_dict())
+                solution_info = self.solution.to_dict()
+                return self.get_observation(), self.compute_reward(self.solution), False, self.get_info(self.solution.to_dict())
             # Case 2: Node Place Failure
             if not node_place_result:
-                self.curr_solution['place_result'] = False
-                solution_info = self.curr_solution.to_dict()
+                self.solution['place_result'] = False
+                solution_info = self.counter.count_solution(self.v_net, self.solution)
+                # solution_info = self.solution.to_dict()
             # Stage 2: Link Mapping
             # Case 3: Try Link Mapping
-            if node_place_result and self.curr_vnf_id == self.curr_vn.num_nodes:
-                link_mapping_result = self.controller.link_mapping(self.curr_vn, self.pn, solution=self.curr_solution, sorted_v_edges=list(self.curr_vn.edges), 
-                                                                    shortest_method='bfs_shortest', k=50, inplace=True)
+            if node_place_result and self.num_placed_v_net_nodes == self.v_net.num_nodes:
+                link_mapping_result = self.controller.link_mapping(self.v_net, 
+                                                                    self.p_net, 
+                                                                    solution=self.solution, 
+                                                                    sorted_v_links=list(self.v_net.links), 
+                                                                    shortest_method=self.shortest_method, 
+                                                                    k=self.k_shortest, 
+                                                                    inplace=True)
                 # Link Mapping Failure
                 if not link_mapping_result:
-                    self.curr_solution['route_result'] = False
-                    solution_info = self.curr_solution.to_dict()
+                    self.solution['route_result'] = False
+                    solution_info = self.counter.count_solution(self.v_net, self.solution)
+                    # solution_info = self.solution.to_dict()
                 # Success
                 else:
-                    self.curr_solution['result'] = True
-                    solution_info = self.counter.count_solution(self.curr_vn, self.curr_solution)
+                    self.solution['result'] = True
+                    solution_info = self.counter.count_solution(self.v_net, self.solution)
         if done:
-            self.curr_vnf_id = 0
+            pass
         return self.get_observation(), self.compute_reward(solution_info), done, self.get_info(solution_info)

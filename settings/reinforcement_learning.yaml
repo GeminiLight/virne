@@ -1,0 +1,24 @@
+# rl
+rl_gamma: 0.95
+gae_lambda: 0.98
+explore_rate: 0.9
+
+# loss
+coef_critic_loss: 0.5
+coef_entropy_loss: 0.01
+coef_mask_loss: 0.01
+use_baseline_solver: false
+reward_weight: 0.1
+
+# evaluate
+# k_searching: 3
+# decode_strategy: sample
+
+# tricks
+mask_actions: true
+maskable_policy: true
+norm_advantage: true
+clip_grad: true
+eps_clip: 0.2
+max_grad_norm: 0.5
+norm_value_loss: false

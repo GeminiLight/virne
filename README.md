@@ -1,11 +1,17 @@
 # Virne
 
-> Developing ... & News
+> Developing ... 
+> 
+> - Constructing the documentation using Sphinx
+> - Implementing more VNE algorithms
+> 
+> Release History
+> 
+> `v0.3` Refactor the stucture and release several algorithms (including exact, heuristic, meta-heuristic, and learning-based methods)
 > 
 > `v0.2` Release one Model-base RL (MCTS) approach and one Model-free RL (PG-CNN) algorithm
 > 
 > `v0.1` Release the implementation of environment and some heuristics-based solvers for VNE problem
-
 
 **Virne** is a framework for Virtual Network Embedding (VNE) problem with the following characteristics:
 
@@ -16,8 +22,12 @@
 Supported features
 
 - **Diverse Network Topologies**
-  - Physical network: Waxman graph
-  - Virtual network: Path graph, Edge probabilistic connection graph
+  - Star Graph: Data Center Network
+  - 2D-grid Graph: Grid Network
+  - Waxman Graph: General Network
+  - Path Graph: Chain-style Network
+  - Edge Probabilistic Connection Graph
+  - Customlized Topology 
 - **Graph/ Node / Link-level Attributes**: 
   - For resources/ constraints/ QoS
   - Graph Level: e.g. the global requirements of virtual network
@@ -29,11 +39,16 @@ Supported features
   - Admission control: Reject Early some not cost-effective virtual networks
   - Time window: Developping
 
+
+Workflow
+
+![](resource/figures/workflow.jpg)
+
 ## VNE Problem
 
 ### Brife Defination
 
-![](resource/figures/vne-example.png)
+![](resource/figures/vne-example.p_net)
 
 ### Main Objectives
 
@@ -58,8 +73,12 @@ $$
 - Running Time
 
 $$
-\text{Running Time}
+\text{Running Time} = \frac{\text{Time consumption of solving }N\text{ instances}}{N}
 $$
+
+- Load Balancing
+
+- Latency Garentee
 
 
 ### QoS Awarenesses (Additional Constraints/ Objectives)
@@ -69,19 +88,22 @@ $$
 - [x] Security (Graph, Node and Link level)
 - [ ] Congestion (Graph, Node and Link level)
 - [ ] Energy (Graph, Node and Link level)
-- [ ] Reliability (Graph, Node and Link level)
+- [x] Reliability (Graph, Node and Link level)
 - [ ] Dynamic (Graph, Node and Link level)
 - [ ] Parallelization
 - [ ] Privacy
 
 ### Mapping Strategy
 
-- Two-State
+- Two-Stage
   - In this fromework, the VNE solving process are composed of Node mapping and Edge Mapping.
-  - Firstly, the node mapping solution is 
+  - Firstly, the node mapping solution is generate with node mapping algorithm, i.e., Node Ranking
+  - Secondly, the BFS algorithm is employed to route the physical link pairs obtained from the node mapping solution. 
 - Joint Place and Route
+  - The solution of node mapping consists of a sequential placement decision.
+  - Simultaneously, the available physical link pairs are routed by BFS algorithm.
 - BFS Trails
-
+  - Based on breadth-first search, it expands the search space by exploiting the awareness of restarts.
 
 ## Implemented Algorithms
 
@@ -92,11 +114,8 @@ $$
 | Name                           | Command                | Type         | Mapping  | Title                                                        | Publication    | Year | Note |
 | ------------------------------ | ---------------------- | ------------ | ------------------------------------------------------------ | -------------- | ---- | ---- | ------------------------------ |
 | PG-CNN2 | `pg_cnn2` | `learning`   | `two-stage` | [A Virtual Network EmbeddingAlgorithm Based On Double-LayerReinforcement Learning](https://ieeexplore.ieee.org/document/9500964) | The Computer Journal | 2022 |  |
-| A3C-Seq2Seq*       | `a3c_seq2seq` | `learning`   | `joint_pr` | [DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning](https://ieeexplore.ieee.org/document/9500964) | ICC      | 2021 |  |
 | PG-CNN-QoS | `pg_cnn_qos` | `learning`   | `two-stage` | [Resource Management and Security Scheme of ICPSs and IoT Based on VNE Algorithm](https://arxiv.org/pdf/2202.01375.pdf) | IoTJ | 2021 |  |
 | PG-Seq2Seq      | `pg_seq2seq` | `learning`   | `joint_pr` | [A Continuous-Decision Virtual Network Embedding Scheme Relying on Reinforcement Learning](https://ieeexplore.ieee.org/document/8982091) | TNSM   | 2020 |  |
-| SRL-Seq2Seq*             | `srl_seq2seq` | `learning`   | `joint_pr` | [Virtual Network Function Placement Optimization With Deep Reinforcement Learning](https://ieeexplore.ieee.org/document/8945291/) | JSAC           | 2020 |  |
-| A3C-GCN                        | `a3c_gcn`              | `learning`   | `joint_pr` | [Automatic Virtual Network Embedding: A Deep Reinforcement Learning Approach With Graph Convolutional Networks](https://ieeexplore.ieee.org/document/9060910) | JSAC           | 2020 |  |
 | GAE-VNE                    | `gae_vne`          | `learning`   | `bfs_trials` | [Accelerating Virtual Network Embedding with Graph Neural Networks](https://ieeexplore.ieee.org/document/9269128) | CNSM           | 2020 | Clustering |
 | PG-MLP                | `pg_mlp`   | `learning`   | `joint_pr` | [NFVdeep: adaptive online service function chain deployment with deep reinforcement learning](http://ieeexplore.ieee.org/document/9068634/). | IWQOS          | 2019 |  |
 | Neuro-VNE          | `neuro_vne` | `learning`   | `two-stage` | [NeuroViNE: A Neural Preprocessor for Your Virtual Network Embedding Algorithm](https://mediatum.ub.tum.de/doc/1449121/document.pdf) | INFOCOM   | 2018 | Subgraph Extraction |
@@ -105,29 +124,47 @@ $$
 
 > `*` means that the algorithm only supports chain-shape virtual networks embedding
 
+
 ### Meta-heuristics Solvers
 
 | Name                           | Command       | Type         | Mapping      | Title                                                        | Publication | Year | Note |
 | ------------------------------ | ------------- | ------------ | ------------ | ------------------------------------------------------------ | ----------- | ---- | ------------------------------ |
-| PSO-VNE          | `pso_vne`         | `meta-heuristics`   | `two-stage` | [Energy-Aware Virtual Network Embedding](https://ieeexplore.ieee.org/document/6709811) | TON         | 2014 | MultiThreading Support |
-| ACO-VNE  | `aco_vne`          | `meta-heuristics` | `joint`     | [VNE-AC: Virtual Network Embedding Algorithm Based on Ant Colony Metaheuristic](https://www.gta.ufrj.br/ensino/cpe717-2011/VNE-ICC-1.pdf) | ICC         | 2011 | MultiThreading Support |
+| NodeRanking-MetaHeuristic-VNE          | `**_**_vne`         | `meta-heuristics`   | `joint` | [Virtual network embedding through topology awareness and optimization](https://www.sciencedirect.com/science/article/abs/pii/S1389128612000461) | CN         | 2012 | MultiThreading Support |
+| GeneticAlgorithm-VNE          | `ga_vne`         | `meta-heuristics`   | `two-stage` | [Virtual network embedding based on modified genetic algorithm](https://link.springer.com/article/10.1007/s12083-017-0609-x#:~:text=Virtual%20network%20embedding%20is%20a,nodes%2C%20the%20goal%20of%20link) | Peer-to-Peer Networking and Applications         | 2019 | MultiThreading Support |
+| TabuSearch-VNE          | `ts_vne`         | `meta-heuristics`   | `joint` | [Virtual network forwarding graph embedding based on Tabu Search](https://ieeexplore.ieee.org/document/8171072) | WCSP         | 2017 | MultiThreading Support |
+| ParticleSwarmOptimization-VNE          | `pso_vne`         | `meta-heuristics`   | `two-stage` | [Energy-Aware Virtual Network Embedding](https://ieeexplore.ieee.org/document/6709811) | TON         | 2014 | MultiThreading Support |
+| AntColonyOptimization-VNE  | `aco_vne`          | `meta-heuristics` | `joint`     | [Link mapping-oriented ant colony system for virtual network embedding](https://ieeexplore.ieee.org/document/7969445) | CEC         | 2017 | MultiThreading Support |
+| AntColonyOptimization-VNE  | `aco_vne`          | `meta-heuristics` | `joint`     | [VNE-AC: Virtual Network Embedding Algorithm Based on Ant Colony Metaheuristic](https://www.gta.ufrj.br/ensino/cpe717-2011/VNE-ICC-1.pdf) | ICC         | 2011 | MultiThreading Support |
+| SimulatedAnnealing-VNE  | `sa_vne`          | `meta-heuristics` | `two-stage`     | [FELL: A Flexible Virtual Network Embedding Algorithm with Guaranteed Load Balancing](https://ieeexplore.ieee.org/abstract/document/5962960) | ICC         | 2011 | MultiThreading Support |
+
+**Other Related Papers**
+- Particle Swarm Optimization 
+  - Xiang Cheng et al. "Virtual network embedding through topology awareness and optimization". CN, 2012.
+  - An Song et al. "A Constructive Particle Swarm Optimizer for Virtual Network Embedding". TNSE, 2020.
+- Genetic Algorithm
+  - Liu Boyang et al. "Virtual Network Embedding Based on Hybrid Adaptive Genetic Algorithm" In ICCC, 2019.
+  - Khoa T.D. Nguyen et al. "An Intelligent Parallel Algorithm for Online Virtual Network Embedding". In CITS, 2019.
+  - Khoa Nguyen et al. "Efficient Virtual Network Embedding with Node Ranking and Intelligent Link Mapping". In CloudNet, 2020.
+  - Khoa Nguyen et al. "Joint Node-Link Algorithm for Embedding Virtual Networks with Conciliation Strategy". In GLOBECOM, 2021.
+- Ant Colony Optimization
+  - N/A
 
 ### Heuristics-based Solvers
-
 | Name                           | Command       | Type         | Mapping      | Title                                                        | Publication | Year | Note |
 | ------------------------------ | ------------- | ------------ | ------------ | ------------------------------------------------------------ | ----------- | ---- | ---- |
-| Ego-Network                    | `ego_vne`     | `heuristics` | `two-stage`  | [Ego Network-based Virtual Network Embedding Scheme for Revenue Maximization](https://ieeexplore.ieee.org/document/9415185) | ICAIIC      | 2021 |      |
+| PL (Priority of Location)      | `pl_rank`     | `heuristics` | `two-stage`  | [Efficient Virtual Network Embedding of Cloud-Based Data Center Networks into Optical Networks](https://ieeexplore.ieee.org/document/9415134) | TPDS        | 2021 |      |
 | NRM (Node Resource Management) | `nrm_rank`    | `heuristics` | `two-stage`  | [Virtual Network Embedding Based on Computing, Network, and Storage Resource Constraints](https://ieeexplore.ieee.org/document/7976281) | IoTJ        | 2018 |      |
 | GRC (Global resource capacity) | `grc_rank`    | `heuristics` | `two-stage`  | [Toward Profit-Seeking Virtual Network Embedding Algorithm via Global Resource Capacity](https://ieeexplore.ieee.org/document/6847918) | INFOCOM     | 2014 |      |
-| RW-MaxMatch (NodeRank)         | `rw_rank`     | `heuristics` | `two-stage`  | [Virtual Network Embedding Through Topology-Aware Node Ranking](https://dl.acm.org/doi/10.1145/1971162.1971168) | SIGCOMM     | 2011 |      |
-| RW-BFS (NodeRank)              | `rw_rank_bfs` | `heuristics` | `bfs_trials` | [Virtual Network Embedding Through Topology-Aware Node Ranking](https://dl.acm.org/doi/10.1145/1971162.1971168) | SIGCOMM     | 2011 |      |
+| RW-MaxMatch (NodeRank)         | `rw_rank`     | `heuristics` | `two-stage`  | [Virtual Network Embedding Through Topology-Aware Node Ranking](https://dl.acm.org/doi/10.1145/1971162.1971168) | ACM SIGCOMM Computer Communication Review     | 2011 |      |
+| RW-BFS (NodeRank)              | `rw_rank_bfs` | `heuristics` | `bfs_trials` | [Virtual Network Embedding Through Topology-Aware Node Ranking](https://dl.acm.org/doi/10.1145/1971162.1971168) | ACM SIGCOMM Computer Communication Review     | 2011 |      |
 
 ### Exact Solvers
 
 | Name                                 | Command | Type    | Mapping | Title                                                        | Publication | Year | Note |
 | ------------------------------------ | ------- | ------- | ------- | ------------------------------------------------------------ | ----------- | ---- | ---- |
-| D-VNE (Deterministic Rounding Based) | `d_bfs` | `exact` | `joint` | [ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping](https://ieeexplore.ieee.org/document/5951812?arnumber=5951812) | TON         | 2012 |      |
-| R-VNE (Random Rounding Based)        | `d_bfs` | `exact` | `joint` | [ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping](https://ieeexplore.ieee.org/document/5951812?arnumber=5951812) | TON         | 2012 |      |
+| MIP-VNE (Mixed-Integer Programming) | `mip_vne` | `exact` | `joint` | [ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping](https://ieeexplore.ieee.org/document/5951812?arnumber=5951812) | TON         | 2012 |      |
+| D-VNE (Deterministic Rounding Based) | `d_vne` | `exact` | `joint` | [ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping](https://ieeexplore.ieee.org/document/5951812?arnumber=5951812) | TON         | 2012 |      |
+| R-VNE (Random Rounding Based)        | `r_vne` | `exact` | `joint` | [ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping](https://ieeexplore.ieee.org/document/5951812?arnumber=5951812) | TON         | 2012 |      |
 
 ### Simple Baseline Solvers
 
@@ -165,20 +202,20 @@ virne
 │  ├─network.py
 │  ├─physical_network.py
 │  ├─virtual_network.py
-│  ├─vn_simulator.py
+│  ├─v_net_simulator.py
 │  └─utils.py
 │
 ├─dataset
-│  ├─pn
-│  └─vns
+│  ├─p_net
+│  └─v_nets
 │
 ├─records
 │  ├─..
 │  └─global_summary.csv
 │
 ├─settings
-│  ├─vns_setting.json
-│  └─pn_setting.json
+│  ├─v_sim_setting.yaml
+│  └─p_net_setting.yaml
 │
 ├─tester
 │  └─tester.py
@@ -201,10 +238,10 @@ The structure of this framework are still optimized steadily. We will construct 
 
 ```shell
 # only cpu
-sh requirements.sh -c 0
+sh install.sh -c 0
 
 # use cuda (optional version: 10.2, 11.3)
-sh requirements.sh -c 11.3
+sh install.sh -c 11.3
 ```
 
 #### Selective installation
@@ -212,7 +249,7 @@ sh requirements.sh -c 11.3
 Necessary
 
 ```shell
-pip install networkx, numpy, pandas, matplotlib
+pip install networkx numpy pandas ortools matplotlib pyyaml
 ```
 
 Expansion
@@ -237,7 +274,7 @@ conda install pyg -c pyg -c conda-forge
 # get config
 config = get_config()
 
-# generate pn and vn dataset
+# generate p_net and v_net dataset
 Generator.generate_dataset(config)
 
 # create scenario with Env and Solver
@@ -256,10 +293,10 @@ Under constructing ...
 ### Environment Modeling
 
 - [ ] `ADD` `Scenario` Window Batch Processing
-- [ ] `ADD` `Environment` Check Attributes of pn and vn
-- [ ] `ADD` `Environment` Latency Constraint
-- [ ] `ADD` `Controller` Check graph constraints
-- [ ] `ADD` `Controller` Multi-commodity flow
+- [x] `ADD` `Environment` Check Attributes of p_net and v_net
+- [x] `ADD` `Environment` Latency Constraint
+- [x] `ADD` `Controller` Check graph constraints
+- [x] `ADD` `Controller` Multi-commodity flow
 - [x] `ADD` `Environment` QoS level Constraints
 - [x] `ADD` `Recorder` Count partial solutions' information
 - [x] `ADD` `Enironment` Early rejection (Admission control)
@@ -285,11 +322,11 @@ Under constructing ...
 
 #### data
 
-- [ ] `data.attribute`
+- [x] `data.attribute`
 - [x] `data.network`
 - [x] `data.physical_network`
 - [x] `data.virtual_network`
-- [ ] `data.vn_simulator`
+- [x] `data.v_net_simulator`
 
 #### solver
 
@@ -297,7 +334,7 @@ Under constructing ...
 - [x] `base.controller`
 - [x] `base.enviroment`
 - [x] `solver.rank.node_rank`
-- [x] `solver.rank.edge_rank`
-- [x] `solver.heuristics`
+- [x] `solver.rank.link_rank`
+- [x] `solver.heuristic`
 - [x] `solver.learning.mcts`
 - [ ] ...

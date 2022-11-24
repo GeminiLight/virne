@@ -1,6 +1,6 @@
-from .pg_cnn_solver import PGCNNSolver
+from .pg_cnn_solver import PgCnnSolver
 
 
 __all__ = [
-    PGCNNSolver,
+    PgCnnSolver,
 ]

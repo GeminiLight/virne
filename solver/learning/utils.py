@@ -1,3 +1,4 @@
+from time import sleep
 import torch
 import numpy as np
 from torch_geometric.data import Data, Batch
@@ -5,6 +6,14 @@ from sklearn.preprocessing import StandardScaler, Normalizer
 
 
 NEG_TENSER = torch.tensor(-1e8).float()
+
+
+def get_pyg_data(x, edge_index, edge_attr=None):
+    x = torch.tensor(x)
+    edge_index = torch.tensor(edge_index).long()
+    edge_attr = torch.tensor(edge_attr) if edge_attr is not None else None
+    data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+    return data
 
 
 def get_pyg_data(x, edge_index, edge_attr=None):
@@ -50,7 +59,7 @@ def load_pyg_data_from_network(network, attr_types=['resource'], normailize_meth
     """Load data from network"""
 
     # edge index
-    edge_index = np.array(list(network.edges),dtype=np.int64).T
+    edge_index = np.array(list(network.links),dtype=np.int64).T
     edge_index = torch.LongTensor(edge_index)
     # node data
     n_attrs = network.get_node_attrs(attr_types)
@@ -59,13 +68,13 @@ def load_pyg_data_from_network(network, attr_types=['resource'], normailize_meth
         node_data = normailize_data(node_data, method=normailize_method)
     node_data = torch.tensor(node_data)
     # edge data
-    e_attrs = network.get_edge_attrs(attr_types)
-    edge_data = np.array(network.get_edge_attrs_data(e_attrs), dtype=np.float32).T
+    e_attrs = network.get_link_attrs(attr_types)
+    link_data = np.array(network.get_link_attrs_data(e_attrs), dtype=np.float32).T
     if normailize_edges_data:
-        edge_data = normailize_data(edge_data, method=normailize_method)
-    edge_data = torch.tensor(edge_data)
+        link_data = normailize_data(link_data, method=normailize_method)
+    link_data = torch.tensor(link_data)
     # pyg data
-    data = Data(x=node_data, edge_index=edge_index, edge_attr=edge_data)
+    data = Data(x=node_data, edge_index=edge_index, edge_attr=link_data)
     return data
 
 def load_pyg_batch_from_network_list(network_list):
@@ -83,6 +92,10 @@ def apply_mask_to_logit(logit, mask=None):
     # masked_logit = logit + mask.log()
     if not isinstance(mask, torch.Tensor):
         mask = torch.BoolTensor(mask)
+    
+    # flag = ~torch.any(mask, dim=1, keepdim=True).repeat(1, mask.shape[-1])
+    # mask = torch.where(flag, True, mask)
+    
     mask = mask.bool().to(logit.device).reshape(logit.size())
     mask_value_tensor = NEG_TENSER.type_as(logit).to(logit.device)
     masked_logit = torch.where(mask, logit, mask_value_tensor)

@@ -2,43 +2,39 @@ import copy
 import math
 from threading import Thread
 
-from base import Solution, Controller
+from base import Solution
 from .node import Node, State
 from ...solver import Solver
 
 
 class MCTSSolver(Solver):
 
-    def __init__(self, computation_budget=3, exploration_constant=0.5, 
-                        reusable=False, verbose=1, *args, **kwargs):
-        super(MCTSSolver, self).__init__(name='mcts', reusable=reusable, verbose=verbose, **kwargs)
+    def __init__(self,  controller, recorder, counter, computation_budget=3, exploration_constant=0.5, **kwargs):
+        super(MCTSSolver, self).__init__(controller, recorder, counter, **kwargs)
         self.computation_budget = computation_budget
         self.exploration_constant = exploration_constant
 
-    # def select_action(self, obs, mask=None):
-    #     return self.solve(obs['vn'], obs['pn'])
-
     def solve(self, instance):
-        vn, pn = instance['vn'], instance['vn']
-        init_state = State(pn, vn)
+        v_net, p_net = instance['v_net'], instance['p_net']
+        init_state = State(p_net, v_net, self.controller, self.counter)
         current_node = Node(None, init_state)
-        solution = Solution(vn)
+        solution = Solution(v_net)
 
         # node mapping
-        for vnf_id in range(vn.num_nodes):
+        for v_node_id in range(v_net.num_nodes):
             current_node = self.search(current_node)
             if current_node is None:
                 solution['place_result'] = False
                 return solution
-            pn_node_id = current_node.state.pn_node_id
-            if pn_node_id == -1:
+            p_node_id = current_node.state.p_node_id
+            if p_node_id == -1:
                 solution['place_result'] = False
                 return solution
             # place
-            place_result = Controller.place(vn, pn, vnf_id, pn_node_id, solution=solution)
+            place_result, place_info = self.controller.place(v_net, p_net, v_node_id, p_node_id, solution=solution)
 
         # link mapping
-        link_mapping_result = Controller.link_mapping(vn, pn, solution=solution, 
+        link_mapping_result = self.controller.link_mapping(v_net, p_net, solution=solution, 
                                                         shortest_method='bfs_shortest', k=1, inplace=True)
         if not link_mapping_result:
             solution['route_result'] = False
@@ -123,14 +119,14 @@ class MCTSSolver(Solver):
         """
         Expand a node with random choice policy
         """
-        tried_actions = [child_node.state.pn_node_id for child_node in node.children]
+        tried_actions = [child_node.state.p_node_id for child_node in node.children]
 
         new_state = node.state.random_select_next_state()
 
         # 1. feasiable
-        if new_state.pn_node_id != -1:
+        if new_state.p_node_id != -1:
             # 2. it's different from other expanded nodes
-            while new_state.pn_node_id in tried_actions:
+            while new_state.p_node_id in tried_actions:
                 new_state = node.state.random_select_next_state()
 
         next_node = Node(node, new_state)
@@ -147,7 +143,7 @@ class MCTSSolver(Solver):
             # randomly select one action to play and get next state
             current_state = current_state.random_select_next_state()
 
-        if current_state.pn_node_id == -1:
+        if current_state.p_node_id == -1:
             return -float('inf')
         else:
             return current_state.compute_final_reward()

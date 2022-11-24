@@ -22,7 +22,7 @@ def main(config):
 
 
 if __name__ == '__main__':
-    assert 1 == 2, 'The interface has not been unified.\nPlease run solverrithms in run_type.py'
+    assert 1 == 2, 'The interface has not been unified.\nPlease run solvers in run_type.py'
 
     config = get_config()
 

@@ -1,22 +1,30 @@
 num_nodes: 100
-save_dir: dataset/pn
+save_dir: dataset/p_net
 topology:
+  # file_path: './dataset/topology/Geant.gml'
   type: waxman
   wm_alpha: 0.5
   wm_beta: 0.2
-edge_attrs_setting:
+link_attrs_setting:
   - distribution: uniform
     dtype: int
     generative: true
     high: 100
     low: 50
     name: bw
-    owner: edge
+    owner: link
     type: resource
   - name: max_bw
     originator: bw
-    owner: edge
+    owner: link
     type: extrema
+  - name: ltc
+    owner: link
+    type: latency
+    generative: true
+    distribution: customized
+    max: 1.
+    min: 0.
 node_attrs_setting:
   - name: cpu
     distribution: uniform
@@ -30,4 +38,4 @@ node_attrs_setting:
     originator: cpu
     owner: node
     type: extrema
-file_name: pn.gml
+file_name: p_net.gml

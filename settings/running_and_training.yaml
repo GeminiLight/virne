@@ -1,0 +1,28 @@
+# training
+total_steps: 5000000
+sub_solver: nrm_rank
+weight_decay: 0.00001
+
+# evaluate
+only_test: false
+pretrained_model_path: ""
+renew_v_net_simulator: false
+start_epoch: 0
+
+# save & log
+open_tb: true
+save_dir: save
+log_dir: log
+save_interval: 10
+eval_interval: 10
+log_interval: 1
+
+# train
+# use_cuda: true
+# batch_size: 128
+# allow_parallel: false
+# use_negative_sample: false
+# num_train_epochs: 100
+# target_steps: 128
+# num_workers: 10
+# repeat_times: 10

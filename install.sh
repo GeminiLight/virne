@@ -22,19 +22,20 @@ else
     echo "Install pytorch with cpu version.\n"
 fi
 
-
 # basic
-pip install numpy pandas matplotlib networkx
+pip install numpy pandas matplotlib networkx pyyaml tqdm ortools
 
 # for DL
 if [[ "${supported_cuda_versions[@]}" =~ "${cuda}" ]] ; then
-    conda install pytorch torchvision torchaudio cudatoolkit=${cuda} -c pytorch
+    echo -e "y" | conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0  cudatoolkit=${cuda} -c pytorch
 else
-    conda install pytorch torchvision torchaudio -c pytorch
+    echo -e "y" | conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 -c pytorch
 fi
 
 pip install tensorboard
 # for GNN 
-conda install pyg -c pyg -c conda-forge
+echo -e "y" | conda install pyg -c pyg -c conda-forge
 # for RL
 pip install gym stable_baselines3 sb3_contrib
+
+pip install --force-reinstall scipy

@@ -1,8 +1,8 @@
-num_vns: 2000
+num_v_nets: 1000
 topology:
   random_prob: 0.5
   type: random
-vn_size:
+v_net_size:
   distribution: uniform
   dtype: int
   low: 2
@@ -10,12 +10,17 @@ vn_size:
 arrival_rate:
   distribution: possion
   dtype: float
-  lam: 0.1
+  lam: 0.04
   reciprocal: true
 lifetime:
   distribution: exponential
   dtype: float
-  scale: 500
+  scale: 1000
+# max_latency:
+#   distribution: uniform
+#   dtype: float
+#   low: 0
+#   high: 50
 node_attrs_setting:
   - name: cpu
     distribution: uniform
@@ -25,17 +30,24 @@ node_attrs_setting:
     high: 50
     owner: node
     type: resource
-edge_attrs_setting:
+link_attrs_setting:
   - name: bw
     distribution: uniform
     dtype: int
     generative: true
     low: 0
     high: 50
-    owner: edge
+    owner: link
     type: resource
-save_dir: dataset/vns
-vns_file_name: vn.gml
-vns_save_dir: vns
+  # - name: ltc
+  #   owner: link
+  #   type: latency
+  #   generative: true
+  #   distribution: uniform
+  #   high: 2.
+  #   low: 1.
+save_dir: dataset/v_nets
+v_nets_file_name: v_net.gml
+v_nets_save_dir: v_nets
 events_file_name: events.yaml
-setting_file_name: vns_setting.yaml
+setting_file_name: v_sim_setting.yaml

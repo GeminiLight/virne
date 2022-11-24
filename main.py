@@ -1,58 +1,45 @@
 from config import get_config, show_config, save_config, load_config
-from utils import load_solver
 from data.generator import Generator
 from base import BasicScenario
 
-
-def create_scenario(config):
-    # load env and solver
-    Env, Solver = load_solver(config.solver_name)
-    # Create env and solver
-    env = Env.from_config(config)
-    solver = Solver.from_config(config)
-    # Create scenario
-    scenario = BasicScenario(env, solver, config)
-
-    if config.verbose >= 2: show_config(config)
-    if config.if_save_config: save_config(config)
-    return scenario
 
 def run(config):
     print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
 
     print(f'Use {config.solver_name} Solver...\n')
-    
     # Load environment and algorithm
-    scenario = create_scenario(config)
-    scenario.run(num_epochs=config.num_epochs, start_epoch=config.start_epoch)
+    scenario = BasicScenario.from_config(config)
+
+    # Enable interaction between the environment and the solver 
+    scenario.run()
 
     print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")
 
 
 if __name__ == '__main__':
-    ## -- available solver -- ##
-    # You can find all available solvers in utils.py
+    # Please refer to `base.loader` to obtain all available solvers
 
-    # 1. Get config / Load config
+    # 1. Get Config
+    # The key settings are controlled with config.py
+    # while other advanced settings are listed in settings/*.yaml
     config = get_config()
 
-    ## ------ Soft update config ------ ###
-    # select solver with its name
-    config.solver_name = 'pg_cnn'
-    config.num_epochs = 1
-    config.num_train_epochs = 100
-    config.verbose = 1
-    config.if_save_records = True
-    config.if_temp_save_records = True
-    config.pretrained_model_path = ''
-    config.summary_file_name = f'summary.csv'
-    ## ------         End        ------ ###
+    # You can modify some settings directly here.
+    # An example:
+    # config.solver_name = 'grc_rank' # modify the algorithm of the solver
+    # config.shortest_method = 'mcf'  # modify the shortest path algorithm to Multi-commodity Flow
+    # config.num_train_epochs = 100   # modify the number of trainning epochs
 
     # 2. Generate Dataset
-    # Note:
-    #   If the dataset does not exist, please generate it before running the solver
-    #   If a dataset with the same settings already exists, the dataset will be overwritten 
-    pn, vn_simulator = Generator.generate_dataset(config, pn=True, vns=True, save=True)
+    # Although we do not generate a static dataset,
+    # the environment will automatically produce a random dataset.
+    p_net, v_net_simulator = Generator.generate_dataset(
+        config, 
+        p_net=False, 
+        v_nets=False, 
+        save=False) # Here, no dataset will be generated and saved.
 
-    # 3. Run with solver
+    # 3. Start to Run
+    # A scenario with an environment and a solver will be create following provided config.
+    # The interaction between the environment and the solver will happen in this scenario.
     run(config)

@@ -1,47 +1,57 @@
+import random
+import numpy as np
+
 from .physical_network import PhysicalNetwork
-from .vn_simulator import VNSimulator
+from .virtual_network_request_simulator import VirtualNetworkRequestSimulator
+from utils import get_p_net_dataset_dir_from_setting, get_v_nets_dataset_dir_from_setting
 
 
 class Generator:
 
     @staticmethod
-    def generate_dataset(config, pn=True, vns=True, save=False):
-        physical_network = Generator.generate_pn_dataset_from_config(config, save=save) if pn else None
-        vn_simulator = Generator.generate_vns_dataset_from_config(config, save=save) if vns else None
-        return physical_network, vn_simulator
+    def generate_dataset(config, p_net=True, v_nets=True, save=False):
+        physical_network = Generator.generate_p_net_dataset_from_config(config, save=save) if p_net else None
+        v_net_simulator = Generator.generate_v_nets_dataset_from_config(config, save=save) if v_nets else None
+        return physical_network, v_net_simulator
 
     @staticmethod
-    def generate_pn_dataset_from_config(config, save=False):
-        r"""generate pn dataset with the configuratore."""
+    def generate_p_net_dataset_from_config(config, save=False):
+        r"""generate p_net dataset with the configuratore."""
         if not isinstance(config, dict):
             config = vars(config)
-        pn_setting = config['pn_setting']
-        pn = PhysicalNetwork.from_setting(pn_setting)
+        p_net_setting = config['p_net_setting']
+        random.seed(config['seed'])
+        np.random.seed(config['seed'])
+        
+        p_net = PhysicalNetwork.from_setting(p_net_setting)
 
         if save:
-            pn_dataset_dir = config['pn_dataset_dir']
-            pn.save_dataset(pn_dataset_dir)
+            p_net_dataset_dir = get_p_net_dataset_dir_from_setting(p_net_setting)
+            p_net.save_dataset(p_net_dataset_dir)
             if config.get('verbose', 1):
-                print(f'save pn dataset in {pn_dataset_dir}')
+                print(f'save p_net dataset in {p_net_dataset_dir}')
 
-        # new_pn = PhysicalNetwork.load_dataset(pn_dataset_dir)
-        return pn
+        # new_p_net = PhysicalNetwork.load_dataset(p_net_dataset_dir)
+        return p_net
 
     @staticmethod
-    def generate_vns_dataset_from_config(config, save=False):
-        r"""generate vn dataset with the configuratore."""
+    def generate_v_nets_dataset_from_config(config, save=False):
+        r"""generate v_net dataset with the configuratore."""
         if not isinstance(config, dict):
             config = vars(config)
-        vns_setting = config['vns_setting']
-        vn_simulator = VNSimulator.from_setting(vns_setting)
-        vn_simulator.renew()
+        v_sim_setting = config['v_sim_setting']
+        random.seed(config['seed'])
+        np.random.seed(config['seed'])
+
+        v_net_simulator = VirtualNetworkRequestSimulator.from_setting(v_sim_setting)
+        v_net_simulator.renew()
 
         if save:
-            vns_dataset_dir = config['vns_dataset_dir']
-            vn_simulator.save_dataset(vns_dataset_dir)
+            v_nets_dataset_dir = get_v_nets_dataset_dir_from_setting(v_sim_setting)
+            v_net_simulator.save_dataset(v_nets_dataset_dir)
             if config.get('verbose', 1):
-                print(f'save vn dataset in {vns_dataset_dir}')
+                print(f'save v_net dataset in {v_nets_dataset_dir}')
 
-        # new_vn_simulator = VNSimulator.load_dataset(vns_dataset_dir)
-        return vn_simulator
+        # new_v_net_simulator = VirtualNetworkRequestSimulator.load_dataset(v_nets_dataset_dir)
+        return v_net_simulator
         

@@ -2,15 +2,11 @@ import os
 import json
 import yaml
 import shutil
-
-from base import SolutionStepEnvironment
-from solver.heuristics.node_rank import *
-from solver.heuristics.joint_pr import *
-from solver.heuristics.bfs_trials import *
+from functools import wraps
 
 
-def read_setting(fpath):
-    with open(fpath, 'r', encoding='utf-8') as f:
+def read_setting(fpath, mode='r'):
+    with open(fpath, mode, encoding='utf-8') as f:
         if fpath[-4:] == 'json':
             setting_dict = json.load(f)
         elif fpath[-4:] == 'yaml':
@@ -19,8 +15,8 @@ def read_setting(fpath):
             return ValueError('Only supports settings files in yaml and json format!')
     return setting_dict
 
-def write_setting(setting_dict, fpath):
-    with open(fpath, 'w+', encoding='utf-8') as f:
+def write_setting(setting_dict, fpath, mode='w'):
+    with open(fpath, mode, encoding='utf-8') as f:
         if fpath[-4:] == 'json':
             json.dump(setting_dict, f)
         elif fpath[-4:] == 'yaml':
@@ -33,123 +29,71 @@ def conver_format(fpath_1, fpath_2):
     setting_dict = read_setting(fpath_1)
     write_setting(setting_dict, fpath_2)
 
-def load_solver(solver_name):
-    # rank
-    if solver_name == 'random_rank':
-        Env, Solver = SolutionStepEnvironment, RandomRankSolver
-    elif solver_name == 'order_rank':
-        Env, Solver = SolutionStepEnvironment, OrderRankSolver
-    elif solver_name == 'rw_rank':
-        Env, Solver = SolutionStepEnvironment, RandomWalkRankSolver
-    elif solver_name == 'grc_rank':
-        Env, Solver = SolutionStepEnvironment, GRCRankSolver
-    elif solver_name == 'ffd_rank':
-        Env, Solver = SolutionStepEnvironment, FFDRankSolver
-    elif solver_name == 'nrm_rank':
-        Env, Solver = SolutionStepEnvironment, NRMRankSolver
-    # joint_pr
-    elif solver_name == 'random_joint_pr':
-        Env, Solver = SolutionStepEnvironment, RandomJointPRSolver
-    elif solver_name == 'order_joint_pr':
-        Env, Solver = SolutionStepEnvironment, OrderJointPRSolver
-    elif solver_name == 'ffd_joint_pr':
-        Env, Solver = SolutionStepEnvironment, FFDJointPRSolver
-    # rank_bfs
-    elif solver_name == 'random_rank_bfs':
-        Env, Solver = SolutionStepEnvironment, RandomRankBFSSolver
-    elif solver_name == 'rw_rank_bfs':
-        Env, Solver = SolutionStepEnvironment, RandomWalkRankBFSSolver
-    elif solver_name == 'order_rank_bfs':
-        Env, Solver = SolutionStepEnvironment, OrderRankBFSSolver
-    # exact
-    elif solver_name == 'd_vne':
-        from solver.exact.d_vne import DeterministicRoundingSolver
-        Env, Solver = SolutionStepEnvironment, DeterministicRoundingSolver
-    # meta-heuristic
-    elif solver_name == 'pso_vne':
-        from solver.meta_heuristics.pso import PSOSolver
-        Env, Solver = SolutionStepEnvironment, PSOSolver
-    elif solver_name == 'aco_vne':
-        from solver.meta_heuristics.aco import ACOSolver
-        Env, Solver = SolutionStepEnvironment, ACOSolver
-    # ml
-    elif solver_name == 'mcts_vne':
-        from solver.learning.mcts_vne import MCTSSolver
-        Env, Solver = SolutionStepEnvironment, MCTSSolver
-    elif solver_name == 'gae_vne':
-        from solver.learning.gae_vne import GAESolver
-        Env, Solver = SolutionStepEnvironment, GAESolver
-    elif solver_name == 'neuro_vne':
-        from solver.learning.neuro_vne.neuro_vne import NeuroSolver
-        Env, Solver = SolutionStepEnvironment, NeuroSolver
-    # rl
-    elif solver_name == 'pg_cnn':
-        from solver.learning.pg_cnn import PGCNNSolver
-        Env, Solver = SolutionStepEnvironment, PGCNNSolver
-    elif solver_name == 'pg_cnn2':
-        from solver.learning.pg_cnn2 import PGCNN2Solver
-        Env, Solver = SolutionStepEnvironment, PGCNN2Solver
-    elif solver_name == 'pg_seq2seq':
-        from solver.learning.pg_seq2seq import PGSeq2SeqSolver
-        Env, Solver = SolutionStepEnvironment, PGSeq2SeqSolver
-    elif solver_name == 'ppo_gnn':
-        from solver.learning.ppo_gnn_old import PPOGNNSolver
-        Env, Solver = SolutionStepEnvironment, PPOGNNSolver
-    elif solver_name == 'a2c_gat':
-        from solver.learning.a2c_gat import A2CGATSolver
-        Env, Solver = SolutionStepEnvironment, A2CGATSolver
-    elif solver_name == 'a2c_gcn':
-        from solver.learning.a2c_gcn import A2CGCNSolver
-        Env, Solver = SolutionStepEnvironment, A2CGCNSolver
-    elif solver_name == 'a3c_gcn':
-        from solver.learning.a3c_gcn import A3CGCNSolver
-        Env, Solver = SolutionStepEnvironment, A3CGCNSolver
-    elif solver_name == 'ppo_gat':
-        from solver.learning.ppo_gat import PPOGATSolver
-        Env, Solver = SolutionStepEnvironment, PPOGATSolver
-    elif solver_name == 'ppo_gnn2':
-        from solver.learning.ppo_gnn2 import PPOGNNSolver
-        Env, Solver = SolutionStepEnvironment, PPOGNNSolver
-    elif solver_name == 'ns_gnn':
-        from solver.learning.ns_gnn.ns_gnn_solver import NSGNNSolver
-        Env, Solver = SolutionStepEnvironment, NSGNNSolver
-    else:
-        raise ValueError('The solverrithm is not yet supported; \n Please attempt to select another one.', solver_name)
-    return Env, Solver
-
-def get_pn_dataset_dir_from_setting(pn_setting):
-    pn_dataset_dir = pn_setting.get('save_dir')
-    n_attrs = [n_attr['name'] for n_attr in pn_setting['node_attrs_setting']]
-    e_attrs = [e_attr['name'] for e_attr in pn_setting['edge_attrs_setting']]
-
-    pn_dataset_middir = f"{pn_setting['num_nodes']}-{pn_setting['topology']['type']}-{pn_setting['topology']['wm_alpha']}-{pn_setting['topology']['wm_beta']}-" +\
-                        f"{n_attrs}-[{pn_setting['node_attrs_setting'][0]['low']}-{pn_setting['node_attrs_setting'][0]['high']}]-" + \
-                        f"{e_attrs}-[{pn_setting['edge_attrs_setting'][0]['low']}-{pn_setting['edge_attrs_setting'][0]['high']}]"        
-    pn_dataset_dir = os.path.join(pn_dataset_dir, pn_dataset_middir)
-    return pn_dataset_dir
-
-def get_vns_dataset_dir_from_setting(vns_setting):
-    vns_dataset_dir = vns_setting.get('save_dir')
-    n_attrs = [n_attr['name'] for n_attr in vns_setting['node_attrs_setting']]
-    e_attrs = [e_attr['name'] for e_attr in vns_setting['edge_attrs_setting']]
-    
-    vns_dataset_middir = f"{vns_setting['num_vns']}-[{vns_setting['vn_size']['low']}-{vns_setting['vn_size']['high']}]-" + \
-                        f"{vns_setting['topology']['type']}-{vns_setting['lifetime']['scale']}-{vns_setting['arrival_rate']['lam']}-" + \
-                        f"{n_attrs}-[{vns_setting['node_attrs_setting'][0]['low']}-{vns_setting['node_attrs_setting'][0]['high']}]-" + \
-                        f"{e_attrs}-[{vns_setting['edge_attrs_setting'][0]['low']}-{vns_setting['edge_attrs_setting'][0]['high']}]"
-    vn_dataset_dir = os.path.join(vns_dataset_dir, vns_dataset_middir)
-
-    return vn_dataset_dir
-
 def generate_file_name(config, epoch_id=0, extra_items=[], **kwargs):
     if not isinstance(config, dict): config = vars(config)
-    items = extra_items + ['pn_num_nodes', 'reusable']
+    items = extra_items + ['p_net_num_nodes', 'reusable']
 
     file_name_1 = f"{config['solver_name']}-records-{epoch_id}-"
     # file_name_2 = '-'.join([f'{k}={config[k]}' for k in items])
     file_name_3 = '-'.join([f'{k}={v}' for k, v in kwargs.items()])
     file_name = file_name_1 + file_name_3 + '.csv'
     return file_name
+
+def get_p_net_dataset_dir_from_setting(p_net_setting):
+    p_net_dataset_dir = p_net_setting.get('save_dir')
+    n_attrs = [n_attr['name'] for n_attr in p_net_setting['node_attrs_setting']]
+    e_attrs = [l_attr['name'] for l_attr in p_net_setting['link_attrs_setting']]
+
+    if 'file_path' in p_net_setting['topology'] and os.path.exists(p_net_setting['topology']['file_path']):
+        p_net_name = f"{os.path.basename(p_net_setting['topology']['file_path']).split('.')[0]}"
+    else:
+        p_net_name = f"{p_net_setting['num_nodes']}-{p_net_setting['topology']['type']}_[{p_net_setting['topology']['wm_alpha']}-{p_net_setting['topology']['wm_beta']}]"
+    node_attrs_str = '-'.join([f'{n_attr_setting["name"]}_{get_parameters_string(get_distribution_parameters(n_attr_setting))}' for n_attr_setting in p_net_setting['node_attrs_setting']])
+    link_attrs_str = '-'.join([f'{e_attr_setting["name"]}_{get_parameters_string(get_distribution_parameters(e_attr_setting))}' for e_attr_setting in p_net_setting['link_attrs_setting']])
+    
+    p_net_dataset_middir = p_net_name + '-' + node_attrs_str + '-' + link_attrs_str
+                        # f"{n_attrs}-[{p_net_setting['node_attrs_setting'][0]['low']}-{p_net_setting['node_attrs_setting'][0]['high']}]-" + \
+                        # f"{e_attrs}-[{p_net_setting['link_attrs_setting'][0]['low']}-{p_net_setting['link_attrs_setting'][0]['high']}]"        
+    p_net_dataset_dir = os.path.join(p_net_dataset_dir, p_net_dataset_middir)
+    return p_net_dataset_dir
+
+def get_v_nets_dataset_dir_from_setting(v_sim_setting):
+    v_nets_dataset_dir = v_sim_setting.get('save_dir')
+    # n_attrs = [n_attr['name'] for n_attr in v_sim_setting['node_attrs_setting']]
+    # e_attrs = [l_attr['name'] for l_attr in v_sim_setting['link_attrs_setting']]
+    node_attrs_str = '-'.join([f'{n_attr_setting["name"]}_{get_parameters_string(get_distribution_parameters(n_attr_setting))}' for n_attr_setting in v_sim_setting['node_attrs_setting']])
+    link_attrs_str = '-'.join([f'{e_attr_setting["name"]}_{get_parameters_string(get_distribution_parameters(e_attr_setting))}' for e_attr_setting in v_sim_setting['link_attrs_setting']])
+    
+    v_nets_dataset_middir = f"{v_sim_setting['num_v_nets']}-[{v_sim_setting['v_net_size']['low']}-{v_sim_setting['v_net_size']['high']}]-" + \
+                        f"{v_sim_setting['topology']['type']}-{get_parameters_string(get_distribution_parameters(v_sim_setting['lifetime']))}-{v_sim_setting['arrival_rate']['lam']}-" + \
+                        node_attrs_str + '-' + link_attrs_str
+                        # f"{n_attrs}-[{v_sim_setting['node_attrs_setting'][0]['low']}-{v_sim_setting['node_attrs_setting'][0]['high']}]-" + \
+                        # f"{e_attrs}-[{v_sim_setting['link_attrs_setting'][0]['low']}-{v_sim_setting['link_attrs_setting'][0]['high']}]"
+    v_net_dataset_dir = os.path.join(v_nets_dataset_dir, v_nets_dataset_middir)
+    return v_net_dataset_dir
+
+def get_distribution_parameters(distribution_dict):
+    distribution = distribution_dict.get('distribution', None)
+    if distribution is None:
+        return []
+    if distribution == 'exponential':
+        parameters = [distribution_dict['scale']]
+    elif distribution == 'possion':
+        parameters = [distribution_dict['lam']]
+    elif distribution == 'uniform':
+        parameters = [distribution_dict['low'], distribution_dict['high']]
+    elif distribution == 'customized':
+        parameters = [distribution_dict['min'], distribution_dict['max']]
+    return parameters
+
+def get_parameters_string(parameters):
+    if len(parameters) == 0:
+        return 'None'
+    elif len(parameters) == 1:
+        return str(parameters[0])
+    else:
+        str_parameters = [str(p) for p in parameters]
+        return f'[{"-".join(str_parameters)}]'
 
 def delete_temp_files(file_path):
     del_list = os.listdir(file_path)
@@ -168,3 +112,15 @@ def clean_save_dir(dir):
             if not os.path.exists(record_dir) or not os.listdir(record_dir):
                 shutil.rmtree(run_id_dir)
                 print(f'Delate {run_id_dir}')
+
+
+def test_running_time(func):
+    import time
+    @wraps(func)
+    def test(*args, **kwargs):
+        t1 = time.time()
+        res = func(*args, **kwargs)
+        t2 = time.time()
+        print(f'Running time of {func.__name__}: {t2-t1:2.4f}s')
+        return res
+    return test
