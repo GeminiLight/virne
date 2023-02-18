@@ -36,6 +36,6 @@ pip install tensorboard
 # for GNN 
 echo -e "y" | conda install pyg -c pyg -c conda-forge
 # for RL
-pip install gym stable_baselines3 sb3_contrib
+pip install gym==0.19.0 stable_baselines3 sb3_contrib
 
 pip install --force-reinstall scipy

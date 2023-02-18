@@ -87,6 +87,12 @@ class Counter(object):
         e = np.array(network.get_link_attrs_data(self.link_resource_attrs)).sum()
         return e
 
+    def calculate_v_net_cost(self, v_net, solution):
+        v_net_node_cost = self.calculate_sum_node_resource(v_net)
+        v_net_link_cost = self.calculate_v_net_link_cost(v_net, solution)
+        return v_net_node_cost + v_net_link_cost
+
+
     def calculate_v_net_revenue(self, v_net, solution=None):
         r"""Calculate the deployment cost of current v_net according to `link paths`."""
         return self.calculate_sum_network_resource(v_net)

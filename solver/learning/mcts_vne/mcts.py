@@ -16,7 +16,7 @@ class MCTSSolver(Solver):
 
     def solve(self, instance):
         v_net, p_net = instance['v_net'], instance['p_net']
-        init_state = State(p_net, v_net, self.controller, self.counter)
+        init_state = State(p_net, v_net, self.controller, self.recorder, self.counter)
         current_node = Node(None, init_state)
         solution = Solution(v_net)
 

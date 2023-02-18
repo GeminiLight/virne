@@ -238,10 +238,10 @@ The structure of this framework are still optimized steadily. We will construct 
 
 ```shell
 # only cpu
-sh install.sh -c 0
+bash install.sh -c 0
 
 # use cuda (optional version: 10.2, 11.3)
-sh install.sh -c 11.3
+bash install.sh -c 11.3
 ```
 
 #### Selective installation
@@ -262,10 +262,13 @@ conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 conda install pytorch torchvision torchaudio -c pytorch
 
 # for reinforcement learning
-pip install gym stable_baselines3 sb3_contrib
+pip install gym==0.19.0 stable_baselines3 sb3_contrib
 
 # for graph neural network
 conda install pyg -c pyg -c conda-forge
+
+# install the lastest scipy
+pip install --force-reinstall scipy
 ```
 
 ### Minimal Example

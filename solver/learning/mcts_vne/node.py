@@ -1,7 +1,7 @@
 import copy
 import random
 
-from base.recorder import Solution
+from base import Solution
 
 
 class State:
