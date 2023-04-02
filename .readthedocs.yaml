@@ -10,6 +10,7 @@ build:
     post_install:
       - python -m pip install --upgrade pip setuptools
       - python -m pip install --no-build-isolation --editable .
+      - bash install.sh
       - python -m pip install -r docs/requirements.txt
 
 # Build documentation in the docs/ directory with Sphinx
