@@ -1,0 +1,161 @@
+# Package ######################################################################
+
+[build-system]
+requires = ["setuptools >= 60.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "virne"
+description = "A unifed framework for virtual network embedding."
+readme = "README.md"
+requires-python = ">= 3.8"
+authors = [{ name = "GeminiLight" }]
+license = { text = "Apache License, Version 2.0" }
+keywords = ["Network Virtualization", "Virtual Network Embedding", "Reinforcement Learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    'Intended Audience :: Science/Research',
+    'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+]
+dependencies = [
+]
+dynamic = ["version", "entry-points"]
+
+[project.urls]
+Homepage = "https://github.com/GeminiLight/virne"
+Repository = "https://github.com/GeminiLight/virne"
+Documentation = "https://virne.readthedocs.io"
+"Bug Report" = "https://github.com/GeminiLight/virne/issues"
+
+[project.optional-dependencies]
+lint = [
+
+]
+# test = ['pytest', 'pytest-cov', 'pytest-xdist']
+
+[tool.setuptools.packages.find]
+include = ["*", "virne", "virne.*"]
+
+# Linter tools #################################################################
+
+[tool.black]
+safe = true
+line-length = 100
+skip-string-normalization = true
+# Sync with requires-python
+target-version = ["py38", "py39", "py310", "py311"]
+
+[tool.isort]
+atomic = true
+profile = "black"
+src_paths = ["omnisafe", "envs", "examples", "tests"]
+extra_standard_library = ["typing_extensions"]
+indent = 4
+line_length = 100
+lines_after_imports = 2
+multi_line_output = 3
+
+[tool.mypy]
+python_version = 3.8
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+allow_redefinition = true
+check_untyped_defs = true
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
+no_implicit_optional = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.pydocstyle]
+convention = "google"
+
+[tool.doc8]
+max-line-length = 500
+
+
+[tool.ruff]
+# Sync with requires-python
+target-version = "py38"
+line-length = 100
+show-source = true
+src = ["omnisafe", "tests", "examples"]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "UP",      # pyupgrade
+    "ANN",     # flake8-annotations
+    "S",       # flake8-bandit
+    "BLE",     # flake8-blind-except
+    "B",       # flake8-bugbear
+    "COM",     # flake8-commas
+    "C4",      # flake8-comprehensions
+    "EXE",     # flake8-executable
+    "ISC",     # flake8-implicit-str-concat
+    "PIE",     # flake8-pie
+    "PYI",     # flake8-pyi
+    "Q",       # flake8-quotes
+    "RSE",     # flake8-raise
+    "RET",     # flake8-return
+    "SIM",     # flake8-simplify
+    "TID",     # flake8-tidy-imports
+    "RUF",     # ruff
+]
+ignore = [
+    # E501: line too long
+    # W505: doc line too long
+    # too long docstring due to long example blocks
+    "E501",
+    "W505",
+    # TODO: Remove this four ignores
+    # ANN001: missing type annotation for function argument
+    # ANN003: missing type annotation for `**kwargs`
+    # ANN201: missing return type annotation for public function
+    # ANN202: missing return type annotation for private function
+    "ANN001","ANN003","ANN201","ANN202",
+    # ANN101: missing type annotation for `self` in method
+    # ANN102: missing type annotation for `cls` in classmethod
+    "ANN101",
+    "ANN102",
+    # ANN401: dynamically typed expressions (typing.Any) are disallowed
+    "ANN401",
+    # S101: use of `assert` detected
+    # internal use and may never raise at runtime
+    "S101",
+    # PLR0402: use from {module} import {name} in lieu of alias
+    # use alias for import convention (e.g., `import torch.nn as nn`)
+    "PLR0402",
+]
+
+[tool.ruff.flake8-annotations]
+allow-star-arg-any = true
+
+[tool.ruff.flake8-quotes]
+docstring-quotes = "double"
+multiline-quotes = "double"
+inline-quotes = "single"
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore: distutils Version classes are deprecated. Use packaging.version instead.",
+    "ignore::DeprecationWarning"
+]
