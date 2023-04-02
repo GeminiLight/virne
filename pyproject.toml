@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "virne"
-description = "A unifed framework for virtual network embedding."
+description = "A unified framework for virtual network embedding."
 readme = "README.md"
 requires-python = ">= 3.8"
 authors = [{ name = "GeminiLight" }]
