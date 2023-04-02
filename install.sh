@@ -27,9 +27,9 @@ pip install numpy pandas matplotlib networkx pyyaml tqdm ortools
 
 # for DL
 if [[ "${supported_cuda_versions[@]}" =~ "${cuda}" ]] ; then
-    echo -e "y" | conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0  cudatoolkit=${cuda} -c pytorch
+    echo -e "y" | conda install pytorch==1.11.0 cudatoolkit=${cuda} -c pytorch
 else
-    echo -e "y" | conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 -c pytorch
+    echo -e "y" | conda install pytorch==1.11.0 -c pytorch
 fi
 
 pip install tensorboard
