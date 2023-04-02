@@ -1,8 +1,17 @@
-# Virne
+# Virne | <img src="https://img.shields.io/badge/version-0.4.0-blue" /> 
+
+
+<p align="center">
+  <a href="https://geminilight.github.io/virne-docs/">Documentation</a> |
+  <a href="https://github.com/GeminiLight/virne#license">License</a>
+</p>
+
+--------------------------------------------------------------------------------
+
 
 > Virne is still under development. If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 > 
-> - Refine the documentation
+> - Completing the documentation
 > - Implementing more VNE algorithms
 > 
 > Release History
