@@ -1,13 +1,28 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import abc
+from typing import Union
 import numpy as np
 import networkx as nx
 
+from data import Network
 
 
-def rank_nodes(network, method='order', **kwargs):
+def rank_nodes(network: Network, method: str = 'order', **kwargs):
+    """
+    General method for ranking nodes in the network, and store the ranking result in the network object.
+    
+    Args:
+        network (Network): Network object.
+        method (str, optional): Node ranking method. Defaults to 'order'.
+        **kwargs: Keyword arguments for node ranking method.
+    """
     node_rank = node_rank_method_dict.get(method, None)
     if node_rank is None:
-        raise NotImplementedError
+        raise NotImplementedError(f'Node ranking method {method} is not implemented.')
     node_ranking = node_rank.rank(network)
     network.node_ranking = node_ranking
     network.ranked_nodes = np.array(list(network.node_ranking.keys()))
@@ -16,19 +31,43 @@ def rank_nodes(network, method='order', **kwargs):
 
 
 class NodeRank(object):
+    """Abstract class for node ranking."""
     def __init__(self, **kwargs):
         __metaclass__ = abc.ABCMeta
         super(NodeRank, self).__init__()
     
-    @abc.abstractmethod
-    def rank(self, network, sort=True):
-        pass
+    @staticmethod
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """
+        Rank nodes in the network.
+
+        Args:
+            network (Network): Network object.
+            sort (bool, optional): Sort the ranking result. Defaults to True.
+
+        Returns:
+            Union[list, dict]: A list or dict of node ranking result.
+        """
+        raise NotImplementedError
+
 
     def __call__(self, network, sort=True):        
         return self.rank(network, sort=sort)
 
+
     @staticmethod
-    def to_dict(network, node_rank, sort=True):
+    def to_dict(network: Network, node_rank: list, sort: bool = True) -> dict:
+        """
+        Convert node ranking result to dict.
+
+        Args:
+            network (Network): Network object.
+            node_rank (list): Node ranking result.
+            sort (bool, optional): Sort the ranking result. Defaults to True.
+
+        Returns:
+            dict: A dict of node ranking result.
+        """
         assert network.num_nodes == len(node_rank)
         node_rank = {node_id: node_rank[i] for i, node_id in enumerate(network.nodes)}
         if sort:
@@ -37,54 +76,62 @@ class NodeRank(object):
         return node_rank
 
 
+
 class OrderNodeRank(NodeRank):
-    r"""
-    Rank nodes with the default order occurring in the network.
+    """
+    Node Ranking Strategy with the default order occurring in the network.
     """
     def __init__(self, **kwargs):
         super(OrderNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network, sort=True):
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """Rank nodes with the default order occurring in the network."""
         rank_values = 1 / len(network.nodes)
         node_ranking = {node_id: rank_values for node_id in range(len(network.nodes))}
         return node_ranking
 
 
 class RandomNodeRank(NodeRank):
-    r"""
-    Rank nodes with the random strategy.
+    """
+    Node Ranking Strategy with random metric.
     """
     def __init__(self, **kwargs):
         super(RandomNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network, sort=True):
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """Rank nodes with the random strategy."""
         random_node = [n for n in network.nodes]
         np.random.shuffle(random_node)
         return self.to_dict(network, random_node, sort=sort)
 
 
 class FFDNodeRank(NodeRank):
-    r"""
-    Rank nodes with the quantity of node resources.
+    """
+    Node Ranking Strategy with First Fit Decreasing (FFD) metric.
     """
     def __init__(self, **kwargs):
         super(FFDNodeRank, self).__init__(**kwargs)
     
-    def rank(self, network, sort=True):
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """Rank nodes with the quantity of node resources."""
         nodes_data = network.get_node_attrs_data(network.get_node_attrs('resource'))
         node_rank = np.array(nodes_data).sum(axis=0)
         return self.to_dict(network, node_rank, sort=sort)
 
 
 class NRMNodeRank(NodeRank):
-    r"""
-    An implementation of NRM solver proposed in
-    Zhang et al. "Toward Profit-Seeking Virtual Network Embedding solver via Global ResVirtual Network Embedding Based on Computing, Network, and Storage Resource Constraintsource Capacity". IoTJ, 2018. 
+    """
+    Node Ranking Strategy with Network Resource Metric (NRM) metric.
+
+    References:
+        - Zhang et al. "Toward Profit-Seeking Virtual Network Embedding solver via Global ResVirtual Network \
+            Embedding Based on Computing, Network, and Storage Resource Constraintsource Capacity". IoTJ, 2018. 
     """
     def __init__(self, **kwargs):
         super(NRMNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network, sort=True):
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """Rank nodes with the Network Resource Metric (NRM) of node."""
         free_nodes_data = network.get_node_attrs_data(network.get_node_attrs('resource'))
         free_nodes_data = np.array(free_nodes_data).sum(axis=0)
         free_links_data = np.array(network.get_aggregation_attrs_data(network.get_link_attrs('resource'), aggr='sum', normalized=False))
@@ -92,18 +139,20 @@ class NRMNodeRank(NodeRank):
         node_rank = free_nodes_data * free_links_data
         return self.to_dict(network, node_rank, sort=sort)
 
-
 class GRCNodeRank(NodeRank):
-    r"""
-    An implementation of GRC solver proposed in
-    Gong et al. "Toward Profit-Seeking Virtual Network Embedding solver via Global Resource Capacity". In INFOCOM, 2014.
+    """
+    Node Ranking Strategy with Global Resource Capacity (GRC) metric.
+
+    References:
+        - Gong et al. "Toward Profit-Seeking Virtual Network Embedding solver via Global Resource Capacity". In INFOCOM, 2014.
     """
     def __init__(self, sigma=0.00001, d=0.85, **kwargs):
         super(GRCNodeRank, self).__init__(**kwargs)
         self.sigma = sigma
         self.d = d
 
-    def rank(self, network, sort=True):
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """Rank nodes with the Global Resource Capacity (GRC) metric of node."""
         def calc_grc_c(network):
             free_nodes_data = network.get_node_attrs_data(network.get_node_attrs(['resource']))
             sum_nodes_data = np.array(free_nodes_data).sum(axis=0)
@@ -128,9 +177,11 @@ class GRCNodeRank(NodeRank):
 
 
 class RWNodeRank(NodeRank):
-    r"""
-    An implementation of NodeRank solver proposed in
-    Cheng et al. "Virtual Network Embedding Through Topology-Aware Node Ranking". In SIGCOMM, 2011.
+    """
+    Node Ranking Strategy with Random Walk (RW) metric.
+
+    References:
+        - Cheng et al. "Virtual Network Embedding Through Topology-Aware Node Ranking". In SIGCOMM, 2011.
     """
     def __init__(self, sigma=0.0001, p_J_u=0.15, p_F_u=0.85, **kwargs):
         super(RWNodeRank, self).__init__(**kwargs)
@@ -138,7 +189,8 @@ class RWNodeRank(NodeRank):
         self.p_J_u = p_J_u
         self.p_F_u = p_F_u
 
-    def rank(self, network, sort=True):
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """Rank nodes with the Random Walk (RW) metric of node."""
         def normalize_sparse(coo_matrix):
             data_rows = coo_matrix.row
             for id in np.unique(data_rows):
@@ -173,17 +225,20 @@ class RWNodeRank(NodeRank):
             nr = new_nr
         nr = np.squeeze(nr.T, axis=0)
         return self.to_dict(network, nr, sort=sort)
-
+    
 
 class NPSNodeRank(NodeRank):
-    r"""
-    An implementation of Node Proximity Sensing solver proposed in
-    Zhang et al. "Toward Profit-Seeking Virtual Network Embedding solver via Global ResVirtual Network Embedding Based on Computing, Network, and Storage Resource Constraintsource Capacity". IoTJ, 2018. 
+    """
+    Node Ranking Strategy with Node Proximity Sensing (NPS) metric.
+
+    References:
+        - Fan et al. "Efficient Virtual Network Embedding of Cloud-Based Data Center Networks into Optical Networks". TPDS, 2021.
     """
     def __init__(self, **kwargs):
-        super(NRMNodeRank, self).__init__(**kwargs)
+        super(NPSNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network, sort=True):
+    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+        """Rank nodes with the Node Proximity Sensing (NPS) metric of node."""
         free_nodes_data = network.get_node_attrs_data(network.get_node_attrs('resource'))
         free_nodes_data = np.array(free_nodes_data).sum(axis=0)
         free_links_data = np.array(network.get_aggregation_attrs_data(network.get_link_attrs('resource'), aggr='sum', normalized=False))
@@ -213,6 +268,7 @@ node_rank_method_dict = {
     'nrm': NRMNodeRank(),
     'grc': GRCNodeRank(),
     'rw': RWNodeRank(),
+    'nps': NPSNodeRank()
 }
 
 

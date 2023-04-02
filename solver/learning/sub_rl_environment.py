@@ -31,10 +31,11 @@ class SubRLEnv(VNERLEnv):
         self.shortest_method = kwargs.get('shortest_method', 'bfs_shortest')
         self.k_shortest = kwargs.get('k_shortest', 10)
         # calcuate graph metrics
+        # self.node_ranking_method = 'nps'
         self.ranked_v_net_nodes = rank_nodes(self.v_net, self.node_ranking_method)
-
         self.solution['v_net_reward'] = 0
         self.solution['num_interactions'] = 0
+        self.check_feasibility = kwargs.get('check_feasibility', True)
 
     def reset(self):
         self.solution.reset()
@@ -92,7 +93,7 @@ class SolutionStepSubRLEnv(SubRLEnv):
         # Failure
         else:
             solution = Solution(self.v_net)
-        return self.get_observation(), self.compute_reward(), True, self.get_info(solution.__dict__)
+        return self.get_observation(), self.compute_reward(), True, self.get_info(solution.to_dict())
 
     def get_observation(self):
         return {'v_net': self.v_net, 'p_net': self.p_net}
@@ -112,19 +113,21 @@ class NodeSlotsStepSubRLEnv(SubRLEnv):
                 self.v_net, self.p_net, 
                 node_slots, self.solution, 
                 inplace=True, 
-                shortest_method=self.shortest_method, k_shortest=self.k_shortest
+                shortest_method=self.shortest_method, 
+                k_shortest=self.k_shortest,
+                check_feasibility=self.check_feasibility
             )
+            self.counter.count_solution(self.v_net, self.solution)
             # Success
             if self.solution['result']:
                 self.solution['description'] = 'Success'
-        return self.get_observation(), self.compute_reward(self.solution), True, self.get_info(self.solution.__dict__)
+        return self.get_observation(), self.compute_reward(self.solution), True, self.get_info(self.solution.to_dict())
 
 
 class JointPRStepSubRLEnv(SubRLEnv):
     
     def __init__(self, p_net, v_net, controller, recorder, counter, **kwargs):
         super(JointPRStepSubRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, **kwargs)
-
 
     def step(self, action):
         """
@@ -135,9 +138,6 @@ class JointPRStepSubRLEnv(SubRLEnv):
             Completed Success: (Node Mapping & Link Mapping)
             Falilure: (Node place failed or Link route failed)
         """
-        import time
-        t1 = time.time()
-
         self.solution['num_interactions'] += 1
         p_node_id = int(action)
         self.solution.selected_actions.append(p_node_id)
@@ -166,9 +166,8 @@ class JointPRStepSubRLEnv(SubRLEnv):
                                                                                 p_node_id,
                                                                                 self.solution, 
                                                                                 shortest_method=self.shortest_method, 
-                                                                                k=self.k_shortest)
-            t3 = time.time()
-            
+                                                                                k=self.k_shortest,
+                                                                                check_feasibility=self.check_feasibility)
             # Step Failure
             if not place_and_route_result:
                 if self.allow_revocable and self.solution['num_interactions'] <= self.v_net.num_nodes * 10:
@@ -193,12 +192,11 @@ class JointPRStepSubRLEnv(SubRLEnv):
         if done:
             pass
         
-        t2 = time.time()
         # print(f'{t2-t1:.6f}={t3-t1:.6f}+{t2-t3:.6f}')
         return self.get_observation(), self.compute_reward(self.solution), done, self.get_info(solution_info)
 
     def compute_reward(self, solution):
-        r"""Calculate deserved reward according to the result of taking action."""
+        """Calculate deserved reward according to the result of taking action."""
         reward_weight = 0.1
         if solution['result'] :
             # node_load_balance = self.get_node_load_balance(self.selected_p_net_nodes[-1])
@@ -280,7 +278,8 @@ class PlaceStepSubRLEnv(SubRLEnv):
                                                                     sorted_v_links=list(self.v_net.links), 
                                                                     shortest_method=self.shortest_method, 
                                                                     k=self.k_shortest, 
-                                                                    inplace=True)
+                                                                    inplace=True,
+                                                                    check_feasibility=self.check_feasibility)
                 # Link Mapping Failure
                 if not link_mapping_result:
                     self.solution['route_result'] = False

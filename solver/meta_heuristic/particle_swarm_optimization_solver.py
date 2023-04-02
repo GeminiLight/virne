@@ -1,18 +1,19 @@
-"""
-Paper: Energy-Aware Virtual Network Embedding
-Ref: 
-    https://github.com/DiamondTan/VirtualNetworkEmbedding
-    https://github.com/family9977/VNE_simulator/
-"""
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
 
 import copy
 import random
 import threading
 import numpy as np
 import multiprocessing as mp
+from base.environment import SolutionStepEnvironment
+from solver import registry
 
 from solver.meta_heuristic.meta_heuristic_solver import Individual, MetaHeuristicSolver
-
+from data import VirtualNetwork, PhysicalNetwork
+from base import Controller, Recorder, Counter, Solution
 
 class Particle(Individual):
 
@@ -32,13 +33,27 @@ class Particle(Individual):
         return list(self.best_solution.node_slots.values())
 
 
+@registry.register(
+    solver_name='pso_vne', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='meta_heuristic')
 class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
-    """Particle Swarm Optimization
     """
+    Particle Swarm Optimization Solver for VNE
 
-    name ='pso_vne'
+    References:
+        - Energy-Aware Virtual Network Embedding
+        - https://github.com/DiamondTan/VirtualNetworkEmbedding
+        - https://github.com/family9977/VNE_simulator/
 
-    def __init__(self, controller, recorder, counter, **kwargs):
+    Attributes:
+        p_i: inertia weight
+        p_c: cognition weight
+        p_s: social weight
+        num_particles: number of num_particles
+        max_iteration: max iteration
+    """
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
         super(ParticleSwarmOptimizationSolver, self).__init__(controller, recorder, counter, **kwargs)
         """
         0 < p_i < p_c < p_s < 1
@@ -56,7 +71,7 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
         self.sub = lambda pos_x, pos_y:[int(px == py) for px, py in zip(pos_x, pos_y)]
         self.add = lambda p1, pos_1, p2, pos_2, p3, pos_3: [np.random.choice([i,j,k],p=[p1, p2, p3]).tolist() for i, j, k in zip(pos_1, pos_2, pos_3)]
 
-    def meta_run(self, v_net, p_net):
+    def meta_run(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
         # initialization
         self.initialize(v_net, p_net)
         # start iterating
@@ -76,7 +91,7 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
 
         return self.best_individual.best_solution
 
-    def initialize(self, v_net, p_net):
+    def initialize(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
         # particles
         self.particles = [Particle(i, v_net, p_net) for i in range(self.num_particles)]
         # initialize particles best experience
@@ -89,6 +104,7 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
                                                     inplace=False,
                                                     shortest_method=self.shortest_method,
                                                     k_shortest=self.k_shortest)
+            self.counter.count_solution(v_net, particle.solution)
             particle.update_best_solution()
             particle.best_solution = copy.deepcopy(particle.solution)
         # initialize global best experience
@@ -112,5 +128,6 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
                                                 inplace=False,
                                                 shortest_method=self.shortest_method,
                                                 k_shortest=self.k_shortest)
+        self.counter.count_solution(particle.v_net, particle.solution)
         particle.update_best_solution()
         

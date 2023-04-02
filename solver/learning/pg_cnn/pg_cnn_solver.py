@@ -1,3 +1,8 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import os
 import torch
 import numpy as np
@@ -9,14 +14,23 @@ from .sub_env import SubEnv
 from .net import Actor, ActorCritic, Critic
 from ..rl_solver import *
 from base import Solution
+from solver import registry
 
 
-class PgCnnSolver(PPOSolver):
-
-    name = 'pg_cnn'
-
+@registry.register(
+    solver_name='pg_cnn', 
+    env_cls=SubEnv,
+    solver_type='r_learning')
+class PgCnnSolver(InstanceAgent, PGSolver):
+    """
+    A Reinforcement Learning-based solver that uses 
+    Policy Gradient (PG) as the training algorithm and 
+    Convolutional Neural Network (CNN) as the neural network model.
+    """
     def __init__(self, controller, recorder, counter, **kwargs):
-        super(PgCnnSolver, self).__init__(controller, recorder, counter, **kwargs)
+        kwargs['use_negative_sample'] = False
+        InstanceAgent.__init__(self)
+        PGSolver.__init__(self, controller, recorder, counter, **kwargs)
         feature_dim = 4  # (n_attrs, e_attrs, dist, degree)
         action_dim = kwargs['p_net_setting']['num_nodes']
         self.policy = ActorCritic(feature_dim, action_dim, self.embedding_dim).to(self.device)
@@ -30,7 +44,7 @@ def obs_as_tensor(obs, device):
     # one
     if isinstance(obs, list):
         obs_batch = obs
-        r"""Preprocess the observation to adapte to batch mode."""
+        """Preprocess the observation to adapte to batch mode."""
         observation = torch.FloatTensor(np.array(obs_batch)).to(device)
         return observation
     # batch

@@ -1,35 +1,47 @@
-"""
-Paper: Energy-Aware Virtual Network Embedding
-Ref: 
-    https://github.com/DiamondTan/VirtualNetworkEmbedding
-    https://github.com/family9977/VNE_simulator/
-"""
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
 
 import copy
 import random
 import threading
 import numpy as np
 
+from base.environment import SolutionStepEnvironment
+from data import VirtualNetwork, PhysicalNetwork
+from base import Controller, Recorder, Counter, Solution
+from solver import registry
 from solver.meta_heuristic.meta_heuristic_solver import Individual, MetaHeuristicSolver
 
-
+@registry.register(
+    solver_name='sa_vne', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='meta_heuristic')
 class SimulatedAnnealingSolver(MetaHeuristicSolver):
     """
-    Simulated Annealing
+    Simulated Annealing Algorithm (SA) for VNE
+
+    References:
+        - Sheng Zhang et al. "FELL: A Flexible Virtual Network Embedding Algorithm with Guaranteed Load Balancing". In ICC, 2011.
+
+    Attributes:
+        num_individuals: number of individuals
+        max_iteration: max iteration
+        max_attempt_times: max attempt times
+        initial_temperature: initial temperature
+        attenuation_factor: attenuation factor
     """
-
-    name = 'sa_vne'
-
-    def __init__(self, controller, recorder, counter, **kwargs):
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
         super(SimulatedAnnealingSolver, self).__init__(controller, recorder, counter, **kwargs)
         """
         """
         # super parameters
-        self.num_individuals = 10    # number of num_individuals
-        self.max_iteration = 20      # max iteration
-        self.max_attempt_times = 1  # key parameters for performance
-        self.initial_temperature = 2
-        self.attenuation_factor = 0.95
+        self.num_individuals: int = 10 
+        self.max_iteration: int = 20 
+        self.max_attempt_times: int = 1
+        self.initial_temperature: float = 2.
+        self.attenuation_factor: float = 0.95
 
     def ready(self, v_net, p_net):
         return super().ready(v_net, p_net)
@@ -56,6 +68,7 @@ class SimulatedAnnealingSolver(MetaHeuristicSolver):
             node_slots = self.generate_initial_node_slots(v_net, p_net, select_method='random')
             individual.update_solution(node_slots=node_slots)
             self.controller.deploy_with_node_slots(v_net, p_net, node_slots, individual.solution, inplace=False)
+            self.counter.count_solution(v_net, individual.solution)
             individual.update_best_solution()
         # initialize global best experience
         self.update_best_individual(self.individuals)
@@ -69,6 +82,7 @@ class SimulatedAnnealingSolver(MetaHeuristicSolver):
             if p_candicate != -1 and p_candicate != current_p_node:
                 individual.update_solution(node_slots={changed_v_node_id: p_candicate})
                 self.controller.deploy_with_node_slots(individual.v_net, individual.p_net, individual.solution['node_slots'], individual.solution, inplace=False)
+                self.counter.count_solution(individual.v_net, individual.solution)
                 break
 
     def evolve(self, individual):

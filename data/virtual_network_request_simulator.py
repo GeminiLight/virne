@@ -1,16 +1,43 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import os
 import copy
 import random
 import numpy as np
 
-from utils import read_setting, write_setting
-from .utils import generate_data_with_distribution
+from utils import read_setting, write_setting, generate_data_with_distribution
 from .virtual_network import VirtualNetwork
 
 
 class VirtualNetworkRequestSimulator(object):
-    """A simulator for generating virtual network and arrange them"""
-    def __init__(self, v_sim_setting, **kwargs):
+    """
+    A class for simulating sequentially arriving virtual network requests.
+
+    Attributes:
+        v_sim_setting (dict): A dictionary containing the setting for the virtual network request simulator.
+        num_v_nets (int): The number of virtual networks to be simulated.
+        aver_arrival_rate (float): The average arrival rate of virtual network requests.
+        aver_lifetime (float): The average lifetime of virtual network requests.
+        v_nets (list): A list of VirtualNetwork objects representing the virtual networks.
+        events (list): A list of tuples representing the events in the simulation.
+
+    Methods:
+        from_setting: Create a VirtualNetworkRequestSimulator object from a setting file.
+
+        renew: Renew virtual networks and events.
+        renew_v_nets: Renew virtual networks.
+        renew_events: Renew events.
+        arrange_events: Arrange events in chronological order.
+        construct_v2event_dict: Construct a dictionary for mapping virtual network id to event id.
+
+        save_dataset: Save the simulated virtual network requests to a directory.
+        load_dataset: Load the simulated virtual network requests from a directory.
+    """
+
+    def __init__(self, v_sim_setting: dict, **kwargs):
         super(VirtualNetworkRequestSimulator, self).__init__()
         self.v_sim_setting = copy.deepcopy(v_sim_setting)
         self.num_v_nets = self.v_sim_setting.get('num_v_nets', 2000)
@@ -27,17 +54,21 @@ class VirtualNetworkRequestSimulator(object):
         self.v_nets = []
         self.events = []
 
-    def construct_v2event_dict(self):
-        self.v2event_dict = {}
-        for e_info in self.events:
-            self.v2event_dict[(e_info['v_net_id'], e_info['type'])] = e_info['id']
-        return self.v2event_dict
-            
     @staticmethod
-    def from_setting(setting):
+    def from_setting(setting: dict):
+        """Create a VirtualNetworkRequestSimulator object from a setting file"""
         return VirtualNetworkRequestSimulator(setting)
 
-    def renew(self, v_nets=True, events=True, seed=None):
+    def renew(self, v_nets: bool = True, events: bool = True, seed: int = None):
+        """
+        Renew virtual networks and events
+
+        Args:
+            v_nets (bool, optional): Whether to renew virtual networks. Defaults to True.
+            events (bool, optional): Whether to renew events. Defaults to True.
+            seed (int, optional): Random seed. Defaults to None.
+
+        """
         if seed is not None: 
             random.seed(seed)
             np.random.seed(seed)
@@ -48,6 +79,7 @@ class VirtualNetworkRequestSimulator(object):
         return self.v_nets, self.events
 
     def renew_v_nets(self):
+        """Generate virtual networks and arrange them"""
         self.arrange_v_nets()
         def create_v_net(i):
             v_net = VirtualNetwork(
@@ -63,6 +95,7 @@ class VirtualNetworkRequestSimulator(object):
         return self.v_nets
 
     def renew_events(self):
+        """Generate events, including virtual network arrival and leave events"""
         self.events = []
         enter_list = [{'v_net_id': int(v_net.id), 'time': float(v_net.arrival_time), 'type': 1} for v_net in self.v_nets]
         leave_list = [{'v_net_id': int(v_net.id), 'time': float(v_net.arrival_time + v_net.lifetime), 'type': 0} for v_net in self.v_nets]
@@ -74,6 +107,7 @@ class VirtualNetworkRequestSimulator(object):
         return self.events
 
     def arrange_v_nets(self):
+        """Arrange virtual networks, including length, lifetime, arrival_time"""
         # length: uniform distribution
         self.v_nets_size = generate_data_with_distribution(size=self.num_v_nets, **self.v_sim_setting['v_net_size'])
         # lifetime: exponential distribution
@@ -86,7 +120,15 @@ class VirtualNetworkRequestSimulator(object):
         if 'max_latency' in self.v_sim_setting:
             self.v_nets_max_latency = generate_data_with_distribution(size=self.num_v_nets, **self.v_sim_setting['max_latency'])
 
+    def construct_v2event_dict(self):
+        """Construct a dictionary for mapping virtual network id to event id"""
+        self.v2event_dict = {}
+        for e_info in self.events:
+            self.v2event_dict[(e_info['v_net_id'], e_info['type'])] = e_info['id']
+        return self.v2event_dict
+
     def save_dataset(self, save_dir):
+        """Save the dataset to a directory"""
         if not os.path.exists(save_dir):
             os.mkdir(save_dir)
         v_nets_dir = os.path.join(save_dir, 'v_nets')
@@ -101,6 +143,7 @@ class VirtualNetworkRequestSimulator(object):
 
     @staticmethod
     def load_dataset(dataset_dir):
+        """Load the dataset from a directory"""
         # load setting
         if not os.path.exists(dataset_dir):
             raise ValueError(f'Find no dataset in {dataset_dir}.\nPlease firstly generating it.')
@@ -124,6 +167,7 @@ class VirtualNetworkRequestSimulator(object):
         return v_net_simulator
 
     def save_setting(self, fpath):
+        """Save the setting to a file"""
         write_setting(self.v_sim_setting, fpath, mode='w+')
 
 

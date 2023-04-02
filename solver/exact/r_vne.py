@@ -1,14 +1,27 @@
-import pprint
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import random
 
-from ortools.linear_solver import pywraplp
-
 from base import Solution
+from base.environment import SolutionStepEnvironment
+from solver import registry
 from ..solver import Solver
 
 
+@registry.register(
+    solver_name='rd_vne', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='exact')
 class RandomizedRoundingSolver(Solver):
+    """
+    An approximation solver based on randomized rounding algorithm.
     
+    References:
+        - Mosharaf Chowdhury et al. "ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping". In TON, 2012.
+    """
     def __init__(self, controller, recorder, counter, **kwargs):
         super(RandomizedRoundingSolver, self).__init__(controller, recorder, counter, **kwargs)
         # node mapping
@@ -109,7 +122,7 @@ class RandomizedRoundingSolver(Solver):
 
 
     def solve_with_mip(self, v_net, p_net, candicates_dict):
-
+        from ortools.linear_solver import pywraplp
         num_p_nodes = p_net.number_of_nodes()
         num_v_nodes = v_net.number_of_nodes()
 

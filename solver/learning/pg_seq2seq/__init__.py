@@ -1,4 +1,4 @@
-from .pg_seq2seq_solver import PGSeq2SeqSolver
+from .solver import PGSeq2SeqSolver
 
 
 __all__ = [

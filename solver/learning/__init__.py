@@ -1,22 +1,20 @@
-# from .graph_vine import GraphViNEAgent
-# from .gnn_ppo import GNNPPOAgent, GNNPPOEnvironment
-# from .gcn_ppo import GCNPPOAgent, GCNPPOEnvironment
-# from .gat_ppo import GATPPOAgent, GATPPOEnvironment
-# from .mcts import MCTSAgent
+from .hopfield_network import HopfieldNetworkSolver
+from .gae_clustering import GaeClusteringSolver
+from .mcts import MctsSolver
+from .pg_mlp import PgMlpSolver
+from .pg_cnn import PgCnnSolver
+from .pg_cnn2 import PgCnn2Solver
+from .pg_seq2seq import PGSeq2SeqSolver
 
 
-# __all__ = [
-#     GraphViNEAgent,
-#     GNNPPOAgent, GNNPPOEnvironment,
-#     GCNPPOAgent, GCNPPOEnvironment,
-#     GATPPOAgent, GATPPOEnvironment,
-#     MCTSAgent,
-# ]
-
-
-# gym.envs.register(
-#      id='Lqr-v0',
-#      entry_point='gym.envs.classic_control:LqrEnv',
-#      max_episode_steps=150,
-#      kwargs={'size' : 1, 'init_state' : 10., 'state_bound' : np.inf},
-# )
+__all__ = [
+    # Unsupervised learning solvers
+    'HopfieldNetworkSolver',
+    'GaeClusteringSolver',
+    # Reinforcement learning solvers
+    'MctsSolver',
+    'PgMlpSolver',
+    'PgCnnSolver',
+    'PgCnn2Solver',
+    'PGSeq2SeqSolver',
+]

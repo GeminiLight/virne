@@ -1,3 +1,8 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import numpy as np
 import networkx as nx
 from gym import spaces
@@ -15,7 +20,7 @@ class SubEnv(PlaceStepSubRLEnv):
         self.calcuate_graph_metrics()
 
     def compute_reward(self, solution):
-        r"""Calculate deserved reward according to the result of taking action."""
+        """Calculate deserved reward according to the result of taking action."""
         if solution['result'] :
             reward = solution['v_net_r2c_ratio']
         elif solution['place_result'] and solution['route_result']:
@@ -33,14 +38,14 @@ class SubEnv(PlaceStepSubRLEnv):
         # resource
         n_attrs = self.p_net.get_node_attrs(['resource'])
         node_attrs_data = np.array(self.p_net.get_node_attrs_data(n_attrs)).T  # (num_nodes, num_attrs)
-        # self.node_attrs_benchmark = node_attrs_data.max(axis=0)
-        # norm_node_attrs_data = node_attrs_data / self.node_attrs_benchmark
+        # self.node_attr_benchmarks = node_attrs_data.max(axis=0)
+        # norm_node_attrs_data = node_attrs_data / self.node_attr_benchmarks
         norm_node_attrs_data = (node_attrs_data - node_attrs_data.min(axis=0)) / (node_attrs_data.max(axis=0) - node_attrs_data.min(axis=0))
         # sum_bw
         e_attrs = self.p_net.get_link_attrs(['resource'])
         link_aggr_attrs_data = np.array(self.p_net.get_aggregation_attrs_data(e_attrs, aggr='sum')).T  # (num_links, num_attrs)
-        # self.link_aggr_attrs_benchmark = link_aggr_attrs_data.max(axis=0)
-        # norm_link_aggr_attrs_data = link_aggr_attrs_data / self.link_aggr_attrs_benchmark
+        # self.link_sum_attr_benchmarks = link_aggr_attrs_data.max(axis=0)
+        # norm_link_aggr_attrs_data = link_aggr_attrs_data / self.link_sum_attr_benchmarks
         norm_link_aggr_attrs_data = (link_aggr_attrs_data - link_aggr_attrs_data.min(axis=0)) / (link_aggr_attrs_data.max(axis=0) - link_aggr_attrs_data.min(axis=0))
         # avg_dst
         avg_distance = self.obs_handler.get_average_distance(self.p_net, self.selected_p_net_nodes, normalization=True)

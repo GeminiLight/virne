@@ -1,16 +1,18 @@
+import os
 from config import get_config, show_config, save_config, load_config
-from data.generator import Generator
+from data import Generator
 from base import BasicScenario
+from solver import REGISTRY
 
 
 def run(config):
     print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
+    # Load solver info: environment and solver class
+    solver_info = REGISTRY.get(config.solver_name)
+    Env, Solver = solver_info['env'], solver_info['solver']
+    print(f'Use {config.solver_name} Solver (Type = {solver_info["type"]})...\n')
 
-    print(f'Use {config.solver_name} Solver...\n')
-    # Load environment and algorithm
-    scenario = BasicScenario.from_config(config)
-
-    # Enable interaction between the environment and the solver 
+    scenario = BasicScenario.from_config(Env, Solver, config)
     scenario.run()
 
     print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")

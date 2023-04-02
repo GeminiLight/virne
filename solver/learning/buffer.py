@@ -11,29 +11,13 @@ class RolloutBuffer:
 
         self.basic_items = ['observations', 'actions', 'rewards', 'dones', 'next_observations', 'logprobs', 'values']
         self.calc_items = ['advantages', 'returns']
-        self.extend_items = ['hiddens', 'action_masks']
-        self.safe_items = ['costs', 'cost_returns']
-        self.all_items = self.basic_items + self.calc_items + self.extend_items + self.safe_items
+        self.extend_items = ['hidden_states', 'cell_states', 'action_masks', 'entropies']
+        self.safe_rl_items = ['costs', 'cost_returns']
+        self.all_items = self.basic_items + self.calc_items + self.extend_items + self.safe_rl_items
 
-        self.observations = []
-        self.next_observations = []
-        self.actions = []
-        self.rewards = []
-        self.dones = []
-        self.logprobs = []
-        self.values = []
+        for item in self.all_items:
+            setattr(self, item, [])
 
-        self.advantages = []
-        self.returns = []
-        self.entropies = []
-        self.action_masks = []
-
-        self.hiddens = []
-        # for safe RL
-        self.costs = []
-        self.cost_returns = []
-
-    
     def reset(self):
         self.curr_idx = 0
         for item in self.all_items:
@@ -73,7 +57,7 @@ class RolloutBuffer:
         # self.values += copy.deepcopy(buffer.values)
         # self.advantages += copy.deepcopy(buffer.advantages)
         # self.returns += copy.deepcopy(buffer.returns)
-        # self.hiddens += copy.deepcopy(buffer.hiddens)
+        # self.hidden_states += copy.deepcopy(buffer.hidden_states)
 
     def compute_returns_and_advantages(self, last_value, gamma=0.99, gae_lambda=0.98, method='gae') -> None:
         # calculate expected return (Genralized Advantage Estimator)
@@ -134,12 +118,14 @@ class RolloutBuffer:
                 self.returns[step] = self.advantages[step] + self.values[step]
 
         elif method == 'mc':
+            self.returns = []
             discounted_reward = 0
             for reward, is_terminal in zip(reversed(self.rewards), reversed(self.dones)):
                 if is_terminal:
                     discounted_reward = 0
                 discounted_reward = reward + (gamma * discounted_reward)
                 self.returns.insert(0, discounted_reward)
+
 
     def compute_mc_returns(self, gamma=0.99):
         discounted_reward = 0

@@ -1,3 +1,8 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 from copy import Error
 import random
 from abc import abstractclassmethod

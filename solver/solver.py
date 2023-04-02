@@ -1,19 +1,44 @@
-import abc
-import copy
-import os
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
 
-from base import Controller, Counter
+
+import os
+import abc
+
+from base import Controller, Recorder, Counter, Solution
 
 
 class Solver:
 
-    def __init__(self, controller, recorder, counter, **kwargs):
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
+        """
+        Initialize a Solver object.
+
+        Args:
+            controller (Controller): The controller object.
+            recorder (Recorder): The recorder object.
+            counter (Counter): The counter object.
+            **kwargs (dict): A dictionary containing the optional arguments:
+                reusable (bool): Whether to reuse resources (default: False).
+                verbose (int): Verbosity level (default: 1).
+                save_dir (str): Directory to save output files (default: 'save').
+                solver_name (str): Name of the solver (default: 'unknown_solver').
+                run_id (str): ID of the run (default: 'unknown_host-unknown_time').
+                node_ranking_method (str): Method used for ranking nodes (default: 'order').
+                link_ranking_method (str): Method used for ranking links (default: 'order').
+                matching_mathod (str): Method used for node mapping (default: 'greedy').
+                shortest_method (str): Method used for link mapping (default: 'k_shortest').
+                k_shortest (int): Number of shortest paths to consider (default: 10).
+                allow_rejection (bool): Whether to allow v-nets to be rejected (default: False).
+                allow_revocable (bool): Whether to allow v-nets to be revoked (default: False).
+        """
         __metaclass__ = abc.ABCMeta
         self.controller = controller
         self.recorder = recorder
         self.counter = counter
         self.reusable = kwargs.get('reusable', False)
-        self.verbose = kwargs.get('verbose', '1')
+        self.verbose = kwargs.get('verbose', 1)
         self.num_arrived_v_nets = 0
         save_dir = kwargs.get('save_dir', 'save')
         solver_name = kwargs.get('solver_name', 'unknown_solver')
@@ -42,6 +67,21 @@ class Solver:
             'allow_revocable': self.allow_revocable,
             'allow_revocable': self.allow_revocable
         }
+        # self.env_info = dict(
+        #     num_p_net_node_attrs = len(self.p_net.get_node_attrs(['resource'])), # , 'extrema'
+        #     num_p_net_link_attrs = len(self.p_net.get_link_attrs(['resource'])), # , 'extrema'
+        #     num_v_net_node_attrs = len(self.v_net_simulator.v_sim_setting['node_attrs_setting']),
+        #     num_v_net_link_attrs = len(self.v_net_simulator.v_sim_setting['link_attrs_setting'])
+        # )
 
-    def solve(instance):
+    def solve(instance: dict) -> Solution:
+        """
+        Solves the problem instance, and returns the solution.
+
+        Args:
+            instance (dict): The problem instance to solve.
+
+        Returns:
+            Solution (Solution): The solution to the problem instance.
+        """
         return NotImplementedError

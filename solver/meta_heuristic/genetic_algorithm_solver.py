@@ -1,50 +1,68 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 from concurrent.futures import wait
 import copy
 import random
 import threading
 import numpy as np
+from base.environment import SolutionStepEnvironment
+
+from solver import registry
 
 from .meta_heuristic_solver import Individual, MetaHeuristicSolver
 from ..rank.node_rank import rank_nodes
-
+from data import VirtualNetwork, PhysicalNetwork
+from base import Controller, Recorder, Counter, Solution
 
 class Chromosome(Individual):
-
+    """
+    Chromosome for Genetic Algorithm Solver
+    """
     def __init__(self, id, v_net, p_net):
         super(Chromosome, self).__init__(id, v_net, p_net)
 
 
+@registry.register(
+    solver_name='ga_vne', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='meta_heuristic')
 class GeneticAlgorithmSolver(MetaHeuristicSolver):
     """
-    Genetic Algorithm
+    Genetic Algorithm Solver for VNE
 
-    Individual: Chromosome
-    population: Chromosomes
+    References:
+        - Peiying Zhang et al. "Virtual network embedding based on modified genetic algorithm". In Peer-to-Peer Networking and Applications, 2019.
+    
+    Attributes:
+        num_environments: number of environments
+        num_chromosomes: number of chromosomes
+        max_iteration: max iteration
+        prob_crossover: crossover probablity
+        prob_mutation: mutation probablity
+        duplication_method: duplication method
     """
-
-    name = 'ga_vne'
-
-    def __init__(self, controller, recorder, counter, **kwargs):
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
         super(GeneticAlgorithmSolver, self).__init__(controller, recorder, counter, **kwargs)
-        """
-        """
         # basic methods
         self.shortest_method = 'k_shortest'
         self.k_shortest = 10
         # super parameters
         self.num_environments = 1
-        self.num_chromosomes = 10   # number of num_chromosomes
+        self.num_chromosomes = 10   # number of chromosomes
         self.max_iteration = 20    # max iteration
         self.prob_crossover = 0.8  # crossover probablity
         self.duplication_method = 'roulette_wheel'
         assert self.num_chromosomes != 0 and self.num_chromosomes % 2 == 0
 
-    def ready(self, v_net, p_net):
+    def ready(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
         num_v_nodes = self.v_net.num_nodes
         self.prob_mutation = 1 / (num_v_nodes * self.num_chromosomes / 2) # mutation probablity
         rank_nodes(p_net, method='order')
 
-    def initialize(self, v_net, p_net):
+    def initialize(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
         # chromosomes
         self.chromosomes = [Chromosome(i, v_net, p_net) for i in range(self.num_chromosomes)]
         # initialize chromosomes best experience
@@ -52,11 +70,12 @@ class GeneticAlgorithmSolver(MetaHeuristicSolver):
             node_slots = self.generate_initial_node_slots(v_net, p_net, select_method='random')
             chromosome.update_solution(node_slots=node_slots)
             self.controller.deploy_with_node_slots(v_net, p_net, node_slots, chromosome.solution, inplace=False, shortest_method=self.shortest_method, k_shortest=self.k_shortest)
+            self.counter.count_solution(v_net, chromosome.solution)
             chromosome.best_solution = copy.deepcopy(chromosome.solution)
         # initialize global best experience
         self.update_best_individual(self.chromosomes)
 
-    def meta_run(self, v_net, p_net):
+    def meta_run(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
         solver_list = [copy.deepcopy(self) for i in range(self.num_environments)]
         
         mt_pool = self.get_mt_pool(self.num_environments)
@@ -74,7 +93,7 @@ class GeneticAlgorithmSolver(MetaHeuristicSolver):
         best_solution_p_id = p_best_solution_fitess_list.index(min(p_best_solution_fitess_list))
         return solver_list[best_solution_p_id].best_individual.solution
 
-    # def meta_run(self, v_net, p_net):
+    # def meta_run(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
     #     # initialization
     #     self.initialize(v_net, p_net)
     #     # start iterating
@@ -155,6 +174,7 @@ class GeneticAlgorithmSolver(MetaHeuristicSolver):
     def conclusion(self):
         for c in self.chromosomes:
             self.controller.deploy_with_node_slots(c.v_net, c.p_net, c.solution['node_slots'], c.solution, inplace=False, shortest_method=self.shortest_method, k_shortest=self.k_shortest)
+            self.counter.count_solution(c.v_net, c.solution)
             c.update_best_solution()
 
     def repair(self, individual, fixed_v_node_id_list=[]):
@@ -178,6 +198,9 @@ class GeneticAlgorithmSolver(MetaHeuristicSolver):
 
 
 def single_meta_run(solver, v_net, p_net):
+    """
+    Run a single meta-heuristic solver
+    """
     # initialization
     solver.initialize(v_net, p_net)
     # start iterating

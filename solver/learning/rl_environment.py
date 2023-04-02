@@ -20,13 +20,15 @@ class VNERLEnv(gym.Env):
         self.num_actions = self.p_net.num_nodes + int(allow_rejection) + int(allow_revocable)
         self.action_space = spaces.Discrete(self.num_actions)
         self.obs_handler = ObservationHandler()
-        _, self.node_attrs_benchmark = self.obs_handler.get_node_attrs_obs(self.p_net, node_attr_types=['extrema'], normalization=True)
-        _, self.link_attrs_benchmark = self.obs_handler.get_link_attrs_obs(self.p_net, link_attr_types=['extrema'], normalization=True)
-        _, self.link_aggr_attrs_benchmark = self.obs_handler.get_link_aggr_attrs_obs(self.p_net, link_attr_types=['extrema'], normalization=True)
+        self.degree_benchmark = self.p_net.degree_benchmark
+        self.node_attr_benchmarks = self.p_net.node_attr_benchmarks
+        self.link_attr_benchmarks = self.p_net.link_attr_benchmarks
+        self.link_sum_attr_benchmarks = self.p_net.link_sum_attr_benchmarks
         self.reward_weight = kwargs.get('reward_weight', 0.1)
-
         # for revocable action
         self.revoked_actions_dict = defaultdict(list)
+        self.extra_info_dict = {}
+        self.check_feasibility = kwargs.get('check_feasibility', True)
 
     def if_rejection(self, action):
         return self.allow_rejection and action == self.rejection_action
@@ -45,7 +47,12 @@ class VNERLEnv(gym.Env):
 
     def get_info(self, record={}):
         info = copy.deepcopy(record)
+        for k, v in self.extra_info_dict.items():
+            info[k] = v
         return info
+
+    def add_extra_info(self, info_dict):
+        self.extra_info_dict.update(info_dict)
 
     def get_curr_place_progress(self):
         return self.num_placed_v_net_nodes / (self.v_net.num_nodes - 1)
@@ -112,10 +119,11 @@ class BasicRLEnv(Environment, VNERLEnv):
         VNERLEnv.__init__(self, **kwargs)
 
     def ready(self, event_id=0):
+        super().ready(event_id)
         self.ranked_v_net_nodes = rank_nodes(self.v_net, self.node_ranking_method)
         self.ranked_v_net_nodes = self.v_net.ranked_nodes
         self.v_net_reward = 0
-        return super().ready(event_id)
+        return 
 
 
 class PlaceStepRLEnv(BasicRLEnv):
@@ -141,7 +149,7 @@ class PlaceStepRLEnv(BasicRLEnv):
             assert p_node_id in list(self.p_net.nodes)
             # Try Deploy
             # Stage 1: Node Mapping
-            node_place_result, node_place_info = self.controller.place(self.v_net, self.p_net, self.curr_v_node_id, p_node_id, self.solution)
+            node_place_result, node_place_info = self.controller.place(self.v_net, self.p_net, self.curr_v_node_id, p_node_id, self.solution, check_feasibility=self.check_feasibility)
             # Case 1: Node Place Success / Uncompleted
             if node_place_result and len(self.placed_v_net_nodes) < self.v_net.num_nodes:
                 info = {**self.recorder.state, **self.solution.to_dict()}
@@ -158,7 +166,8 @@ class PlaceStepRLEnv(BasicRLEnv):
                                                                     sorted_v_links=list(self.v_net.links), 
                                                                     shortest_method=self.shortest_method, 
                                                                     k=self.k_shortest, 
-                                                                    inplace=True)
+                                                                    inplace=True, 
+                                                                    check_feasibility=self.check_feasibility)
                 # Link Mapping Failure
                 if not link_mapping_result:
                     self.rollback_for_failure(reason='route')
@@ -211,7 +220,8 @@ class JointPRStepRLEnv(BasicRLEnv):
                                                                             p_node_id, 
                                                                             self.solution, 
                                                                             shortest_method=self.shortest_method, 
-                                                                            k=self.k_shortest)
+                                                                            k=self.k_shortest,
+                                                                            check_feasibility=self.check_feasibility)
             # Step Failure
             if not place_and_route_result:
                 failure_reason = self.get_failure_reason(self.solution)
@@ -270,7 +280,8 @@ class PairStepRLEnv(BasicRLEnv):
                                                                                 p_node_id, 
                                                                                 self.solution, 
                                                                                 shortest_method=self.shortest_method, 
-                                                                                k=self.k_shortest)
+                                                                                k=self.k_shortest,
+                                                                                check_feasibility=self.check_feasibility)
             # Step Failure
             if not place_and_route_result:
                 failure_reason = self.get_failure_reason(self.solution)
@@ -350,7 +361,8 @@ class NodeSlotsStepRLEnv(BasicRLEnv):
                                                                 sorted_v_links=list(self.v_net.links), 
                                                                 shortest_method=self.shortest_method, 
                                                                 k=self.k_shortest, 
-                                                                inplace=True)
+                                                                inplace=True,
+                                                                check_feasibility=self.check_feasibility)
             # Link Mapping Failure
             if not link_mapping_result:
                 self.rollback_for_failure(reason='route')

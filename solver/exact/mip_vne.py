@@ -1,17 +1,32 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 from ortools.sat.python import cp_model
 from ortools.linear_solver import pywraplp
 
 import pprint
 
-
 from base import Solution
+from base.environment import SolutionStepEnvironment
+from solver import registry
 from ..solver import Solver
 
 
-class MIPSolver(Solver):
-    
+@registry.register(
+    solver_name='mip_vne', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='exact')
+class MipSolver(Solver):
+    """
+    An exact solver based on Mixed Integer Programming (MIP) with OR-Tools.
+
+    References:
+        - Mosharaf Chowdhury et al. "ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping". In TON, 2012.
+    """
     def __init__(self, controller, recorder, counter, **kwargs):
-        super(MIPSolver, self).__init__(controller, recorder, counter, **kwargs)
+        super(MipSolver, self).__init__(controller, recorder, counter, **kwargs)
         # node mapping
         self.matching_mathod = kwargs.get('matching_mathod', 'greedy')
         # link mapping

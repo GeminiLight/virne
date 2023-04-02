@@ -1,12 +1,27 @@
-import pprint
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 from ortools.linear_solver import pywraplp
 
 from base import Solution
+from base.environment import SolutionStepEnvironment
+from solver import registry
 from ..solver import Solver
 
 
+@registry.register(
+    solver_name='dr_vne', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='exact')
 class DeterministicRoundingSolver(Solver):
-    
+    """
+    An approximation solver based on deterministic rounding algorithm.
+
+    References:
+        - Mosharaf Chowdhury et al. "ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping". In TON, 2012.
+    """
     def __init__(self, controller, recorder, counter, **kwargs):
         super(DeterministicRoundingSolver, self).__init__(controller, recorder, counter, **kwargs)
         # node mapping

@@ -1,3 +1,8 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import copy
 import random
 import numpy as np
@@ -7,24 +12,31 @@ from concurrent.futures import ThreadPoolExecutor
 
 from ..solver import Solver
 from ..rank.node_rank import rank_nodes
-from base import Solution
+from data import VirtualNetwork, PhysicalNetwork
+from base import Controller, Recorder, Counter, Solution
 
 
-# INFEASIBLE_FITNESS = float('inf')
 INFEASIBLE_FITNESS = float('inf')
 # INFEASIBLE_FITNESS = 100
 
 
 class MetaHeuristicSolver(Solver):
-
-    def __init__(self, controller, recorder, counter, **kwargs):
+    """
+    Meta Heuristic Solver Base Class
+    """
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
         super(MetaHeuristicSolver, self).__init__(controller, recorder, counter, **kwargs)
-        """
-        """
         self.infeasible_fitness = INFEASIBLE_FITNESS
         self.fitness_recorder = FitnessRecorder()
 
-    def get_parallel_executor(self, num_individuals, m_type='thread'):
+    def get_parallel_executor(self, num_individuals: int, m_type: str = 'thread') -> ThreadPoolExecutor or mp.Pool:
+        """
+        Get parallel executor, multithread or multiprocess pool.
+        
+        Args:
+            num_individuals: number of individuals
+            m_type: thread or process
+        """
         num_processes = min(num_individuals, mp.cpu_count())
         if m_type == 'thread':
             parallel_executor = ThreadPoolExecutor(num_processes)
@@ -34,17 +46,20 @@ class MetaHeuristicSolver(Solver):
             return ValueError(f'Param m_type should be selected from [thread, process]: {m_type}')
         return parallel_executor
 
-    def get_mt_pool(self, num_individuals):
+    def get_mt_pool(self, num_individuals: int) -> ThreadPoolExecutor:
+        """Get a multithread pool."""
         num_processes = min(num_individuals, mp.cpu_count())
         mt_pool = ThreadPoolExecutor(num_processes)
         return mt_pool
 
-    def get_mp_pool(self, num_individuals):
+    def get_mp_pool(self, num_individuals: int) -> mp.Pool:
+        """Get a multiprocess pool."""
         num_processes = min(num_individuals, mp.cpu_count())
         mp_pool = mp.Pool(num_processes)
         return mp_pool
 
-    def solve(self, instance):
+    def solve(self, instance: dict) -> Solution:
+        """Solve the instance."""
         v_net, p_net = instance['v_net'], instance['p_net']
         self.v_net = v_net
         self.p_net = p_net
@@ -58,24 +73,24 @@ class MetaHeuristicSolver(Solver):
             return Solution(v_net)
         self.best_individual = None
         solution = self.meta_run(v_net, p_net)
-        if solution['violation'] > 0:
+        if solution['total_violation'] > 0:
             return Solution(v_net)
         # depoly with solution
         if solution['result']:
             self.controller.deploy(v_net, p_net, solution)
         return solution
 
-    def ready(self, v_net, p_net):
+    def ready(self, v_net: VirtualNetwork, p_net: PhysicalNetwork) -> None:
         rank_nodes(p_net, method=self.node_ranking_method)
         return
 
-    def meta_run(self, v_net, p_net):
+    def meta_run(self, v_net: VirtualNetwork, p_net: PhysicalNetwork) -> Solution:
         raise NotImplementedError
 
-    def evolve(self, v_net, p_net):
+    def evolve(self, v_net: VirtualNetwork, p_net: PhysicalNetwork) -> Solution:
         raise NotImplementedError
 
-    def update_best_individual(self, population):
+    def update_best_individual(self, population: list) -> 'Individual':
         if self.best_individual is None:
             self.best_individual = population[0]
         for individual in population:
@@ -83,14 +98,15 @@ class MetaHeuristicSolver(Solver):
                 self.best_individual = individual
         return self.best_individual
 
-    def reinitialize(self, individual):
+    def reinitialize(self, individual: 'Individual') -> 'Individual':
         node_slots = self.generate_initial_node_slots(individual.v_net, individual.p_net, select_method='random')
         individual.update_position(node_slots)
         self.controller.deploy_with_node_slots(individual.v_net, individual.p_net, node_slots, individual.solution, inplace=False)
+        self.counter.count_solution(individual.v_net, individual.solution)
         individual.best_solution = copy.deepcopy(individual.solution)
         return individual
 
-    def construct_candidates_dict(self, v_net, p_net):
+    def construct_candidates_dict(self, v_net: VirtualNetwork, p_net: PhysicalNetwork) -> dict:
         self.candidates_dict = self.controller.construct_candidates_dict(v_net, p_net)
         # for v_node_id in range(v_net.num_nodes):
         #     hop_range_neighbors = nx.single_source_shortest_path_length(p_net, p_node_id, cutoff=self.hop_range)
@@ -99,10 +115,11 @@ class MetaHeuristicSolver(Solver):
         #             candidates_dict[v_node_id].remove(candidate)
         return self.candidates_dict
 
-    def generate_initial_node_slots(self, v_net, p_net, select_method='random'):
+    def generate_initial_node_slots(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, select_method: str = 'random') -> dict:
         node_slots = {}
         for v_node_id in v_net.ranked_nodes:
-            p_candicate_id = self.select_p_candicate(v_node_id, list(node_slots.values()), p_node_weights=p_net.node_ranking_values, method=select_method)
+            p_candicate_id = self.select_p_candicate(v_node_id, list(node_slots.values()), 
+                                                    p_node_weights=p_net.node_ranking_values, method=select_method)
             node_slots[v_node_id] = p_candicate_id
         return node_slots
 
@@ -113,7 +130,7 @@ class MetaHeuristicSolver(Solver):
             candicate_nodes = list(set(self.candidates_dict[v_node_id]).difference(set(selected_p_nodes)))
         return candicate_nodes
 
-    def select_p_candicate(self, v_node_id, selected_p_nodes=[], p_node_weights=None, method='random'):
+    def select_p_candicate(self, v_node_id, selected_p_nodes=[], p_node_weights=None, method='random') -> int:
         # get p candicates
         p_candicates = np.array(self.get_p_condicates(v_node_id, selected_p_nodes))
         if len(p_candicates) == 0:
@@ -133,10 +150,10 @@ class MetaHeuristicSolver(Solver):
             p_candicate = p_candicates[p_max_weight_index]
         return p_candicate
 
-    def get_fitness_list(self, population):
+    def get_fitness_list(self, population: list) -> list:
         return [ind.fitness for ind in population]
 
-    def normalize_fitnesses(self, fitness_list):
+    def normalize_fitnesses(self, fitness_list: list) -> list:
         fitness_list = []
         temp_list = [value for value in value_list if value !=float("inf")]
         if len(temp_list) != 0:
@@ -162,7 +179,19 @@ class LocalSearch(MetaHeuristicSolver):
 
 class Individual:
     """
+    Individual class for MetaHeuristicSolver
+
     Minimize the objective (deployment cost)
+
+    Attributes:
+        id (int): individual id
+        v_net (VirtualNetwork): virtual network
+        p_net (PhysicalNetwork): physical network
+        ranked_v_nodes (list): ranked v nodes
+        solution (Solution): solution
+        best_solution (Solution): best solution
+        fitness (float): fitness
+        best_fitness (float): best fitness
     """
     def __init__(self, id, v_net, p_net, ranked_v_nodes=None):
         self.id = id
@@ -177,16 +206,11 @@ class Individual:
             self.solution.node_slots[v_node_id] = -1
         self.best_solution = copy.deepcopy(self.solution)
 
-    # def calc_fitness(self, solution):
-    #     # maximize
-    #     if solution['result']:
-    #         return -solution['v_net_cost']
-    #     return 0
-
     def calc_fitness(self, solution):
         # minimize
         if solution['result']:
             return solution['v_net_cost'] / solution['v_net_revenue']
+            # return -solution['v_net_cost']
         return INFEASIBLE_FITNESS
 
     def update_solution(self, node_slots={}, link_paths={}):
@@ -197,11 +221,11 @@ class Individual:
             self.best_solution = copy.deepcopy(self.solution)
 
     def is_feasible(self):
-        return self.solution['violation'] <= 0
+        return self.solution['total_violation'] <= 0
 
     @property
     def feasiblity(self):
-        return self.solution['violation'] <= 0
+        return self.solution['total_violation'] <= 0
 
     @property
     def selected_p_nodes(self):

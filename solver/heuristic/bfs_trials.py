@@ -1,32 +1,42 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import networkx as nx
 from abc import abstractclassmethod
 
+from base import Controller, Recorder, Counter, Solution
+from base.environment import SolutionStepEnvironment
+
 from ..solver import Solver
 from ..rank.node_rank import RWNodeRank, OrderNodeRank, RandomNodeRank
+from solver import registry
 
 
-class BFSSolver(Solver):
+class BfsSolver(Solver):
     
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(BFSSolver, self).__init__(controller, recorder, counter, **kwargs)
-
-    def select_action(self, obs):
-        return self.solve(obs['v_net'], obs['p_net'])
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
+        super(BfsSolver, self).__init__(controller, recorder, counter, **kwargs)
 
     @abstractclassmethod
-    def solve(self, v_net, p_net):
+    def solve(self, instance: dict) -> Solution:
         raise NotImplementedError
 
 
-class OrderRankBFSSolver(BFSSolver):
-
-    name = 'order_rank_bfs'
-
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(OrderRankBFSSolver, self).__init__(controller, recorder, counter, **kwargs)
+@registry.register(
+    solver_name='order_rank_bfs', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='heuristic')
+class OrderRankBfsSolver(BfsSolver):
+    """
+    A BFS-based Node Rank solver that ranks nodes by their order in the graph.
+    """
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
+        super(OrderRankBfsSolver, self).__init__(controller, recorder, counter, **kwargs)
         self.node_rank = OrderNodeRank()
 
-    def solve(self, instance):
+    def solve(self, instance: dict) -> Solution:
         v_net, p_net  = instance['v_net'], instance['p_net']
         v_net_rank = self.node_rank.rank(v_net)
         p_net_rank = self.node_rank.rank(p_net)
@@ -39,15 +49,19 @@ class OrderRankBFSSolver(BFSSolver):
         return solution
 
 
-class RandomRankBFSSolver(BFSSolver):
-
-    name = 'random_rank_bfs'
-
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(RandomRankBFSSolver, self).__init__(controller, recorder, counter, **kwargs)
+@registry.register(
+    solver_name='random_rank_bfs', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='heuristic')
+class RandomRankBfsSolver(BfsSolver):
+    """
+    A BFS-based Node Rank solver that ranks nodes randomly.
+    """
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
+        super(RandomRankBfsSolver, self).__init__(controller, recorder, counter, **kwargs)
         self.node_rank = RandomNodeRank()
 
-    def solve(self, instance):
+    def solve(self, instance: dict) -> Solution:
         v_net, p_net  = instance['v_net'], instance['p_net']
 
         v_net_rank = self.node_rank.rank(v_net)
@@ -60,16 +74,22 @@ class RandomRankBFSSolver(BFSSolver):
         solution = self.controller.bfs_deploy(v_net, p_net, sorted_v_nodes, p_net_init_node)
         return solution
 
+@registry.register(
+    solver_name='rw_rank_bfs', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='heuristic')
+class RandomWalkRankBfsSolver(BfsSolver):
+    """
+    A BFS-based Node Rank solver that ranks nodes with random walk algorithm.
 
-class RandomWalkRankBFSSolver(BFSSolver):
-    
-    name = 'rw_rank_bfs'
-
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(RandomWalkRankBFSSolver, self).__init__(controller, recorder, counter, **kwargs)
+    References:
+        - Cheng et al. "Virtual Network Embedding Through Topology-Aware Node Ranking". In SIGCOMM, 2011.
+    """
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
+        super(RandomWalkRankBfsSolver, self).__init__(controller, recorder, counter, **kwargs)
         self.node_rank = RWNodeRank()
 
-    def solve(self, instance):
+    def solve(self, instance: dict) -> Solution:
         v_net, p_net  = instance['v_net'], instance['p_net']
         
         v_net_nodes_rank = self.node_rank.rank(v_net)

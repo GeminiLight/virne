@@ -1,10 +1,17 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import os
 import csv
 import copy
 import numpy as np
 import pandas as pd
 from collections import defaultdict, OrderedDict
+from base.solution import Solution
 
+from data import VirtualNetwork, PhysicalNetwork
 
 ###-----------###
 #   Objective   #
@@ -12,8 +19,46 @@ from collections import defaultdict, OrderedDict
 
 
 class Recorder:
-    r"""Record the environment's states and solutions' information during the deployment process"""
-    def __init__(self, counter, summary_dir='records/', save_dir='records/', if_temp_save_records=True, **kwargs):
+    """
+    Record the environment's states and solutions' information during the deployment process.
+
+    Attributes:
+        counter (Counter): the counter of the environment.
+        summary_dir (str): the directory to save the summary of the records.
+        save_dir (str): the directory to save the records.
+        if_temp_save_records (bool): whether to save the records temporarily.
+        record_dir (str): the directory to save the records.
+        curr_record (dict): the current record.
+        memory (list): the memory of the records.
+        v_net_event_dict (dict): for querying the record of v_net.
+        p_net_nodes_for_v_net_dict (dict): for querying the record of p_net.
+        state (dict): the state of the environment.
+
+    Methods:
+        reset() -> None:
+            Reset the recorder, clear the memory and the current record.
+        update_state() -> None:
+            Update the state of the environment.
+        update_curr_record() -> None:
+            Update the current record.
+        save_record() -> None:
+            Save the current record.
+        save_summary() -> None:
+            Save the summary of the records.
+        save_records() -> None:
+            Save the records.
+    """
+    def __init__(self, counter, summary_dir='records/', save_dir='records/', if_temp_save_records=True, **kwargs) -> None:
+        """
+        Initialize the recorder.
+
+        Args:
+            counter (Counter): the counter of the environment.
+            summary_dir (str): the directory to save the summary of the records.
+            save_dir (str): the directory to save the records.
+            if_temp_save_records (bool): whether to save the records temporarily.
+            kwargs (dict): the keyword arguments.
+        """
         self.counter = counter
         self.summary_dir = summary_dir
         self.save_dir = save_dir
@@ -27,7 +72,8 @@ class Recorder:
                 pass
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
+        """Reset the recorder, clear the memory and the current record."""
         self.curr_record = {}
         self.memory = []
         self.v_net_event_dict = {}  # for querying the record of v_net
@@ -54,24 +100,49 @@ class Recorder:
             self.temp_save_path = temp_save_path
             self.written_temp_header = False
 
-    def count_init_p_net_info(self, p_net):
+    def count_init_p_net_info(self, p_net: PhysicalNetwork) -> None:
+        """
+        Count the initial information of the physical network.
+
+        Args:
+            p_net (PhysicalNetwork): The physical network.
+        """
         self.init_p_net_info = {}
         self.init_p_net_info['p_net_available_resource'] = self.counter.calculate_sum_network_resource(p_net)
         self.init_p_net_info['p_net_node_available_resource'] = self.counter.calculate_sum_network_resource(p_net, link=False)
         self.init_p_net_info['p_net_link_available_resource'] = self.counter.calculate_sum_network_resource(p_net, node=False)
 
-    def update_state(self, info_dict):
+    def update_state(self, info_dict: dict) -> None:
+        """
+        Update the state of the environment.
+
+        Args:
+            info_dict (dict): The information to be updated.
+        """
         self.state.update(info_dict)
-    # def ready(self, event):
-    #     self.state['event_id'] = event['id']
-    #     self.state['event_time'] = event['time']
-    #     self.state['event_type'] = event['type']
     
-    def add_info(self, info_dict, **kwargs):
+    def add_info(self, info_dict: dict, **kwargs) -> None:
+        """
+        Add information to the current record.
+
+        Args:
+            info_dict (dict): The information to be added.
+        """
         self.curr_record.update(info_dict)
         self.curr_record.update(kwargs)
 
-    def add_record(self, record, extra_info={}, **kwargs):
+    def add_record(self, record: dict, extra_info: dict = {}, **kwargs) -> dict:
+        """
+        Add a record to the memory.
+
+        Args:
+            record (dict): The record to be added.
+            extra_info (dict, optional): The extra information to be added. Defaults to {}.
+            **kwargs: The extra information to be added.
+
+        Returns:
+            dict: The record added.
+        """
         self.curr_record = {}
         self.curr_record.update(record)
         self.curr_record.update(extra_info)
@@ -80,7 +151,15 @@ class Recorder:
         if self.if_temp_save_records: self.temp_save_record(self.curr_record)
         return self.curr_record
 
-    def count_state(cls, v_net, p_net, solution):
+    def count_state(cls, v_net: VirtualNetwork, p_net: PhysicalNetwork, solution: Solution) -> None:
+        """
+        Count the state of the environment, including the resource utilization of the physical network.
+
+        Args:
+            v_net (VirtualNetwork): The virtual network.
+            p_net (PhysicalNetwork): The physical network.
+            solution (Solution): The solution.
+        """
         cls.state['p_net_available_resource'] = cls.counter.calculate_sum_network_resource(p_net)
         cls.state['p_net_node_available_resource'] = cls.counter.calculate_sum_network_resource(p_net, link=False)
         cls.state['p_net_link_available_resource'] = cls.counter.calculate_sum_network_resource(p_net, node=False)
@@ -114,8 +193,15 @@ class Recorder:
         else:
             raise NotImplementedError
 
-    def count(cls, v_net, p_net, solution):
-        r"""Count the information of environment state and v_net solution."""
+    def count(cls, v_net: VirtualNetwork, p_net: PhysicalNetwork, solution: Solution) -> None:
+        """
+        Count the state of the environment, including the resource utilization of the physical network.
+
+        Args:
+            v_net (VirtualNetwork): The virtual network.
+            p_net (PhysicalNetwork): The physical network.
+            solution (Solution): The solution.
+        """
         # Leave event
         if cls.state['event_type'] == 0:
             solution_info = solution.to_dict()
@@ -130,20 +216,36 @@ class Recorder:
         return record
 
     def get_running_p_net_nodes(cls):
+        """Get the running physical network nodes."""
         return [p_net_nodes for p_net_nodes, v_nets_list in cls.p_net_nodes_for_v_net_dict.items() if len(v_nets_list) != 0]
 
-    def get_record(self, event_id=None, v_net_id=None):
-        r"""Get the record of the service function chain `v_net_id`."""
+    def get_record(self, event_id: int = None, v_net_id: int = None):
+        """Get the record of the service function chain `v_net_id`."""
         if event_id is not None: event_id = event_id
         elif v_net_id is not None: event_id = self.v_net_event_dict[v_net_id]
         else: event_id = self.state['event_id']
         return self.memory[int(event_id)]
 
-    def display_record(self, record, display_items=['result', 'v_net_id', 'v_net_cost', 'v_net_revenue', 'p_net_available_resource', 'total_revenue', 'total_cost', 'description'], extra_items=[]):
+    def display_record(
+            self, 
+            record: dict, 
+            display_items: list = ['result', 'v_net_id', 'v_net_cost', 'v_net_revenue', 
+                           'p_net_available_resource', 'total_revenue', 'total_cost', 'description'], 
+            extra_items: list = []
+        ) -> None:
+        """
+        Display the record.
+
+        Args:
+            record (dict): The record.
+            display_items (list): The items to display.
+            extra_items (list): The extra items to display.
+        """
         display_items = display_items + extra_items
         print(''.join([f'{k}: {v}\n' for k, v in record.items() if k in display_items]))
 
     def temp_save_record(self, record):
+        """Temporarily save the record to a csv file."""
         with open(self.temp_save_path, 'a+', newline='') as f:
             writer = csv.writer(f)
             if not self.written_temp_header:
@@ -152,7 +254,7 @@ class Recorder:
         self.written_temp_header = True
         
     def save_records(self, fname):
-        r"""Save records to a csv file."""
+        """Save the records to a csv file."""
         save_path = os.path.join(self.record_dir, fname)
         pd_records = pd.DataFrame(self.memory)
         pd_records.to_csv(save_path, index=False)
@@ -164,9 +266,11 @@ class Recorder:
 
     ### summary ###
     def summary_records(self, records):
+        """Summary the records."""
         return self.counter.summary_records(records)
 
     def save_summary(self, summary_info, fname='global_summary.csv'):
+        """Save the summary to a csv file."""
         summary_path = os.path.join(self.summary_dir,  fname)
         head = None if os.path.exists(summary_path) else list(summary_info.keys())
         with open(summary_path, 'a+', newline='') as csv_file:

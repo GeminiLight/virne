@@ -1,4 +1,4 @@
-from .enironment import Environment, SolutionStepEnvironment
+from .environment import Environment, SolutionStepEnvironment, JointPRStepEnvironment
 from .controller import Controller
 from .solution import Solution
 from .recorder import Recorder
@@ -7,12 +7,13 @@ from .scenario import Scenario, BasicScenario
 
 
 __all__ = [
-    Environment, 
-    SolutionStepEnvironment,
-    Controller, 
-    Recorder, 
-    Solution,
-    Counter,
-    Scenario,
-    BasicScenario
+    'Environment', 
+    'SolutionStepEnvironment',
+    'JointPRStepEnvironment',
+    'Controller', 
+    'Recorder', 
+    'Solution',
+    'Counter',
+    'Scenario',
+    'BasicScenario',
 ]

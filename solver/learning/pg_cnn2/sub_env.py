@@ -1,3 +1,8 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import numpy as np
 import networkx as nx
 from gym import spaces
@@ -15,7 +20,7 @@ class SubEnv(PlaceStepSubRLEnv):
         self.calcuate_graph_metrics()
 
     def compute_reward(self, solution):
-        r"""Calculate deserved reward according to the result of taking action."""
+        """Calculate deserved reward according to the result of taking action."""
         if solution['result'] :
             reward = solution['v_net_r2c_ratio']
         elif solution['place_result'] and solution['route_result']:
@@ -31,15 +36,14 @@ class SubEnv(PlaceStepSubRLEnv):
     def get_p_net_obs(self):
         # (cpu_remain, degree, sum_bw, avg_dst)
         # node resource
-        n_attrs = self.p_net.get_node_attrs(['resource'])
-        node_attrs_data = np.array(self.p_net.get_node_attrs_data(n_attrs)).T  # (num_nodes, num_attrs)
+        node_attrs_data = self.obs_handler.get_node_attrs_obs(self.p_net, node_attr_types=['resource'])  # (num_nodes, num_attrs)
         norm_node_attrs_data = (node_attrs_data - node_attrs_data.min(axis=0)) / (node_attrs_data.max(axis=0) - node_attrs_data.min(axis=0))
         # edge resource
         e_attrs = self.p_net.get_link_attrs(['resource'])
-        link_aggr_attrs_data = np.array(self.p_net.get_aggregation_attrs_data(e_attrs, aggr='sum')).T  # (num_links, num_attrs)
+        link_aggr_attrs_data = self.obs_handler.get_link_sum_attrs_obs(self.p_net, link_attr_types=['resource'])  # (num_nodes, num_attrs)
         norm_link_aggr_attrs_data = (link_aggr_attrs_data - link_aggr_attrs_data.min(axis=0)) / (link_aggr_attrs_data.max(axis=0) - link_aggr_attrs_data.min(axis=0))
         # avg_dst
-        avg_distance = self.obs_handler.get_average_distance(self.p_net, self.selected_p_net_nodes, normalization=True)
+        avg_distance = self.obs_handler.get_average_distance(self.p_net, self.solution['node_slots'], normalization=True)
         p_net_obs = np.concatenate((norm_node_attrs_data, norm_link_aggr_attrs_data, avg_distance, self.p_net_node_degrees, self.p_net_node_closenesses, self.p_net_node_betweennesses, self.p_net_node_eigenvectors), axis=-1)
         return p_net_obs
 

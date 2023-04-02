@@ -1,16 +1,16 @@
 # cache
 *.py[cod]
-__pycache__/
-.DS_Store
-*/.DS_Store
-.ipynb_checkpoints
-*/.ipynb_checkpoints
+**/__pycache__/
+**/.DS_Store
+**/.ipynb_checkpoints
 
 # records
+*.log
 records/
 save/
 logs/
 other/
+docs/build
 
 # other
 resource/shortest_path

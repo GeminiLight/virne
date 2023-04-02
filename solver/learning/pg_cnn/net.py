@@ -1,5 +1,11 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import torch.nn as nn
 import torch.nn.functional as F
+from ..net import ResNetBlock
 
 
 class ActorCritic(nn.Module):
@@ -24,8 +30,25 @@ class Actor(nn.Module):
             nn.Conv2d(1, 1, kernel_size=[1, feature_dim], stride=[1, 1]),
             nn.ReLU(),
             nn.Flatten(),
+            # nn.Linear(action_dim, action_dim),
+            # nn.ReLU(inplace=False),
         )
-
+        # n_mid_channcels = action_dim * 2
+        # self.net = nn.Sequential(
+        #     # + channcel
+        #     nn.Conv2d(action_dim, n_mid_channcels, kernel_size=[1, 1], stride=[1, 1]),
+        #     ResNetBlock(n_mid_channcels),
+        #     # - feature
+        #     nn.Conv2d(n_mid_channcels, n_mid_channcels, kernel_size=[feature_dim, 1], stride=[1, 1]),
+        #     ResNetBlock(n_mid_channcels),
+        #     # - channcel
+        #     nn.Conv2d(n_mid_channcels, action_dim, kernel_size=[1, 1], stride=[1, 1]),
+        #     ResNetBlock(action_dim),
+        #     # last
+        #     nn.Conv2d(action_dim, action_dim, kernel_size=[1, 1], stride=[1, 1]),
+        #     nn.ReLU(inplace=False),
+        #     nn.Flatten(),
+        # )
     def forward(self, obs):
         """Return logits of actions"""
         action_logits = self.net(obs)

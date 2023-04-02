@@ -1,4 +1,4 @@
-from .pg_cnn2_solver import PgCnn2Solver
+from .solver import PgCnn2Solver
 
 
 __all__ = [

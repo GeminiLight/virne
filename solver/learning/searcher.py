@@ -15,6 +15,27 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_compl
 from .utils import apply_mask_to_logit
 
 
+def get_searcher(decode_strategy, policy, preprocess_obs_func, k, device, mask_actions, maskable_policy):
+    if decode_strategy in [0, 'random']:
+        SearcherClass = RandomSearcher
+    elif decode_strategy in [1, 'greedy']:
+        SearcherClass = GreedySearcher
+    elif decode_strategy in [1, 'sample', 'sampling']:
+        SearcherClass = SampleSearcher
+    elif decode_strategy in [2, 'beam', 'beam_search']:
+        SearcherClass = BeamSearcher
+    elif decode_strategy in [3, 'recovable']:
+        SearcherClass = RecovableSearcher
+    else:
+        raise NotImplementedError
+    searcher = SearcherClass(policy=policy, 
+                            preprocess_obs_func=preprocess_obs_func, 
+                            k=k, device=device,
+                            mask_actions=mask_actions, 
+                            maskable_policy=maskable_policy)
+    return searcher
+
+
 class Searcher:
     
     def __init__(self, policy, preprocess_obs_func, k=1, device=None, mask_actions=True, maskable_policy=True, allow_parallel=True):
@@ -22,15 +43,19 @@ class Searcher:
         self.preprocess_obs_func = preprocess_obs_func
         self.k = k
         self.allow_parallel = allow_parallel
+        self.allow_parallel = False if k == 1 else allow_parallel
         self.mask_actions = mask_actions
         self.maskable_policy = maskable_policy
+        self.mp_pool = None
         if device is None:
             self.device = torch.device('cpu')
         else:
             self.device = device
+        self.softmax_temp = 1. + np.log2(k) * 0.01
 
     def set_mp_pool(self):
         assert self.allow_parallel
+        if self.mp_pool is not None: self.mp_pool.close()
         num_processes =  min(multiprocessing.cpu_count(), self.k)
         self.mp_pool = mp.Pool(processes=num_processes, maxtasksperchild=num_processes * 100)
 
@@ -45,7 +70,7 @@ class Searcher:
             candicate_action_logits = apply_mask_to_logit(action_logits, mask)
         else:
             candicate_action_logits = action_logits
-        candicate_action_probs = F.softmax(candicate_action_logits, dim=-1)
+        candicate_action_probs = F.softmax(candicate_action_logits / self.softmax_temp, dim=-1)
         return candicate_action_probs
 
     def select_action(self, observation, mask=None, sample=True):
@@ -58,10 +83,10 @@ class Searcher:
             candicate_action_logits = action_logits
 
         if self.mask_actions and self.maskable_policy:
-            candicate_action_probs = F.softmax(candicate_action_logits, dim=-1)
+            candicate_action_probs = F.softmax(candicate_action_logits / self.softmax_temp, dim=-1)
             candicate_action_dist = Categorical(probs=candicate_action_probs)
         else:
-            candicate_action_probs = F.softmax(action_logits, dim=-1)
+            candicate_action_probs = F.softmax(action_logits / self.softmax_temp, dim=-1)
             candicate_action_dist = Categorical(probs=candicate_action_dist)
 
         if sample:
@@ -115,6 +140,8 @@ class SampleSearcher(Searcher):
         super(SampleSearcher, self).__init__(policy, preprocess_obs_func, k, device, mask_actions, maskable_policy)
 
     def find_solution(self, sub_env):
+        # children = mp.active_children()
+        # print(len(children))
         if self.allow_parallel: self.set_mp_pool()
 
         env_list = [copy.deepcopy(sub_env) for i in range(self.k)]
@@ -151,7 +178,7 @@ class SampleSearcher(Searcher):
 
         score_list = [env.solution.v_net_r2c_ratio if env.solution.result else 0. for env in env_list]
         solution_list = [str(env.solution['node_slots']) for env in env_list]
-        
+        # print(env_list[0].v_net.num_nodes, score_list)
         best_index = score_list.index(max(score_list))
         return env_list[best_index].solution
 

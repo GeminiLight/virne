@@ -1,3 +1,8 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import random
 import numpy as np
 
@@ -10,13 +15,34 @@ class Generator:
 
     @staticmethod
     def generate_dataset(config, p_net=True, v_nets=True, save=False):
+        """
+        Generate a dataset consisting of a physical network and a virtual network request simulator.
+
+        Args:
+            config (dict or object): Configuration object containing the settings for the generator.
+            p_net (bool): Whether or not to generate a physical network dataset.
+            v_nets (bool): Whether or not to generate a virtual network request simulator dataset.
+            save (bool): Whether or not to save the generated datasets.
+
+        Returns:
+            Tuple: A tuple consisting of the generated physical network and virtual network request simulator.
+        """
         physical_network = Generator.generate_p_net_dataset_from_config(config, save=save) if p_net else None
         v_net_simulator = Generator.generate_v_nets_dataset_from_config(config, save=save) if v_nets else None
         return physical_network, v_net_simulator
 
     @staticmethod
     def generate_p_net_dataset_from_config(config, save=False):
-        r"""generate p_net dataset with the configuratore."""
+        """
+        Generate a physical network dataset based on the given configuration.
+
+        Args:
+            config (dict or object): Configuration object containing the settings for the generator.
+            save (bool): Whether or not to save the generated dataset.
+
+        Returns:
+            PhysicalNetwork: A PhysicalNetwork object representing the generated dataset.
+        """
         if not isinstance(config, dict):
             config = vars(config)
         p_net_setting = config['p_net_setting']
@@ -36,7 +62,16 @@ class Generator:
 
     @staticmethod
     def generate_v_nets_dataset_from_config(config, save=False):
-        r"""generate v_net dataset with the configuratore."""
+        """
+        Generate a virtual network request simulator dataset based on the given configuration.
+
+        Args:
+            config (dict or object): Configuration object containing the settings for the generator.
+            save (bool): Whether or not to save the generated dataset.
+
+        Returns:
+            VirtualNetworkRequestSimulator: A VirtualNetworkRequestSimulator object representing the generated dataset.
+        """
         if not isinstance(config, dict):
             config = vars(config)
         v_sim_setting = config['v_sim_setting']

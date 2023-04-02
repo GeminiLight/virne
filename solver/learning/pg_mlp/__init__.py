@@ -1,6 +1,6 @@
-from .pg_mlp_solver import PGMLPSolver
+from .pg_mlp_solver import PgMlpSolver
 
 
 __all__ = [
-    PGMLPSolver,
+    PgMlpSolver,
 ]

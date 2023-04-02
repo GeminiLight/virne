@@ -1,8 +1,13 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import copy
 import numpy as np
 import networkx as nx
 
-from .utils import path_to_links, generate_data_with_distribution
+from utils import path_to_links, generate_data_with_distribution
 
 
 """

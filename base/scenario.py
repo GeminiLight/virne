@@ -1,13 +1,16 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import os
 import tqdm
 import pprint
-
 
 from .controller import Controller
 from .recorder import Recorder
 from .counter import Counter
 from .solution import Solution
-from .loader import load_simulator
 from config import show_config, save_config
 from data.physical_network import PhysicalNetwork
 from data.virtual_network_request_simulator import VirtualNetworkRequestSimulator
@@ -23,22 +26,19 @@ class Scenario:
         self.verbose = config.verbose
 
     @classmethod
-    def from_config(cls, config):
-        # load Env and Solver class
-        Env, Solver = load_simulator(config.solver_name)
-
+    def from_config(cls, Env, Solver, config):
         # Create basic class: controller, recorder, counter, recorder
         counter = Counter(config.v_sim_setting['node_attrs_setting'], 
                           config.v_sim_setting['link_attrs_setting'], 
                           **vars(config))
-        controller = Controller(counter, 
-                                config.v_sim_setting['node_attrs_setting'], 
+        controller = Controller(config.v_sim_setting['node_attrs_setting'], 
                                 config.v_sim_setting['link_attrs_setting'], 
                                 **vars(config))
         recorder = Recorder(counter, **vars(config))
 
         # Create p_net and v_net simulator
         config.p_net_dataset_dir = get_p_net_dataset_dir_from_setting(config.p_net_setting)
+        print(config.p_net_dataset_dir)
         if os.path.exists(config.p_net_dataset_dir):
             p_net = PhysicalNetwork.load_dataset(config.p_net_dataset_dir)
             print(f'Load Physical Network from {config.p_net_dataset_dir}') if config.verbose >= 1 else None
@@ -59,13 +59,12 @@ class Scenario:
 
         return scenario
 
-
     def reset(self):
         pass
 
     def ready(self):
         # load pretrained model
-        if hasattr(self.solver, 'load_model') and self.config.pretrained_model_path not in [None, '']:
+        if hasattr(self.solver, 'load_model') and self.config.pretrained_model_path not in ['None', '']:
             if os.path.exists(self.config.pretrained_model_path):
                 self.solver.load_model(self.config.pretrained_model_path)
             else:
@@ -86,16 +85,15 @@ class BasicScenario(Scenario):
 
     def run(self):
         self.ready()
-        
+
         for epoch_id in range(self.config.start_epoch, self.config.start_epoch + self.config.num_epochs):
             print(f'\nEpoch {epoch_id}') if self.verbose >= 2 else None
             instance = self.env.reset()
+
             pbar = tqdm.tqdm(desc=f'Running with {self.config.solver_name} in epoch {epoch_id}', total=self.env.num_v_nets) if self.verbose <= 1 else None
 
             while True:
                 solution = self.solver.solve(instance)
-
-                # solution.display()
 
                 next_instance, _, done, info = self.env.step(solution)
 

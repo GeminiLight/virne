@@ -1,13 +1,22 @@
+# ==============================================================================
+# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
+# ==============================================================================
+
+
 import copy
 import threading
 import numpy as np
 from threading import Thread
 
+from base.environment import SolutionStepEnvironment
+from solver import registry
 from .meta_heuristic_solver import Individual, MetaHeuristicSolver
-
+from data import VirtualNetwork, PhysicalNetwork
+from base import Controller, Recorder, Counter, Solution
 
 """
-[CEC, 2017] Link mapping-oriented ant colony system for virtual network embedding
+[CEC, 2017]
+Link mapping-oriented ant colony system for virtual network embedding
 
 population size: 20
 number of iteration: 10
@@ -21,11 +30,30 @@ class Ant(Individual):
         super(Ant, self).__init__(id, v_net, p_net)
 
 
+@registry.register(
+    solver_name='aco_vne', 
+    env_cls=SolutionStepEnvironment,
+    solver_type='meta_heuristic')
 class AntColonyOptimizationSolver(MetaHeuristicSolver):
     """
-    Ant Colony Optimization
+    Ant Colony Optimization for VNE
+
+    References:
+        - Ilhem Fajjari et al. "VNE-AC: Virtual Network Embedding Algorithm Based on Ant Colony Metaheuristic". In ICC, 2011.
+        - Hong-Kun Zheng et al. "Link mapping-oriented ant colony system for virtual network embedding". In CEC, 2017.
+    
+    Attributes:
+        num_ants: number of ants
+        max_iteration: max iteration
+        hop_range: hop-range within local search area
+        alpha: control the influence of the amount of pheromone when making a choice in _pick_path()
+        beta: control the influence of the distance to the next node in _pick_path()
+        coeff_pheromone_evaporation: pheromone evaporation coefficient
+        coeff_pheromone_enhancement: enhance pheromone coefficient
+        enhence_pheromone: enhance pheromone method, ['best', 'all', 'both']
+        node_ranking_method: node ranking method, ['rw', 'dp']
     """
-    def __init__(self, controller, recorder, counter, **kwargs):
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
         super(AntColonyOptimizationSolver, self).__init__('aco_vne', controller, recorder, counter, **kwargs)
         # super parameters
         self.num_ants = 10
@@ -35,10 +63,10 @@ class AntColonyOptimizationSolver(MetaHeuristicSolver):
         self.beta = 2.0     # control the influence of the distance to the next node in _pick_path()
         self.coeff_pheromone_evaporation = 0.5   # pheromone evaporation coefficient
         self.coeff_pheromone_enhancement = 1.  # enhance pheromone coefficient
-        self.enhence_pheromone = 'best'  # ['all', 'best', 'both']
+        self.enhence_pheromone = 'best'
         self.node_ranking_method = 'rw'
 
-    def meta_run(self, v_net, p_net):
+    def meta_run(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
         self.heuristic_info = self.calc_heuristic_info(p_net)
         self.pheromone_trail = self.init_pheromone_trail(self.candidates_dict, value=1.)
 
