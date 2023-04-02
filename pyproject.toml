@@ -36,7 +36,7 @@ dependencies = [
     "pandas >=  1.5.3",
     "matplotlib >= 3.7.1",
     "scipy >= 1.7.0",
-    'pyg',
+    'torch_geometric',
     'stable-baselines3 >= 1.2.0',
     'sb3-contrib >= 1.2.0',
     'gym >= 0.19.0',
