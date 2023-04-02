@@ -1,0 +1,11 @@
+myst-parser
+sphinx-design
+sphinx
+sphinx-copybutton
+sphinx-press-theme
+sphinx-markdown-tables
+recommonmark
+sphinx-autoapi
+sphinx-autobuild
+sphinx_autodoc_typehints
+furo

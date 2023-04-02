@@ -1,6 +1,6 @@
-from .solver import PGSeq2SeqSolver
+from .solver import PgSeq2SeqSolver
 
 
 __all__ = [
-    PGSeq2SeqSolver,
+    PgSeq2SeqSolver,
 ]

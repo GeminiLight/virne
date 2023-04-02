@@ -1,4 +1,4 @@
-solver.learning.pg\_seq2seq.solver
+﻿solver.learning.pg\_seq2seq.solver
 ==================================
 
 .. automodule:: solver.learning.pg_seq2seq.solver
@@ -23,7 +23,7 @@ solver.learning.pg\_seq2seq.solver
 
    .. autosummary::
    
-      PGSeq2SeqSolver
+      PgSeq2SeqSolver
    
    
 

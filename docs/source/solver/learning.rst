@@ -34,7 +34,7 @@ GaeClusteringSolver
 
 
 HopfieldNetworkSolver
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 .. card::
     :class-header: sd-bg-success sd-text-white

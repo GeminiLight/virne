@@ -24,7 +24,7 @@ from ..rl_solver import InstanceAgent, RLSolver, PGSolver
     solver_name='pg_seq2seq',
     env_cls=SolutionStepEnvironment,
     solver_type='r_learning')
-class PGSeq2SeqSolver(InstanceAgent, PGSolver):
+class PgSeq2SeqSolver(InstanceAgent, PGSolver):
     """
     A Reinforcement Learning-based solver that uses 
     Policy Gradient (PG) as the training algorithm and 

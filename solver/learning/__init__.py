@@ -4,7 +4,7 @@ from .mcts import MctsSolver
 from .pg_mlp import PgMlpSolver
 from .pg_cnn import PgCnnSolver
 from .pg_cnn2 import PgCnn2Solver
-from .pg_seq2seq import PGSeq2SeqSolver
+from .pg_seq2seq import PgSeq2SeqSolver
 
 
 __all__ = [
@@ -16,5 +16,5 @@ __all__ = [
     'PgMlpSolver',
     'PgCnnSolver',
     'PgCnn2Solver',
-    'PGSeq2SeqSolver',
+    'PgSeq2SeqSolver',
 ]

@@ -3,20 +3,57 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Virne: A Unified Framework for VNE
-==================================
+Virne: Learning-based Framework for VNE
+=======================================
 
 .. note::
 
-  **Virne** is still under development. If you have any questions, please contact me via email: wtfly2018@gmail.com.
+  **Virne** is still under development. 
+  If you have any questions, 
+  please open an new issue on `Github <https://github.com/GeminiLight/virne>`_  or 
+  contact me via email: wtfly2018@gmail.com.
 
 **Virne** is a Python framework for Virtual Network Embedding (VNE) with the following characteristics:
 
-#. **Lightweight**: Environments and algorithms are implemented concisely, using three necessary dependencies (networkx, numpy, pandas).
-#. **Develop efficiently**: General operation methods are implemented uniformly and several environments for RL are supplied in gym.Env-style.
-#. **Rich implementations**: Various algorithms are preset here and unified interfaces for calling are provided.
 
-Supported features
+
+.. grid:: 12 4 4 4
+
+    .. grid-item-card::
+        :class-item: sd-font-weight-bold
+        :class-header: sd-bg-info sd-text-white sd-font-weight-bold
+        :class-card: sd-outline-info  sd-rounded-1
+        :columns: 12 6 6 4
+
+        Rich implementations
+        ^^^^^^^^^^^^^^^^^^^^
+        Provide ~20 VNE algorithms (including exact, heuristic, meta-heuristic, and learning-based), able to call them with unified interfaces.
+
+    .. grid-item-card::
+        :class-item: sd-font-weight-bold
+        :class-header: sd-bg-success sd-text-white sd-font-weight-bold
+        :class-card: sd-outline-success  sd-rounded-1
+        :columns: 12 6 6 4
+
+        Extensible Development
+        ^^^^^^^^^^^^^^^^^^^^^^
+        Implement operation methods in general ways, and preset various neural network modules and reinforcement learning environments.
+
+
+    .. grid-item-card::
+        :class-item: sd-font-weight-bold
+        :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
+        :class-card: sd-outline-primary  sd-rounded-1
+        :columns: 12 6 6 4
+
+
+        Light-Weight
+        ^^^^^^^^^^^^
+        Environments and algorithms are implemented concisely, using three necessary dependencies (networkx, numpy, pandas, etc).
+
+
+Supported Features
+------------------
 
 - **Diverse Network Topologies**
   
@@ -28,15 +65,18 @@ Supported features
   - Customlized Topology 
   
 - **Graph/ Node / Link-level Attributes**: 
+
   - For resources/ constraints/ QoS
   - Graph Level: e.g. the global requirements of virtual network
   - Node level: e.g. Node resource, node position
   - Link level: e.g. Link resource, link latency
   
 - **Multiple RL Environments**
+  
   - Provide serval RL Environments in gym.Env-style
   
 - **Various Simulation Scenarios**
+  
   - Admission control: Reject Early some not cost-effective virtual networks
   - Time window: Developping
   
@@ -45,10 +85,6 @@ Supported features
 .. image:: _static/workflow.jpg
   :width: 1000
   :alt: Overall Workflow of Virne
-
-
-Contents
-----------
 
 
 .. toctree::
@@ -97,7 +133,7 @@ Contents
 
 
 Citation
-========
+--------
 
 ..  code-block:: bib
 
@@ -113,7 +149,7 @@ Citation
 
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
