@@ -13,10 +13,10 @@ Complete installation
 .. code-block:: bash
 
     # only cpu
-    bash requirements.sh -c 0
+    bash install.sh -c 0
 
     # use cuda (optional version: 10.2, 11.3)
-    bash requirements.sh -c 11.3
+    bash install.sh -c 11.3
 
 
 Selective installation
