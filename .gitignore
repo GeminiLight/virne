@@ -18,8 +18,8 @@ resource/shortest_path
 resource/visualization
 
 # dataset
-dataset/vns/
-dataset/pn/
+dataset/v_nets/
+dataset/p_net/
 dataset/raw_topylogy_zoo/
 
 # unfinished
