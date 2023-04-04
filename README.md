@@ -3,35 +3,43 @@
 
 <p align="center">
   <a href="https://geminilight.github.io/virne-docs/">Documentation</a> |
+  <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a> |
   <a href="https://github.com/GeminiLight/virne#license">License</a>
 </p>
 
 --------------------------------------------------------------------------------
 
+**Virne** is a simulator for **resource allocation problems in network virtualization**, mainly for **virtual network embedding (VNE)**. 
+It also is adaptable to VNE's variants, such as **service function chain deployment (SFC Deployment)**, **network slicing**, etc. 
+Specifically, it provides a unified interface for various VNE algorithms, and provides a variety of network topologies, network attributes, and RL environments.
+
+Its main characteristics are as follows.
+
+- **Rich Implementations**: Provide 20+ solvers, including exact, heuristic, meta-heuristic, and learning-based algorithms.
+- **Extensible Development**: Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
+- **Light-Weight**: Implement concisely with less necessary dependencies, and can be extended easily for specific algorithms.
+        
+
+![](resource/figures/workflow.jpg)
+
+
+### Release History
 
 > Virne is still under development. If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 > 
 > - Completing the documentation
 > - Implementing more VNE algorithms
-> 
-> Release History
-> 
-> `v0.4` Construct the documentation, refactor the stucture, add comments and fix the bug about RNN-based VNE solver
-> 
-> `v0.3` Refactor the stucture and release several algorithms (including exact, heuristic, meta-heuristic, and learning-based methods)
-> 
-> `v0.2` Release one Model-base RL (MCTS) approach and one Model-free RL (PG-CNN) algorithm
-> 
-> `v0.1` Release the implementation of environment and some heuristics-based solvers for VNE problem
 
-**Virne** is a framework for Virtual Network Embedding (VNE) problem with the following characteristics:
+- `v0.4` Construct the documentation, refactor the stucture, add comments and fix the bug about RNN-based VNE solver
+- `v0.3` Refactor the stucture and release several algorithms (including exact, heuristic, meta-heuristic, and learning-based methods)
+- `v0.2` Release one Model-base RL (MCTS) approach and one Model-free RL (PG-CNN) algorithm
+- `v0.1` Release the implementation of environment and some heuristics-based solvers for VNE problem
 
-- **Lightweight**: Environments and algorithms are implemented concisely, using three necessary dependencies (networkx, numpy, pandas).
-- **Develop efficiently**: General operation methods are implemented uniformly and several environments for RL are supplied in gym.Env-style.
-- **Rich implementations**: Various algorithms are preset here and unified interfaces for calling are provided.
+### Supported Features
 
-Supported features
-
+- **Adaptation to VNE Variants**
+  - Service Function Chain Deployment (SFC Deployment)
+  - Network Slicing
 - **Diverse Network Topologies**
   - Star Graph: Data Center Network
   - 2D-grid Graph: Grid Network
@@ -50,10 +58,29 @@ Supported features
   - Admission control: Reject Early some not cost-effective virtual networks
   - Time window: Developping
 
+### Citation
 
-Workflow
+Please cite our papers if you use Virne in your research.
 
-![](resource/figures/workflow.jpg)
+Our Related Papers
+
+**[ICC, 2021] DRL-SFCP**
+
+```bibtex
+@INPROCEEDINGS{tfw-icc-2021-drl-sfcp,
+  author={Wang, Tianfu and Fan, Qilin and Li, Xiuhua and Zhang, Xu and Xiong, Qingyu and Fu, Shu and Gao, Min},
+  booktitle={ICC 2021 - IEEE International Conference on Communications}, 
+  title={DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={1-6},
+  doi={10.1109/ICC42927.2021.9500964}
+}
+```
+
+**[TSC, Reviewing] HRL-ACRA**
+
 
 ## VNE Problem
 
@@ -125,6 +152,7 @@ $$
 | Name                           | Command                | Type         | Mapping  | Title                                                        | Publication    | Year | Note |
 | ------------------------------ | ---------------------- | ------------ | ------------------------------------------------------------ | -------------- | ---- | ---- | ------------------------------ |
 | PG-CNN2 | `pg_cnn2` | `learning`   | `two-stage` | [A Virtual Network EmbeddingAlgorithm Based On Double-LayerReinforcement Learning](https://ieeexplore.ieee.org/document/9500964) | The Computer Journal | 2022 |  |
+| A3C-G3C-Seq2Seq* | `a3c_gcn_seq2seq` | `learning` | `joint_pr`   | [DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning](https://ieeexplore.ieee.org/document/9500964)     | ICC         | 2021 |             |
 | PG-CNN-QoS | `pg_cnn_qos` | `learning`   | `two-stage` | [Resource Management and Security Scheme of ICPSs and IoT Based on VNE Algorithm](https://arxiv.org/pdf/2202.01375.pdf) | IoTJ | 2021 |  |
 | PG-Seq2Seq      | `pg_seq2seq` | `learning`   | `joint_pr` | [A Continuous-Decision Virtual Network Embedding Scheme Relying on Reinforcement Learning](https://ieeexplore.ieee.org/document/8982091) | TNSM   | 2020 |  |
 | GAE-Clustering                    | `gae_clustering`          | `learning`   | `bfs_trials` | [Accelerating Virtual Network Embedding with Graph Neural Networks](https://ieeexplore.ieee.org/document/9269128) | CNSM           | 2020 | Clustering |
@@ -193,59 +221,11 @@ $$
 | First Fit Decreasing Joint Place and Route    | `ffd_joint_pr`      | `joint_pr`   |
 | First Fit Decreasing Rank Breath First Search | `ffd_bfs_trials`    | `bfs_trials` |
 
-## File Structure
-
-```plain text
-virne
-│
-├─base
-│  ├─recorder
-│  ├─controller
-│  └─enviroment
-│
-├─solver
-│  ├─exact
-│  ├─learning
-│  ├─heuritics
-│  └─meta_heuritics
-│
-├─data
-│  ├─attribute.py
-│  ├─generator.py
-│  ├─network.py
-│  ├─physical_network.py
-│  ├─virtual_network.py
-│  ├─v_net_simulator.py
-│  └─utils.py
-│
-├─dataset
-│  ├─p_net
-│  └─v_nets
-│
-├─records
-│  ├─..
-│  └─global_summary.csv
-│
-├─settings
-│  ├─v_sim_setting.yaml
-│  └─p_net_setting.yaml
-│
-├─tester
-│  └─tester.py
-│
-├─save
-├─logs
-│
-├─config.py
-├─utils.py
-└─main.py
-```
-
 ## Quick Start
 
 The structure of this framework are still optimized steadily. We will construct the first version of the document as soon as possible until stability is ensured.
 
-### Requirements
+### Installation
 
 #### Complete installation
 
@@ -287,22 +267,45 @@ pip install --force-reinstall scipy
 ### Minimal Example
 
 ```Python
-# get config
+import os
+from config import get_config, show_config, save_config, load_config
+from data import Generator
+from base import BasicScenario
+from solver import REGISTRY
+
+# 1. Get Config
+# The key settings are controlled with config.py
+# while other advanced settings are listed in settings/*.yaml
 config = get_config()
 
 # generate p_net and v_net dataset
 Generator.generate_dataset(config)
 
+
+# 2. Generate Dataset
+# Although we do not generate a static dataset,
+# the environment will automatically produce a random dataset.
+p_net, v_net_simulator = Generator.generate_dataset(
+    config, 
+    p_net=False, 
+    v_nets=False, 
+    save=False) # Here, no dataset will be generated and saved.
+
+# 3. Start to Run
+# A scenario with an environment and a solver will be create following provided config.
+# The interaction between the environment and the solver will happen in this scenario.
+print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
+# load Env and Solver
+solver_info = REGISTRY.get(config.solver_name)
+Env, Solver = solver_info['env'], solver_info['solver']
+print(f'Use {config.solver_name} Solver (Type = {solver_info["type"]})...\n')
+
 # create scenario with Env and Solver
-scenario = create_scenario(config)
-
-# use Solver in Env
+scenario = BasicScenario.from_config(Env, Solver, config)
 scenario.run()
+
+print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")
 ```
-
-## Document
-
-Under constructing ...
 
 ## To-do List
 

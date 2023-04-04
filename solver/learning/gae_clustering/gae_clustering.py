@@ -19,7 +19,7 @@ from ...solver import Solver
     solver_type='us_learning')
 class GaeClusteringSolver(Solver):
     """
-    A unsupervised learning solver that uses Graph Auto-Encoder (GAE) to cluster the physical nodes.
+    An Unsupervised Learning solver that uses Graph Auto-Encoder (GAE) to cluster the physical nodes.
     
     References:
         - Farzad Habibi et al. "Accelerating Virtual Network Embedding with Graph Neural Networks". In CNSM, 2020.

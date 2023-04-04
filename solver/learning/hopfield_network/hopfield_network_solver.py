@@ -17,11 +17,13 @@ from ...heuristic.node_rank import GRCRankSolver
 
 
 @registry.register(
-    solver_name='hopfield', 
+    solver_name='hopfield_network', 
     env_cls=SolutionStepEnvironment,
-    solver_type='s_learning')
+    solver_type='us_learning')
 class HopfieldNetworkSolver(Solver):
-    
+    """
+    An Unsupervised Learning-based solver that uses Hopfield Network to construct the subgraph.
+    """
     def __init__(self, controller, recorder, counter, **kwargs):
         super(HopfieldNetworkSolver, self).__init__(controller, recorder, counter, **kwargs)
         self.k = 2.5

@@ -5,6 +5,7 @@ from .pg_mlp import PgMlpSolver
 from .pg_cnn import PgCnnSolver
 from .pg_cnn2 import PgCnn2Solver
 from .pg_seq2seq import PgSeq2SeqSolver
+from .a3c_gcn_seq2seq import A3CGcnSeq2SeqSolver
 
 
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     'PgCnnSolver',
     'PgCnn2Solver',
     'PgSeq2SeqSolver',
+    'A3CGcnSeq2SeqSolver'
 ]

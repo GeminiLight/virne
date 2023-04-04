@@ -18,6 +18,7 @@ class SafeInstanceAgent(InstanceAgent):
 
     def __init__(self):
         super(SafeInstanceAgent, self).__init__()
+        self.compute_advantage_method = 'mc'
 
     def learn(self, env, num_epochs=1, start_epoch=0, save_timestep=1000, config=None, **kwargs):
         # main env
@@ -31,8 +32,7 @@ class SafeInstanceAgent(InstanceAgent):
             revenue2cost_list = []
             cost_list = []
             for i in range(env.num_v_nets):
-                ### -- baseline -- ##
-                baseline_solution_info = self.get_baseline_solution_info(instance, self.use_baseline_solver)
+
                 ### --- sub env --- ###
                 sub_buffer = RolloutBuffer()
                 v_net, p_net = instance['v_net'], instance['p_net']
@@ -58,27 +58,10 @@ class SafeInstanceAgent(InstanceAgent):
                     
                 solution = sub_env.solution
                 # sub_env.solution['result'] or self.use_negative_sample:  #  or True
-                if sub_env.solution.is_feasible(): success_count = success_count + 1 
-                if self.use_negative_sample:
-                    if baseline_solution_info['result'] or sub_env.solution['result']:
-                        revenue2cost_list.append(sub_reward)
-                        # sub_logprob = torch.cat(sub_logprob_list, dim=0).mean().unsqueeze(dim=0)
-                        sub_buffer.compute_mc_returns(gamma=self.gamma)
-                        self.buffer.merge(sub_buffer)
-                        epoch_logprobs += sub_buffer.logprobs
-                        self.time_step += 1
-                    else:
-                        pass
-                elif sub_env.solution['result']:  #  or True
-                    revenue2cost_list.append(sub_reward)
-                    # sub_logprob = torch.cat(sub_logprob_list, dim=0).mean().unsqueeze(dim=0)
-                    sub_buffer.compute_mc_returns(gamma=self.gamma)
-                    self.buffer.merge(sub_buffer)
-                    epoch_logprobs += sub_buffer.logprobs
-                    self.time_step += 1
-                else:
-                    pass
 
+                self.merge_instance_experience(instance, solution, sub_buffer, last_value=None)
+                
+                if sub_env.solution.is_feasible(): success_count = success_count + 1 
                 # update parameters
                 if self.buffer.size() >= self.target_steps:
                     avg_cost = sum(cost_list) / len(cost_list)

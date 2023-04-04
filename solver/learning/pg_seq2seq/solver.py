@@ -40,6 +40,7 @@ class PgSeq2SeqSolver(InstanceAgent, PGSolver):
             {'params': self.policy.parameters(), 'lr': self.lr_actor},
         ])
         self.SubEnv = SubEnv
+        self.preprocess_encoder_obs = encoder_obs_to_tensor
         self.preprocess_obs = obs_as_tensor
         self.compute_advantage_method = 'mc'
 
@@ -48,7 +49,7 @@ class PgSeq2SeqSolver(InstanceAgent, PGSolver):
         sub_env = self.SubEnv(p_net, v_net, self.controller, self.recorder, self.counter, **self.basic_config)
         sub_obs = sub_env.get_observation()
         sub_done = False
-        outputs = self.policy.encode(self.preprocess_obs(sub_obs, device=self.device))
+        outputs = self.policy.encode(self.preprocess_encoder_obs(sub_obs, device=self.device))
         p_node_id = p_net.num_nodes
         while not sub_done:
             hidden_state, cell_state = self.policy.get_last_rnn_state()
@@ -70,25 +71,14 @@ class PgSeq2SeqSolver(InstanceAgent, PGSolver):
             sub_obs = next_sub_obs
         return sub_env.solution
 
-
-
-    def learn_with_instance(self, instance, revenue2cost_list, epoch_logprobs):
-        ### -- baseline -- ##
-        if self.use_baseline_solver: # or self.use_negative_sample
-            baseline_solution = self.baseline_solver.solve(instance)
-            baseline_solution_info = self.counter.count_solution(instance['v_net'], baseline_solution)
-        else:
-            baseline_solution_info = {
-                'result': True,
-                'v_net_r2c_ratio': 0
-            }
+    def learn_with_instance(self, instance):
         # sub env for sub agent
         sub_buffer = RolloutBuffer()
         v_net, p_net = instance['v_net'], instance['p_net']
         sub_env = self.SubEnv(p_net, v_net, self.controller, self.recorder, self.counter, **self.basic_config)
         sub_obs = sub_env.get_observation()
         sub_done = False
-        outputs = self.policy.encode(self.preprocess_obs(sub_obs, device=self.device))
+        outputs = self.policy.encode(self.preprocess_encoder_obs(sub_obs, device=self.device))
         p_node_id = p_net.num_nodes
         while not sub_done:
             hidden_state, cell_state = self.policy.get_last_rnn_state()
@@ -113,54 +103,47 @@ class PgSeq2SeqSolver(InstanceAgent, PGSolver):
 
             sub_obs = next_sub_obs
 
+        last_value = self.estimate_obs(self.preprocess_obs(next_sub_obs, self.device)) if hasattr(self.policy, 'evaluate') else None
         solution = sub_env.solution
-        if self.use_negative_sample:
-            if baseline_solution_info['result'] or sub_env.solution['result']:
-                revenue2cost_list.append(sub_reward)
-                last_value = self.estimate_obs(self.preprocess_obs(next_sub_obs, self.device)) if hasattr(self.policy, 'evaluate') else None
-                sub_buffer.compute_returns_and_advantages(last_value, gamma=self.gamma, gae_lambda=self.gae_lambda, method=self.compute_advantage_method)
-                self.buffer.merge(sub_buffer)
-                epoch_logprobs += sub_buffer.logprobs
-                self.time_step += 1
-            else:
-                pass
-        elif sub_env.solution['result']:  #  or True
-            revenue2cost_list.append(sub_reward)
-            sub_buffer.compute_mc_returns(gamma=self.gamma)
-            self.buffer.merge(sub_buffer)
-            epoch_logprobs += sub_buffer.logprobs
-            self.time_step += 1
-        else:
-            pass
-        return solution
+        return solution, sub_buffer, last_value
+
+
+def encoder_obs_to_tensor(obs, device):
+    # one
+    if isinstance(obs, dict):
+        """Preprocess the observation to adapte to batch mode."""
+        obs_p_net_x = torch.FloatTensor(obs['p_net_x']).unsqueeze(dim=0).to(device)
+        return {'p_net_x': obs_p_net_x}
+    # batch
+    elif isinstance(obs, list):
+        obs_batch = obs
+        p_net_x_list = []
+        for observation in obs_batch:
+            p_net_x = observation['p_net_x']
+            p_net_x_list.append(p_net_x)
+        obs_p_net_x = torch.FloatTensor(np.array(p_net_x_list)).to(device)
+        return {'p_net_x': obs_p_net_x}
+
 
 def obs_as_tensor(obs, device):
     # one
     if isinstance(obs, dict):
         """Preprocess the observation to adapte to batch mode."""
-        tensor_obs = {}
-        for key in obs:
-            tensor_obs[key] = obs[key]
-            if key == 'p_node_id':
-                tensor_obs[key] = torch.LongTensor([obs[key]]).to(device)
-            elif key == 'obs':
-                tensor_obs[key] = torch.FloatTensor(obs[key]).unsqueeze(dim=0).to(device)
-            elif key == 'hidden_state' or key == 'cell_state':
-                tensor_obs[key] = torch.FloatTensor(obs[key]).unsqueeze(dim=1).to(device)
-        return tensor_obs
+        obs_p_node_id = torch.LongTensor([obs['p_node_id']]).to(device)
+        obs_hidden_state = torch.FloatTensor(obs['hidden_state']).unsqueeze(dim=1).to(device)
+        obs_cell_state = torch.FloatTensor(obs['cell_state']).unsqueeze(dim=1).to(device)
+        return {'p_node_id': obs_p_node_id, 'hidden_state': obs_hidden_state, 'cell_state': obs_cell_state}
     # batch
     elif isinstance(obs, list):
         obs_batch = obs
-        tensor_obs = {}
-        for key in obs_batch[0]:
-            tensor_obs[key] = [one_obs[key] for one_obs in obs_batch]
-        for key in tensor_obs:
-            if key == 'p_node_id':
-                tensor_obs[key] = torch.LongTensor(np.array(tensor_obs[key])).to(device)
-            elif key == 'obs':
-                tensor_obs[key] = torch.FloatTensor(np.array(tensor_obs[key])).to(device)
-            elif key == 'hidden_state' or key == 'cell_state':
-                tensor_obs[key] = torch.FloatTensor(np.array(tensor_obs[key])).permute(1, 0, 2).to(device)
-        return tensor_obs
+        p_node_id_list, hidden_state_list, cell_state_list = [], [], []
+        for observation in obs_batch:
+            p_node_id_list.append(observation['p_node_id'])
+            hidden_state_list.append(observation['hidden_state'])
+            cell_state_list.append(observation['cell_state'])
+        obs_p_node_id = torch.LongTensor(np.array(p_node_id_list)).to(device)
+        obs_hidden_state = torch.FloatTensor(np.array(hidden_state_list)).permute(1, 0, 2).to(device)
+        obs_cell_state = torch.FloatTensor(np.array(cell_state_list)).permute(1, 0, 2).to(device)
+        return {'p_node_id': obs_p_node_id, 'hidden_state': obs_hidden_state, 'cell_state': obs_cell_state}
     else:
         raise ValueError('obs type error')

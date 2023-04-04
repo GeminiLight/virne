@@ -23,7 +23,7 @@ else
 fi
 
 # basic
-pip install numpy pandas matplotlib networkx pyyaml tqdm ortools
+pip install numpy pandas matplotlib networkx pyyaml tqdm ortools colorama
 
 # for DL
 if [[ "${supported_cuda_versions[@]}" =~ "${cuda}" ]] ; then
@@ -32,10 +32,11 @@ else
     echo -e "y" | conda install pytorch==1.11.0 -c pytorch
 fi
 
+
 pip install tensorboard
 # for GNN 
 echo -e "y" | conda install pyg -c pyg -c conda-forge
 # for RL
-pip install gym==0.19.0 stable_baselines3 sb3_contrib
+pip install gym=0.21.0
 
 pip install --force-reinstall scipy

@@ -154,9 +154,7 @@ class InstanceAgent(object):
         baseline_solution_info = self.counter.count_solution(instance['v_net'], baseline_solution)
         return baseline_solution_info
 
-    def learn_with_instance(self, instance, revenue2cost_list, epoch_logprobs):
-        ### -- baseline -- ##
-        baseline_solution_info = self.get_baseline_solution_info(instance, self.use_baseline_solver)
+    def learn_with_instance(self, instance):
         # sub env for sub agent
         sub_buffer = RolloutBuffer()
         v_net, p_net = instance['v_net'], instance['p_net']
@@ -179,28 +177,26 @@ class InstanceAgent(object):
             sub_obs = next_sub_obs
 
         solution = sub_env.solution
+        last_value = self.estimate_obs(self.preprocess_obs(next_sub_obs, self.device)) if hasattr(self.policy, 'evaluate') else None
+        return solution, sub_buffer, last_value
+
+    def merge_instance_experience(self, instance, solution, sub_buffer, last_value):
+        ### -- use_negative_sample -- ##
         if self.use_negative_sample:
-            if baseline_solution_info['result'] or sub_env.solution['result']:
-                revenue2cost_list.append(sub_reward)
-                # sub_logprob = torch.cat(sub_logprob_list, dim=0).mean().unsqueeze(dim=0)
-                # sub_buffer.compute_mc_returns(gamma=self.gamma)
-                last_value = self.estimate_obs(self.preprocess_obs(next_sub_obs, self.device)) if hasattr(self.policy, 'evaluate') else None
-                sub_buffer.compute_returns_and_advantages(last_value, gamma=self.gamma, gae_lambda=self.gae_lambda)
+            baseline_solution_info = self.get_baseline_solution_info(instance, self.use_baseline_solver)
+            if baseline_solution_info['result'] or solution['result']:
+                sub_buffer.compute_returns_and_advantages(last_value, gamma=self.gamma, gae_lambda=self.gae_lambda, method=self.compute_advantage_method)
                 self.buffer.merge(sub_buffer)
-                epoch_logprobs += sub_buffer.logprobs
                 self.time_step += 1
             else:
                 pass
-        elif sub_env.solution['result']:  #  or True
-            revenue2cost_list.append(sub_reward)
-            # sub_logprob = torch.cat(sub_logprob_list, dim=0).mean().unsqueeze(dim=0)
+        elif solution['result']:  #  or True
             sub_buffer.compute_mc_returns(gamma=self.gamma)
             self.buffer.merge(sub_buffer)
-            epoch_logprobs += sub_buffer.logprobs
             self.time_step += 1
         else:
             pass
-        return solution
+        return self.buffer
 
     def learn(self, env, num_epochs=1, start_epoch=0, save_timestep=1000, config=None, **kwargs):
         # main env
@@ -213,7 +209,11 @@ class InstanceAgent(object):
             revenue2cost_list = []
             for i in range(env.num_v_nets):
                 ### --- instance-level --- ###
-                solution = self.learn_with_instance(instance, revenue2cost_list, epoch_logprobs)
+                solution, sub_buffer, last_value = self.learn_with_instance(instance)
+                revenue2cost_list.append(solution['r2c_ratio'])
+                epoch_logprobs += sub_buffer.logprobs
+                self.merge_instance_experience(instance, solution, sub_buffer, last_value)
+
                 if solution['result']:
                     success_count += 1
 

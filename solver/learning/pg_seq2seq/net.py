@@ -17,9 +17,9 @@ class Actor(nn.Module):
         self._last_hidden_state = None
         self._last_cell_state = None
 
-    def encode(self, x):
-        obs = x['obs']
-        outputs, (hidden_state, cell_state) = self.encoder(obs)
+    def encode(self, obs):
+        x = obs['p_net_x']
+        outputs, (hidden_state, cell_state) = self.encoder(x)
         self._last_hidden_state = hidden_state
         self._last_cell_state = cell_state
         return outputs

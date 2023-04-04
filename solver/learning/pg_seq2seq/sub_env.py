@@ -32,7 +32,7 @@ class SubEnv(PlaceStepSubRLEnv):
 
     def get_observation(self):
         p_net_obs = self._get_p_net_obs()
-        return {'obs': p_net_obs}
+        return {'p_net_x': p_net_obs}
     
     def _get_p_net_obs(self):
         # (cpu_remain, degree, sum_bw, avg_dst)

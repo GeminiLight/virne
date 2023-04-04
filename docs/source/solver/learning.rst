@@ -12,6 +12,7 @@ Learning-based Solver
     PgCnnSolver
     PgCnn2Solver
     PgSeq2SeqSolver
+    A3CGcnSeq2SeqSolver
 
 
 Unsupervised Learning-based Solver
@@ -123,5 +124,19 @@ PgSeq2SeqSolver
     ^^^
 
     .. autoclass:: PgSeq2SeqSolver
+        :members:
+        :private-members:
+
+A3CGcnSeq2SeqSolver
+~~~~~~~~~~~~~~~~~~~
+
+.. card::
+    :class-header: sd-bg-success sd-text-white
+    :class-card: sd-outline-success  sd-rounded-1
+
+    Documentation
+    ^^^
+
+    .. autoclass:: A3CGcnSeq2SeqSolver
         :members:
         :private-members:

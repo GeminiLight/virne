@@ -67,8 +67,11 @@ class PhysicalNetwork(Network):
             link (bool, optional): Whether or not to generate link attribute data. Defaults to True.
         """
         super().generate_attrs_data(node, link)
-        if node: self.node_attr_benchmarks = self.get_node_attr_benchmarks()
-        if link: self.link_attr_benchmarks = self.get_link_attr_benchmarks()
+        if node: 
+            self.node_attr_benchmarks = self.get_node_attr_benchmarks()
+        if link:
+            self.link_attr_benchmarks = self.get_link_attr_benchmarks()
+            self.link_sum_attr_benchmarks = self.get_link_sum_attr_benchmarks()
 
     @staticmethod
     def from_setting(setting: dict, seed: int = None) -> 'PhysicalNetwork':

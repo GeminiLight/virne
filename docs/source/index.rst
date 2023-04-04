@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Virne: A Unified Framework for VNE
-=======================================
+Virne: A Simulator for NFV
+===================================
 
 .. note::
 
@@ -13,9 +13,11 @@ Virne: A Unified Framework for VNE
   please open an new issue on `Github <https://github.com/GeminiLight/virne>`_  or 
   contact me via email: wtfly2018@gmail.com.
 
-**Virne** is a Python framework for Virtual Network Embedding (VNE) with the following characteristics:
+**Virne** is a simulator for **resource allocation problems in network virtualization**, mainly for **virtual network embedding (VNE)**. 
+It also is adaptable to VNE's variants, such as **service function chain deployment (SFC Deployment)**, **network slicing**, etc. 
+Specifically, it provides a unified interface for various VNE algorithms, and provides a variety of network topologies, network attributes, and RL environments.
 
-
+Its main characteristics are as follows.
 
 .. grid:: 12 4 4 4
 
@@ -25,9 +27,9 @@ Virne: A Unified Framework for VNE
         :class-card: sd-outline-info  sd-rounded-1
         :columns: 12 6 6 4
 
-        Rich implementations
+        Rich Implementations
         ^^^^^^^^^^^^^^^^^^^^
-        Provide ~20 VNE algorithms (including exact, heuristic, meta-heuristic, and learning-based), able to call them with unified interfaces.
+        Provide 20+ solvers, including exact, heuristic, meta-heuristic, and learning-based algorithms.
 
     .. grid-item-card::
         :class-item: sd-font-weight-bold
@@ -37,23 +39,26 @@ Virne: A Unified Framework for VNE
 
         Extensible Development
         ^^^^^^^^^^^^^^^^^^^^^^
-        Implement operation methods in general ways, and preset various neural network modules and reinforcement learning environments.
-
-
+        Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
+        
     .. grid-item-card::
         :class-item: sd-font-weight-bold
         :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
         :class-card: sd-outline-primary  sd-rounded-1
         :columns: 12 6 6 4
 
-
         Light-Weight
         ^^^^^^^^^^^^
-        Environments and algorithms are implemented concisely, using three necessary dependencies (networkx, numpy, pandas, etc).
+        Implement concisely with less necessary dependencies, and can be extended easily for specific algorithms.
 
 
 Supported Features
 ------------------
+
+- **Adaptation to VNE Variants**
+ 
+  - Service Function Chain Deployment (SFC Deployment)
+  - Network Slicing
 
 - **Diverse Network Topologies**
   
@@ -79,8 +84,6 @@ Supported Features
   
   - Admission control: Reject Early some not cost-effective virtual networks
   - Time window: Developping
-  
-
 
 .. image:: _static/workflow.jpg
   :width: 1000
@@ -94,7 +97,6 @@ Supported Features
 
     intro/background
     intro/formulation
-    .. intro/introduction
 
 .. toctree::
     :hidden:
@@ -110,6 +112,7 @@ Supported Features
     :caption: customlization
 
     customlization/simulation
+    customlization/sfc_deployment
 
 .. toctree::
     :hidden:
@@ -135,7 +138,7 @@ Supported Features
 Citation
 --------
 
-Please cite our paper if you use Virne in your research.
+Please cite our papers if you use Virne in your research.
 
 .. Project Citation
 .. ~~~~~~~~~~~~~~~~

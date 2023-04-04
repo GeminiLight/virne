@@ -17,7 +17,7 @@ Heuristic Solver
 
 
 Two-stage Mapping Node Ranking-based Solver
------------------------------------
+-------------------------------------------
 
 OrderRankSolver
 ~~~~~~~~~~~~~~~
@@ -125,7 +125,7 @@ PLRankSolver
 
 
 BFS-based Mapping Node Ranking-based Solver
------------------------------------
+-------------------------------------------
 
 
 OrderRankBfsSolver
