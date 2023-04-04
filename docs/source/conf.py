@@ -36,7 +36,8 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.extlinks',
     'sphinx.ext.napoleon',
-    'sphinx_design'
+    'sphinx_design',
+    'sphinx_copybutton'
 ]
 
 myst_enable_extensions = ["colon_fence"]

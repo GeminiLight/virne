@@ -135,17 +135,42 @@ Supported Features
 Citation
 --------
 
+Please cite our paper if you use Virne in your research.
+
+.. Project Citation
+.. ~~~~~~~~~~~~~~~~
+
+.. ..  code-block:: bib
+
+..     @misc{tfw-virne-2023,
+..       author = {Tianfu Wang},
+..       title = {Virne: A Python Framework for Virtual Network Embedding},
+..       year = {2023},
+..       publisher = {GitHub},
+..       journal = {GitHub repository},
+..       howpublished = {\url{https://github.com/GeminiLight/virne}},
+..       commit = {cf68db31dbf07db0976d1afeda09d5c6070936d3}
+..     }
+
+Our Related Papers
+~~~~~~~~~~~~~~~~~~
+
+**[ICC, 2021] DRL-SFCP**
+
 ..  code-block:: bib
 
-    @misc{tfw-virne-2023,
-      author = {Tianfu Wang},
-      title = {Virne: A Python Framework for Virtual Network Embedding},
-      year = {2023},
-      publisher = {GitHub},
-      journal = {GitHub repository},
-      howpublished = {\url{https://github.com/GeminiLight/virne}},
-      commit = {cf68db31dbf07db0976d1afeda09d5c6070936d3}
+    @INPROCEEDINGS{tfw-icc-2021-drl-sfcp,
+      author={Wang, Tianfu and Fan, Qilin and Li, Xiuhua and Zhang, Xu and Xiong, Qingyu and Fu, Shu and Gao, Min},
+      booktitle={ICC 2021 - IEEE International Conference on Communications}, 
+      title={DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning}, 
+      year={2021},
+      volume={},
+      number={},
+      pages={1-6},
+      doi={10.1109/ICC42927.2021.9500964}
     }
+
+**[TSC, Reviewing] HRL-ACRA**
 
 
 Indices and tables

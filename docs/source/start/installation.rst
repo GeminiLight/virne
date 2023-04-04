@@ -46,17 +46,17 @@ Expansion
 .. code-block:: bash
 
     # use cuda
-    conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
+    conda install pytorch cudatoolkit=11.3 -c pytorch
     
     # only cpu
-    conda install pytorch torchvision torchaudio -c pytorch
+    conda install pytorch -c pytorch
 
 
 - Reinfocement Learning
 
 .. code-block:: bash
 
-    pip install gym=0.21.0 stable_baselines3 sb3_contrib
+    pip install gym=0.21.0
 
 
 - Graph Neural Network

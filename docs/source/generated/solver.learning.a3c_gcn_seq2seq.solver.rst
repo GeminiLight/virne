@@ -1,7 +1,7 @@
-﻿solver.learning.pg\_seq2seq.solver
-==================================
+solver.learning.a3c\_gcn\_seq2seq.solver
+========================================
 
-.. automodule:: solver.learning.pg_seq2seq.solver
+.. automodule:: solver.learning.a3c_gcn_seq2seq.solver
 
    
    
@@ -24,7 +24,7 @@
 
    .. autosummary::
    
-      PgSeq2SeqSolver
+      A3CGcnSeq2SeqSolver
    
    
 

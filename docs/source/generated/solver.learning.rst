@@ -1,4 +1,4 @@
-solver.learning
+﻿solver.learning
 ===============
 
 .. automodule:: solver.learning
@@ -27,6 +27,7 @@ solver.learning
    :toctree:
    :recursive:
 
+   solver.learning.a3c_gcn_seq2seq
    solver.learning.buffer
    solver.learning.gae_clustering
    solver.learning.graph_conv
