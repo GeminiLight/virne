@@ -1,7 +1,5 @@
 import copy
 
-from jinja2 import pass_eval_context
-
 
 class RolloutBuffer:
     
