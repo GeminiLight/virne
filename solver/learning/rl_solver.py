@@ -365,9 +365,9 @@ class RLSolver(Solver):
                 writer.writerow(['update_time'] + list(info.keys()))
             writer.writerow([update_time] + list(info.values()))
         if self.verbose >= 1:
-            # if update_time % 1000 == 0:
-            #     info_key_str = ' & '.join([f'{k}' for k, v in info.items() if sum([s in k for s in ['loss', 'prob', 'return', 'penalty']])])
-            #     print(f'             {update_time:06d} | ' + info_key_str)
+            if update_time ==0 or update_time % 1000 == 0:
+                info_key_str = ' & '.join([f'{k}' for k, v in info.items() if sum([s in k for s in ['loss', 'prob', 'return', 'penalty']])])
+                print(f'             {update_time:06d} | ' + info_key_str)
             info_str = ' & '.join([f'{v:+3.4f}' for k, v in info.items() if sum([s in k for s in ['loss', 'prob', 'return', 'penalty']])])
             print(f'Update time: {update_time:06d} | ' + info_str)
 
@@ -506,7 +506,7 @@ class PGSolver(RLSolver):
 
     def update(self, ):
         observations = self.preprocess_obs(self.buffer.observations, self.device)
-        actions = torch.LongTensor(self.buffer.actions).to(self.device)
+        actions = torch.LongTensor(np.concatenate(self.buffer.actions, axis=0)).to(self.device)
         returns = torch.FloatTensor(self.buffer.returns).to(self.device)
         masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device) if len(self.buffer.action_masks) != 0 else None
         _, action_logprobs, _, _ = self.evaluate_actions(observations, actions, masks=masks, return_others=True)
@@ -540,7 +540,7 @@ class PGWithBaselineSolver(RLSolver):
 
     def update(self, ):
         observations = self.preprocess_obs(self.buffer.observations, self.device)
-        actions = torch.LongTensor(np.array(self.buffer.actions)).to(self.device)
+        actions = torch.LongTensor(np.concatenate(self.buffer.actions, axis=0)).to(self.device)
         returns = torch.FloatTensor(self.buffer.returns).to(self.device)
         if len(self.buffer.action_masks) != 0 and self.mask_actions:
             masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device)
@@ -578,7 +578,7 @@ class A2CSolver(RLSolver):
 
     def update(self, ):
         observations = self.preprocess_obs(self.buffer.observations, self.device)
-        actions = torch.LongTensor(np.array(self.buffer.actions)).to(self.device)
+        actions = torch.LongTensor(np.concatenate(self.buffer.actions, axis=0)).to(self.device)
         returns = torch.FloatTensor(self.buffer.returns).to(self.device)
         if len(self.buffer.action_masks) != 0 and self.mask_actions:
             masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device)
@@ -628,7 +628,7 @@ class PPOSolver(RLSolver):
         assert self.buffer.size() >= self.batch_size
         device = torch.device('cpu')
         batch_observations = self.preprocess_obs(self.buffer.observations, device)
-        batch_actions = torch.LongTensor(np.array(self.buffer.actions))
+        batch_actions = torch.LongTensor(np.concatenate(self.buffer.actions, axis=0)).to(self.device)
         batch_old_action_logprobs = torch.FloatTensor(np.concatenate(self.buffer.logprobs, axis=0))
         batch_rewards = torch.FloatTensor(self.buffer.rewards)
         batch_returns = torch.FloatTensor(self.buffer.returns)
@@ -715,7 +715,7 @@ class ARPPOSolver(RLSolver):
         assert self.buffer.size() >= self.batch_size
         device = torch.device('cpu')
         batch_observations = self.preprocess_obs(self.buffer.observations, device)
-        batch_actions = torch.LongTensor(np.array(self.buffer.actions))
+        batch_actions = torch.LongTensor(np.concatenate(self.buffer.actions, axis=0)).to(self.device)
         batch_old_action_logprobs = torch.FloatTensor(np.concatenate(self.buffer.logprobs, axis=0))
         batch_rewards = torch.FloatTensor(self.buffer.rewards)
         mean_batch_rewards = batch_rewards.mean()
