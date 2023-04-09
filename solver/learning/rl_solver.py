@@ -15,13 +15,13 @@ from torch.utils.tensorboard import SummaryWriter
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from abc import abstractmethod
 
-from solver import Solver
-from solver.heuristic.node_rank import *
+from virne.solver import Solver
+from virne.solver.heuristic.node_rank import *
 
 from .searcher import *
 from .buffer import RolloutBuffer
 from .utils import apply_mask_to_logit, get_observations_sample, RunningMeanStd
-from utils import test_running_time
+from virne.utils import test_running_time
 
 
 class OnlineAgent(object):
@@ -210,13 +210,12 @@ class InstanceAgent(object):
             for i in range(env.num_v_nets):
                 ### --- instance-level --- ###
                 solution, sub_buffer, last_value = self.learn_with_instance(instance)
-                revenue2cost_list.append(solution['r2c_ratio'])
                 epoch_logprobs += sub_buffer.logprobs
                 self.merge_instance_experience(instance, solution, sub_buffer, last_value)
 
-                if solution['result']:
+                if solution.is_feasible():
                     success_count += 1
-
+                    revenue2cost_list.append(solution['v_net_r2c_ratio'])
                 # update parameters
                 if self.buffer.size() >= self.target_steps:
                     loss = self.update()
@@ -229,7 +228,7 @@ class InstanceAgent(object):
                     break
                 
             summary_info = env.summary_records()
-            epoch_logprobs_tensor = torch.cat(epoch_logprobs, dim=0)
+            epoch_logprobs_tensor = np.concatenate(epoch_logprobs, axis=0)
             print(f'\nepoch {epoch_id:4d}, success_count {success_count:5d}, r2c {info["total_r2c"]:1.4f}, mean logprob {epoch_logprobs_tensor.mean():2.4f}')
             # save
             if (epoch_id + 1) != (start_epoch + num_epochs) and (epoch_id + 1) % self.save_interval == 0:
@@ -275,6 +274,7 @@ class RLSolver(Solver):
         self.lr_critic = kwargs.get('lr_critic', 0.001)
         self.lr_scheduler = None
         self.criterion_critic = nn.MSELoss()
+        self.compute_advantage_method = kwargs.get('compute_advantage_method', 'gae')
         # nn
         self.embedding_dim = kwargs.get('embedding_dim', 64)
         self.dropout_prob = kwargs.get('dropout_prob', 0.5)
@@ -405,7 +405,7 @@ class RLSolver(Solver):
         action_logprob = candicate_action_dist.log_prob(action)
         action = action.reshape(-1, )
         # action = action.squeeze(-1).cpu()
-        return action, action_logprob
+        return action.cpu().detach().numpy(), action_logprob.cpu().detach().numpy()
 
     def evaluate_actions(self, old_observations, old_actions, masks=None, return_others=False):
         actions_logits = self.policy.act(old_observations)
@@ -447,7 +447,7 @@ class RLSolver(Solver):
         return values, action_logprobs, dist_entropy
 
     def estimate_obs(self, observation):
-        return self.policy.evaluate(observation).squeeze(-1)
+        return self.policy.evaluate(observation).squeeze(-1).detach().cpu()
 
     def save_model(self, checkpoint_fname):
         checkpoint_fname = os.path.join(self.model_dir, checkpoint_fname)
@@ -540,9 +540,12 @@ class PGWithBaselineSolver(RLSolver):
 
     def update(self, ):
         observations = self.preprocess_obs(self.buffer.observations, self.device)
-        actions = torch.LongTensor(self.buffer.actions).to(self.device)
+        actions = torch.LongTensor(np.array(self.buffer.actions)).to(self.device)
         returns = torch.FloatTensor(self.buffer.returns).to(self.device)
-        masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device) if len(self.buffer.action_masks) != 0 else None
+        if len(self.buffer.action_masks) != 0 and self.mask_actions:
+            masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device)
+        else:
+            masks = None
         _, action_logprobs, _, _ = self.evaluate_actions(observations, actions, masks=masks, return_others=True)
         
         loss = - (action_logprobs * returns).mean()
@@ -552,7 +555,6 @@ class PGWithBaselineSolver(RLSolver):
         if self.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
         self.optimizer.step()
-
 
         info = {
             'lr': self.optimizer.defaults['lr'],
@@ -575,10 +577,8 @@ class A2CSolver(RLSolver):
         self.repeat_times = 1
 
     def update(self, ):
-        batch_logprobs = torch.cat(self.buffer.logprobs, dim=0).to(self.device)
-        # batch_values = torch.cat(self.buffer.values, dim=0).to(self.device)
         observations = self.preprocess_obs(self.buffer.observations, self.device)
-        actions = torch.LongTensor(self.buffer.actions).to(self.device)
+        actions = torch.LongTensor(np.array(self.buffer.actions)).to(self.device)
         returns = torch.FloatTensor(self.buffer.returns).to(self.device)
         if len(self.buffer.action_masks) != 0 and self.mask_actions:
             masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device)
@@ -626,30 +626,29 @@ class PPOSolver(RLSolver):
 
     def update(self, ):
         assert self.buffer.size() >= self.batch_size
-
-        batch_observations = self.preprocess_obs(self.buffer.observations, self.device)
-        # print(np.array(self.buffer.actions).shape)
-        batch_actions = torch.LongTensor(self.buffer.actions).to(self.device)
-        batch_old_action_logprobs = torch.cat(self.buffer.logprobs, dim=0).to(self.device).detach()
-        batch_rewards = torch.FloatTensor(self.buffer.rewards).to(self.device)
-
-        batch_returns = torch.FloatTensor(self.buffer.returns).to(self.device)
+        device = torch.device('cpu')
+        batch_observations = self.preprocess_obs(self.buffer.observations, device)
+        batch_actions = torch.LongTensor(np.array(self.buffer.actions))
+        batch_old_action_logprobs = torch.FloatTensor(np.concatenate(self.buffer.logprobs, axis=0))
+        batch_rewards = torch.FloatTensor(self.buffer.rewards)
+        batch_returns = torch.FloatTensor(self.buffer.returns)
 
         if self.norm_reward:
             batch_returns = (batch_returns - batch_returns.mean()) / (batch_returns.std() + 1e-9)
 
         if len(self.buffer.action_masks) != 0 and self.mask_actions:
-            batch_masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device)
+            batch_masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0))
         else:
             batch_masks = None
 
         sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         for i in range(sample_times):
-            sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long().to(self.device)
-            observations  = get_observations_sample(batch_observations, sample_indices)
-            actions, returns = batch_actions[sample_indices], batch_returns[sample_indices]
-            old_action_logprobs = batch_old_action_logprobs[sample_indices]
-            masks = batch_masks[sample_indices] if batch_masks is not None else None
+            sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
+            observations  = get_observations_sample(batch_observations, sample_indices, self.device)
+            actions = batch_actions[sample_indices].to(self.device)
+            returns = batch_returns[sample_indices].to(self.device)
+            old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
+            masks = batch_masks[sample_indices].to(self.device) if batch_masks is not None else None
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, masks=masks, return_others=True)
             
@@ -714,28 +713,28 @@ class ARPPOSolver(RLSolver):
 
     def update(self, ):
         assert self.buffer.size() >= self.batch_size
-
-        batch_observations = self.preprocess_obs(self.buffer.observations, self.device)
-        batch_actions = torch.LongTensor(self.buffer.actions).to(self.device)
-        batch_old_action_logprobs = torch.cat(self.buffer.logprobs, dim=0).to(self.device).detach()
-        batch_rewards = torch.FloatTensor(self.buffer.rewards).to(self.device)
-
+        device = torch.device('cpu')
+        batch_observations = self.preprocess_obs(self.buffer.observations, device)
+        batch_actions = torch.LongTensor(np.array(self.buffer.actions))
+        batch_old_action_logprobs = torch.FloatTensor(np.concatenate(self.buffer.logprobs, axis=0))
+        batch_rewards = torch.FloatTensor(self.buffer.rewards)
         mean_batch_rewards = batch_rewards.mean()
 
-        batch_returns = torch.FloatTensor(self.buffer.returns).to(self.device)
+        batch_returns = torch.FloatTensor(self.buffer.returns)
 
         if len(self.buffer.action_masks) != 0 and self.mask_actions:
-            batch_masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0)).to(self.device)
+            batch_masks = torch.IntTensor(np.concatenate(self.buffer.action_masks, axis=0))
         else:
             batch_masks = None
 
         sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         for i in range(sample_times):
             sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
-            observations  = get_observations_sample(batch_observations, sample_indices)
-            actions, returns = batch_actions[sample_indices], batch_returns[sample_indices]
-            old_action_logprobs = batch_old_action_logprobs[sample_indices]
-            masks = batch_masks[sample_indices] if batch_masks is not None else None
+            observations = get_observations_sample(batch_observations, sample_indices, device=self.device)
+            actions = batch_actions[sample_indices].to(self.device)
+            returns = batch_returns[sample_indices].to(self.device)
+            old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
+            masks = batch_masks[sample_indices].to(self.device) if batch_masks is not None else None
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, masks=masks, return_others=True)
             
