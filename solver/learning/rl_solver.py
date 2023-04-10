@@ -15,13 +15,13 @@ from torch.utils.tensorboard import SummaryWriter
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from abc import abstractmethod
 
-from virne.solver import Solver
-from virne.solver.heuristic.node_rank import *
+from solver import Solver
+from solver.heuristic.node_rank import *
 
 from .searcher import *
 from .buffer import RolloutBuffer
 from .utils import apply_mask_to_logit, get_observations_sample, RunningMeanStd
-from virne.utils import test_running_time
+from .utils import test_running_time
 
 
 class OnlineAgent(object):
