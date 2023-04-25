@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 
 from solver import registry
+from base import SolutionStepEnvironment
 from .sub_env import SubEnv
 from .net import Actor, ActorCritic, Critic
 from ..rl_solver import *
@@ -20,7 +21,7 @@ from ..rl_solver import *
 
 @registry.register(
     solver_name='pg_cnn2', 
-    env_cls=SubEnv,
+    env_cls=SolutionStepEnvironment,
     solver_type='r_learning')
 class PgCnn2Solver(InstanceAgent, PGSolver):
     """

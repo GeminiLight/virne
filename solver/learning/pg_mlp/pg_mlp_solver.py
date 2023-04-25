@@ -13,13 +13,13 @@ from torch.distributions import Categorical
 from .sub_env import SubEnv
 from .net import Actor, ActorCritic, Critic
 from ..rl_solver import *
-from base import Solution
+from base import Solution, SolutionStepEnvironment
 from solver import registry
 
 
 @registry.register(
     solver_name='pg_mlp',
-    env_cls=SubEnv,
+    env_cls=SolutionStepEnvironment,
     solver_type='r_learning')
 class PgMlpSolver(PPOSolver):
     """

@@ -103,18 +103,17 @@ class Decoder(nn.Module):
     def forward(self, obs):
         batch_p_net = obs['p_net']
         hidden_state = obs['hidden_state']
-        p_node_embeddings = self.gcn(batch_p_net)
-        p_node_embeddings = p_node_embeddings.reshape(batch_p_net.num_graphs, -1, p_node_embeddings.shape[-1])
-        p_node_embeddings = p_node_embeddings + hidden_state
-        logits = self.mlp(p_node_embeddings)
         p_node_id = obs['p_node_id']
         hidden_state = hidden_state.permute(1, 0, 2)
         encoder_outputs = obs['encoder_outputs']
         mask = obs['mask']
         p_node_emb = self.emb(p_node_id).unsqueeze(0)
         context, attention = self.att(hidden_state, encoder_outputs, mask)
-        context = context.unsqueeze(0)
         outputs, hidden_state = self.gru(p_node_emb, hidden_state)
+        p_node_embeddings = self.gcn(batch_p_net)
+        p_node_embeddings = p_node_embeddings.reshape(batch_p_net.num_graphs, -1, p_node_embeddings.shape[-1])
+        p_node_embeddings = p_node_embeddings + context
+        logits = self.mlp(p_node_embeddings)
         return logits, outputs, hidden_state
     
 

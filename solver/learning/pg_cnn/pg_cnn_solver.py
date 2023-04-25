@@ -13,13 +13,13 @@ from torch.distributions import Categorical
 from .sub_env import SubEnv
 from .net import Actor, ActorCritic, Critic
 from ..rl_solver import *
-from base import Solution
+from base import SolutionStepEnvironment
 from solver import registry
 
 
 @registry.register(
     solver_name='pg_cnn', 
-    env_cls=SubEnv,
+    env_cls=SolutionStepEnvironment,
     solver_type='r_learning')
 class PgCnnSolver(InstanceAgent, PGSolver):
     """

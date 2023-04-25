@@ -21,7 +21,6 @@ from solver.heuristic.node_rank import *
 from .searcher import *
 from .buffer import RolloutBuffer
 from .utils import apply_mask_to_logit, get_observations_sample, RunningMeanStd
-from .utils import test_running_time
 
 
 class OnlineAgent(object):

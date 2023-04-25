@@ -163,7 +163,10 @@ class ObservationHandler:
 
     def get_average_distance(self, network: Network, nodes_slots, normalization=True):
         # avg_dst
-        selected_p_nodes = list(nodes_slots.values())
+        if isinstance(nodes_slots, dict):
+            selected_p_nodes = list(nodes_slots.values())
+        else:
+            selected_p_nodes = nodes_slots
         if len(selected_p_nodes) == 0: 
             avg_distance = np.zeros(network.num_nodes)
         else:

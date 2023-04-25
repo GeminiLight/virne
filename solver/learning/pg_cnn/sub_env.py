@@ -35,22 +35,17 @@ class SubEnv(PlaceStepSubRLEnv):
     
     def get_p_net_obs(self):
         # (cpu_remain, degree, sum_bw, avg_dst)
-        # resource
-        n_attrs = self.p_net.get_node_attrs(['resource'])
-        node_attrs_data = np.array(self.p_net.get_node_attrs_data(n_attrs))  # (num_nodes, num_attrs)
-        # self.node_attr_benchmarks = node_attrs_data.max(axis=0)
-        # norm_node_attrs_data = node_attrs_data / self.node_attr_benchmarks
+        # node resource
+        node_attrs_data = self.obs_handler.get_node_attrs_obs(self.p_net, node_attr_types=['resource'])  # (num_nodes, num_attrs)
         norm_node_attrs_data = (node_attrs_data - node_attrs_data.min(axis=0)) / (node_attrs_data.max(axis=0) - node_attrs_data.min(axis=0))
-        # sum_bw
+        # edge resource
         e_attrs = self.p_net.get_link_attrs(['resource'])
-        link_aggr_attrs_data = np.array(self.p_net.get_aggregation_attrs_data(e_attrs, aggr='sum')).T  # (num_links, num_attrs)
-        # self.link_sum_attr_benchmarks = link_aggr_attrs_data.max(axis=0)
-        # norm_link_aggr_attrs_data = link_aggr_attrs_data / self.link_sum_attr_benchmarks
+        link_aggr_attrs_data = self.obs_handler.get_link_sum_attrs_obs(self.p_net, link_attr_types=['resource'])  # (num_nodes, num_attrs)
         norm_link_aggr_attrs_data = (link_aggr_attrs_data - link_aggr_attrs_data.min(axis=0)) / (link_aggr_attrs_data.max(axis=0) - link_aggr_attrs_data.min(axis=0))
         # avg_dst
-        avg_distance = self.obs_handler.get_average_distance(self.p_net, self.selected_p_net_nodes, normalization=True)
-        p_net_obs = np.concatenate((norm_node_attrs_data, norm_link_aggr_attrs_data, self.p_net_node_degrees, avg_distance), axis=-1)
+        avg_distance = self.obs_handler.get_average_distance(self.p_net, self.solution['node_slots'], normalization=True)
+        p_net_obs = np.concatenate((norm_node_attrs_data, norm_link_aggr_attrs_data, avg_distance, self.p_net_node_degrees), axis=-1)
         return p_net_obs
-
+    
     def obs_for_cnn(self, obs):
         return np.expand_dims(obs, axis=0)
