@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     # You can modify some settings directly here.
     # An example:
-    config.solver_name = 'pg_cnn' # modify the algorithm of the solver
+    config.solver_name = 'pg_mlp' # modify the algorithm of the solver
     # config.shortest_method = 'mcf'  # modify the shortest path algorithm to Multi-commodity Flow
     # config.num_train_epochs = 100   # modify the number of trainning epochs
 

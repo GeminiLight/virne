@@ -21,14 +21,15 @@ from solver import registry
     solver_name='pg_mlp',
     env_cls=SolutionStepEnvironment,
     solver_type='r_learning')
-class PgMlpSolver(PPOSolver):
+class PgMlpSolver(InstanceAgent, PGSolver):
     """
     A Reinforcement Learning-based solver that uses 
     Policy Gradient (PG) as the training algorithm and 
     Multilayer Perceptron (MLP) as the neural network model.
     """
     def __init__(self, controller, recorder, counter, **kwargs):
-        super(PgMlpSolver, self).__init__(controller, recorder, counter, **kwargs)
+        InstanceAgent.__init__(self)
+        PGSolver.__init__(self, controller, recorder, counter, **kwargs)
         action_dim = kwargs['p_net_setting']['num_nodes']
         feature_dim = 4 * action_dim  # (n_attrs, e_attrs, dist, degree)
         self.policy = ActorCritic(feature_dim, action_dim, self.embedding_dim).to(self.device)

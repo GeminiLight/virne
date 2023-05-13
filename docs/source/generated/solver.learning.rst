@@ -42,7 +42,6 @@
    solver.learning.pg_seq2seq
    solver.learning.rl_environment
    solver.learning.rl_solver
-   solver.learning.safe_rl_solver
    solver.learning.searcher
    solver.learning.sub_rl_environment
    solver.learning.utils

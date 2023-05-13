@@ -44,5 +44,5 @@ class SubEnv(PlaceStepSubRLEnv):
         norm_link_aggr_attrs_data = (link_aggr_attrs_data - link_aggr_attrs_data.min(axis=0)) / (link_aggr_attrs_data.max(axis=0) - link_aggr_attrs_data.min(axis=0))
         # avg_dst
         avg_distance = self.obs_handler.get_average_distance(self.p_net, self.solution['node_slots'], normalization=True)
-        p_net_obs = np.concatenate((norm_node_attrs_data, norm_link_aggr_attrs_data, avg_distance, self.p_net_node_degrees, self.p_net_node_closenesses, self.p_net_node_betweennesses, self.p_net_node_eigenvectors), axis=-1)
+        p_net_obs = np.concatenate((norm_node_attrs_data, norm_link_aggr_attrs_data, avg_distance, self.p_net_node_degrees), axis=-1)
         return p_net_obs
