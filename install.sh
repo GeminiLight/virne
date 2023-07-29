@@ -37,6 +37,6 @@ pip install tensorboard
 # for GNN 
 echo -e "y" | conda install pyg -c pyg -c conda-forge
 # for RL
-pip install gym=0.21.0
+pip install gym==0.21.0
 
 pip install --force-reinstall scipy
