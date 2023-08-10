@@ -1,9 +1,8 @@
+# os.chdir(os.path.join(os.getcwd(), 'code/virne-dev'))
 import os
-from config import get_config, show_config, save_config, load_config
-from data import Generator
-from base import BasicScenario
-from solver import REGISTRY
-
+from args import get_args
+from virne.base import BasicScenario
+from virne import Config, REGISTRY, Generator, update_simulation_setting
 
 def run(config):
     print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
@@ -19,29 +18,7 @@ def run(config):
 
 
 if __name__ == '__main__':
-    # Please refer to `base.loader` to obtain all available solvers
-
-    # 1. Get Config
-    # The key settings are controlled with config.py
-    # while other advanced settings are listed in settings/*.yaml
-    config = get_config()
-
-    # You can modify some settings directly here.
-    # An example:
-    config.solver_name = 'pg_mlp' # modify the algorithm of the solver
-    # config.shortest_method = 'mcf'  # modify the shortest path algorithm to Multi-commodity Flow
-    # config.num_train_epochs = 100   # modify the number of trainning epochs
-
-    # 2. Generate Dataset
-    # Although we do not generate a static dataset,
-    # the environment will automatically produce a random dataset.
-    p_net, v_net_simulator = Generator.generate_dataset(
-        config, 
-        p_net=False, 
-        v_nets=False, 
-        save=False) # Here, no dataset will be generated and saved.
-
-    # 3. Start to Run
-    # A scenario with an environment and a solver will be create following provided config.
-    # The interaction between the environment and the solver will happen in this scenario.
+    config = Config()
+    config.renew_v_net_simulator = False
+    p_net, v_net_simulator = Generator.generate_dataset(config, p_net=False, v_nets=False, save=False)
     run(config)

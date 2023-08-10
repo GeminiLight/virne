@@ -1,10 +1,10 @@
 import torch
-from config import get_config
+from args import get_config
 
-from data.physical_network import PhysicalNetwork
+from virne.data.physical_network import PhysicalNetwork
 
-from solver.learning.net import DeepEdgeFeatureGAT, GATConvNet, GraphAttentionPooling, PositionalEncoder
-from solver.learning.obs_handler import ObservationHandler
+from virne.solver.learning.neural_network import DeepEdgeFeatureGAT, GATConvNet, GraphAttentionPooling, PositionalEncoder
+from virne.solver.learning.obs_handler import ObservationHandler
 
 from torch_geometric.data import Data, Batch
 from torch_geometric.utils import to_dense_batch

@@ -6,10 +6,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "virne"
+"version" = "0.5.0"
 description = "A unified framework for virtual network embedding."
 readme = "README.md"
 requires-python = ">= 3.8"
-authors = [{ name = "GeminiLight" }]
+authors = [{ name = "GeminiLight", email = "wtfly2018@gmail.com" }]
 license = { text = "Apache License, Version 2.0" }
 keywords = ["Network Virtualization", "Virtual Network Embedding", "Reinforcement Learning"]
 classifiers = [
@@ -25,32 +26,28 @@ classifiers = [
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 dependencies = [
-    "safety-gymnasium >= 0.1.0",
-    "torch >= 1.10.0, < 2.0.0a0",
     "numpy >= 1.20.0",
-    "tensorboard >= 2.8.0",
-    "wandb >= 0.13.0",
-    "psutil >= 5.9.1",
     "pyyaml >= 6.0",
     "seaborn >= 0.12.2",
     "pandas >=  1.5.3",
     "matplotlib >= 3.7.1",
-    "scipy >= 1.7.0",
-    'torch_geometric',
-    'stable-baselines3 >= 1.2.0',
-    'sb3-contrib >= 1.2.0',
-    'gym >= 0.19.0',
-    'networkx >= 2.6.3',
-    'tqdm >= 4.62.3',
-    'scikit-learn >= 1.0.1',
-    'scikit-image >= 0.18.3',
-    'pytorch-lightning >= 1.5.0',
-    'sb3_contrib >= 1.2.0',
+    "scipy >= 1.9.0",
+
+    "torch >= 1.10.0",
+    "tensorboard >= 2.8.0",
+    'torch_geometric >= 2.0.0',
+    # 'torch_sparse >= 0.6.0',
+    # 'torch_scatter >= 2.0.0',
+    # 'torch_cluster >= 1.6.0',
+
+    'gym == 0.22.0',
+    'higher >= 0.2.1',
+    'networkx >= 2.6.0',
+    'tqdm >= 4.62.0',
     'ortools >= 9.1.9490',
-    'pyyaml >= 6.0',
 ]
 
-dynamic = ["version", "entry-points"]
+dynamic = ["entry-points"]
 
 [project.urls]
 Homepage = "https://github.com/GeminiLight/virne"
@@ -63,8 +60,11 @@ lint = [
 ]
 # test = ['pytest', 'pytest-cov', 'pytest-xdist']
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
-include = ["*", "virne", "virne.*"]
+include = ["virne", "virne.*"]
 
 # Linter tools #################################################################
 
@@ -73,12 +73,12 @@ safe = true
 line-length = 100
 skip-string-normalization = true
 # Sync with requires-python
-target-version = ["py38", "py39", "py310", "py311"]
+# target-version = ["py38", "py39", "py310", "py311"]
 
 [tool.isort]
 atomic = true
 profile = "black"
-src_paths = ["omnisafe", "envs", "examples", "tests"]
+src_paths = ["virne", "tests"]
 extra_standard_library = ["typing_extensions"]
 indent = 4
 line_length = 100

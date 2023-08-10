@@ -1,5 +1,5 @@
 from .tester import Tester
-from config import *
+from args import *
 
 
 class ConfigTester(Tester):

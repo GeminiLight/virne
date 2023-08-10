@@ -1,4 +1,4 @@
-from config import get_config
+from args import get_config
 
 
 class Tester:

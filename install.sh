@@ -1,9 +1,12 @@
-supported_cuda_versions=(false, 0, 10.2, 11.3)
+#!/bin/bash
+
+supported_cuda_versions=("false" "0" "10.2" "11.3")
+cuda=""
 
 while getopts ":c:" opt; do
     case $opt in
     c)
-        if [[ "${supported_cuda_versions[@]}" =~ "${OPTARG}" ]] ; then
+        if [[ " ${supported_cuda_versions[*]} " == *" ${OPTARG} "* ]]; then
             cuda="${OPTARG}"
         fi
         ;;
@@ -16,27 +19,25 @@ while getopts ":c:" opt; do
     esac
 done
 
-if [[ "${supported_cuda_versions[@]}" =~ "${cuda}" ]] ; then
-    echo "Install pytorch with cuda ${cuda} version.\n"
+if [[ " ${supported_cuda_versions[*]} " == *" ${cuda} "* ]]; then
+    echo "Install pytorch with cuda ${cuda} version."
 else
-    echo "Install pytorch with cpu version.\n"
+    echo "Install pytorch with cpu version."
 fi
 
-# basic
+# Basic dependencies
 pip install numpy pandas matplotlib networkx pyyaml tqdm ortools colorama
 
-# for DL
-if [[ "${supported_cuda_versions[@]}" =~ "${cuda}" ]] ; then
-    echo -e "y" | conda install pytorch==1.11.0 cudatoolkit=${cuda} -c pytorch
-else
-    echo -e "y" | conda install pytorch==1.11.0 -c pytorch
+# PyTorch installation
+pytorch_install_command="pytorch==1.11.0"
+if [[ "${cuda}" != "" ]]; then
+    pytorch_install_command+=" cudatoolkit=${cuda}"
 fi
+echo -e "y" | conda install ${pytorch_install_command} -c pytorch
 
 
+# Additional packages
 pip install tensorboard
-# for GNN 
 echo -e "y" | conda install pyg -c pyg -c conda-forge
-# for RL
 pip install gym==0.21.0
-
 pip install --force-reinstall scipy

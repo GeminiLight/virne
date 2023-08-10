@@ -1,4 +1,4 @@
-from config import get_config
+from args import get_config
 from shortest_path.env import SPEnv
 from shortest_path.agent import SPGAT
 

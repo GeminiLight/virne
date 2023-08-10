@@ -1,9 +1,9 @@
 # import os
 # os.chdir(os.path.join(os.getcwd(), 'code/virne'))
 
-from config import get_config
-from utils import load_solver
-from data import Generator
+from args import get_config
+from virne.utils import load_solver
+from virne.data import Generator
 
 
 def generate_dataset(config):
@@ -16,7 +16,7 @@ def main(config):
     # Run agent and env
     print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
 
-    agent.run(env, num_epochs=config.num_epochs, start_epoch=config.start_epoch)
+    agent.run(env, num_epochs=config.num_epochs)
 
     print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")
 

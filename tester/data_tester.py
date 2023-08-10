@@ -1,8 +1,8 @@
 import sys
 
 from .tester import Tester
-from data import Network, PhysicalNetwork, VirtualNetworkRequestSimulator, Generator
-from data.attribute import *
+from virne.data import Network, PhysicalNetwork, VirtualNetworkRequestSimulator, Generator
+from virne.data.attribute import *
 
 
 class DataTester(Tester):

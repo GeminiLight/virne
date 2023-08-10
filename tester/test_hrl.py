@@ -2,10 +2,10 @@ import torch
 import numpy as np
 from torch_geometric.data import Data, Batch
 
-from config import get_config
-from solver.learning.hrl_ppo_degat.hrl_ppo_degat_env import HRLPPODEGATEnv
-from solver.learning.hrl_ppo_degat.model_old import LowerNet, UpperNet
-from solver.learning.utils import get_pyg_data, get_pyg_batch
+from args import get_config
+from virne.solver.learning.hrl_ppo_degat.hrl_ppo_degat_env import HRLPPODEGATEnv
+from virne.solver.learning.hrl_ppo_degat.model_old import LowerNet, UpperNet
+from virne.solver.learning.utils import get_pyg_data, get_pyg_batch
 
 
 def preprocess_one_obs(obs):
