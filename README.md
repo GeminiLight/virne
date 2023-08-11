@@ -1,5 +1,4 @@
-# Virne | <img src="https://img.shields.io/badge/version-0.4.0-blue" /> 
-
+# Virne | <img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" />
 
 <p align="center">
   <a href="https://virne.readthedocs.io">Documentation</a> |
@@ -22,41 +21,11 @@ Its main characteristics are as follows.
 
 ![](resource/figures/workflow.jpg)
 
-
-### Release History
-
 > Virne is still under development. If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 > 
 > - Completing the documentation
 > - Implementing more VNE algorithms
 
-- `v0.4` Construct the documentation, refactor the stucture, add comments and fix the bug about RNN-based VNE solver
-- `v0.3` Refactor the stucture and release several algorithms (including exact, heuristic, meta-heuristic, and learning-based methods)
-- `v0.2` Release one Model-base RL (MCTS) approach and one Model-free RL (PG-CNN) algorithm
-- `v0.1` Release the implementation of environment and some heuristics-based solvers for VNE problem
-
-### Supported Features
-
-- **Adaptation to VNE Variants**
-  - Service Function Chain Deployment (SFC Deployment)
-  - Network Slicing
-- **Diverse Network Topologies**
-  - Star Graph: Data Center Network
-  - 2D-grid Graph: Grid Network
-  - Waxman Graph: General Network
-  - Path Graph: Chain-style Network
-  - Edge Probabilistic Connection Graph
-  - Customlized Topology 
-- **Graph/ Node / Link-level Attributes**: 
-  - For resources/ constraints/ QoS
-  - Graph Level: e.g. the global requirements of virtual network
-  - Node level: e.g. Node resource, node position
-  - Link level: e.g. Link resource, link latency
-- **Multiple RL Environments**
-  - Provide serval RL Environments in gym.Env-style
-- **Various Simulation Scenarios**
-  - Admission control: Reject Early some not cost-effective virtual networks
-  - Time window: Developping
 
 ### Citation
 
@@ -81,6 +50,66 @@ Our Related Papers
 
 **[TSC, Reviewing] HRL-ACRA**
 
+### Table of Contents
+
+- [Quick Start](#quick-start)
+  - [Installation](#installation)
+    - [Install with pip](#install-with-pip)
+    - [Install with script](#install-with-script)
+  - [Minimal Example](#minimal-example)
+- [VNE Problem](#vne-problem)
+- [Supported Features](#supported-features)
+- [Implemented Algorithms](#implemented-algorithms)
+  - [Exact Algorithms](#exact-algorithms)
+  - [Heuristic Algorithms](#heuristic-algorithms)
+  - [Meta-Heuristic Algorithms](#meta-heuristic-algorithms)
+  - [Learning-Based Algorithms](#learning-based-algorithms)
+
+## Quick Start
+
+### Installation
+
+#### Install with pip
+
+```bash
+pip install virne
+```
+
+#### Install with script
+
+```bash
+# only cpu
+bash install.sh -c 0
+
+# use cuda (optional version: 10.2, 11.3)
+bash install.sh -c 11.3
+```
+
+### Minimal Example
+
+```Python
+from virne.base import BasicScenario
+from virne import Config, REGISTRY, Generator, update_simulation_setting
+
+def run(config):
+    print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
+    # Load solver info: environment and solver class
+    solver_info = REGISTRY.get(config.solver_name)
+    Env, Solver = solver_info['env'], solver_info['solver']
+    print(f'Use {config.solver_name} Solver (Type = {solver_info["type"]})...\n')
+
+    scenario = BasicScenario.from_config(Env, Solver, config)
+    scenario.run()
+
+    print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")
+
+
+if __name__ == '__main__':
+    config = Config()
+    config.solver_name = 'nrm_rank'
+    p_net, v_net_simulator = Generator.generate_dataset(config, p_net=False, v_nets=False, save=False)
+    run(config)
+```
 
 ## VNE Problem
 
@@ -142,6 +171,30 @@ $$
   - Simultaneously, the available physical link pairs are routed by BFS algorithm.
 - BFS Trails
   - Based on breadth-first search, it expands the search space by exploiting the awareness of restarts.
+
+## Supported Features
+
+- **Adaptation to VNE Variants**
+  - Service Function Chain Deployment (SFC Deployment)
+  - Network Slicing
+- **Diverse Network Topologies**
+  - Star Graph: Data Center Network
+  - 2D-grid Graph: Grid Network
+  - Waxman Graph: General Network
+  - Path Graph: Chain-style Network
+  - Edge Probabilistic Connection Graph
+  - Customlized Topology 
+- **Graph/ Node / Link-level Attributes**: 
+  - For resources/ constraints/ QoS
+  - Graph Level: e.g. the global requirements of virtual network
+  - Node level: e.g. Node resource, node position
+  - Link level: e.g. Link resource, link latency
+- **Multiple RL Environments**
+  - Provide serval RL Environments in gym.Env-style
+- **Various Simulation Scenarios**
+  - Admission control: Reject Early some not cost-effective virtual networks
+  - Time window: Developping
+
 
 ## Implemented Algorithms
 
@@ -221,91 +274,6 @@ $$
 | First Fit Decreasing Joint Place and Route    | `ffd_joint_pr`      | `joint_pr`   |
 | First Fit Decreasing Rank Breath First Search | `ffd_bfs_trials`    | `bfs_trials` |
 
-## Quick Start
-
-The structure of this framework are still optimized steadily. We will construct the first version of the document as soon as possible until stability is ensured.
-
-### Installation
-
-#### Complete installation
-
-```shell
-# only cpu
-bash install.sh -c 0
-
-# use cuda (optional version: 10.2, 11.3)
-bash install.sh -c 11.3
-```
-
-#### Selective installation
-
-Necessary
-
-```shell
-pip install networkx numpy pandas ortools matplotlib pyyaml
-```
-
-Expansion
-
-```shell
-# for deep learning
-# use cuda
-conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
-# only cpu
-conda install pytorch torchvision torchaudio -c pytorch
-
-# for reinforcement learning
-pip install gym==0.19.0 stable_baselines3 sb3_contrib
-
-# for graph neural network
-conda install pyg -c pyg -c conda-forge
-
-# install the lastest scipy
-pip install --force-reinstall scipy
-```
-
-### Minimal Example
-
-```Python
-import os
-from config import get_config, show_config, save_config, load_config
-from data import Generator
-from base import BasicScenario
-from solver import REGISTRY
-
-# 1. Get Config
-# The key settings are controlled with config.py
-# while other advanced settings are listed in settings/*.yaml
-config = get_config()
-
-# generate p_net and v_net dataset
-Generator.generate_dataset(config)
-
-
-# 2. Generate Dataset
-# Although we do not generate a static dataset,
-# the environment will automatically produce a random dataset.
-p_net, v_net_simulator = Generator.generate_dataset(
-    config, 
-    p_net=False, 
-    v_nets=False, 
-    save=False) # Here, no dataset will be generated and saved.
-
-# 3. Start to Run
-# A scenario with an environment and a solver will be create following provided config.
-# The interaction between the environment and the solver will happen in this scenario.
-print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
-# load Env and Solver
-solver_info = REGISTRY.get(config.solver_name)
-Env, Solver = solver_info['env'], solver_info['solver']
-print(f'Use {config.solver_name} Solver (Type = {solver_info["type"]})...\n')
-
-# create scenario with Env and Solver
-scenario = BasicScenario.from_config(Env, Solver, config)
-scenario.run()
-
-print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")
-```
 
 ## To-do List
 
