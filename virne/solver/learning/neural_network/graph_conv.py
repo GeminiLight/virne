@@ -2,17 +2,15 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import torch
 from torch import Tensor
-from torch.nn import ModuleList, Sequential, ReLU
-
-
-from typing import Callable, Tuple, Union
-
-import torch
-from torch import Tensor
-from torch.nn import Parameter
-
+import torch.nn.functional as F
+from torch.nn import Parameter, ModuleList, Sequential, ReLU
+from typing import Optional, Tuple, Union, Callable
+from torch_sparse import SparseTensor, set_diag
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn.dense.linear import Linear
+from torch_geometric.typing import (Adj, NoneType, OptPairTensor, OptTensor, Size)
+from torch_geometric.utils import add_self_loops, remove_self_loops, softmax
+from torch_geometric.nn.inits import glorot, zeros
 from torch_geometric.nn.inits import reset, zeros
 from torch_geometric.typing import Adj, OptPairTensor, OptTensor, Size
 
@@ -143,22 +141,6 @@ class NNConv(MessagePassing):
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}({self.in_channels}, '
                 f'{self.out_channels}, aggr={self.aggr}, nn={self.nn})')
-
-
-from typing import Optional, Tuple, Union
-
-import torch
-import torch.nn.functional as F
-from torch import Tensor
-from torch.nn import Parameter
-from torch_sparse import SparseTensor, set_diag
-
-from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.nn.dense.linear import Linear
-from torch_geometric.typing import (Adj, NoneType, OptPairTensor, OptTensor,
-                                    Size)
-from torch_geometric.utils import add_self_loops, remove_self_loops, softmax
-from torch_geometric.nn.inits import glorot, zeros
 
 
 class EdgeFusionGATConv(MessagePassing):
