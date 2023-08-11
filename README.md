@@ -304,28 +304,3 @@ $$
 | MUVINE          | `mu`        | `learning`   | `joint`     | [MUVINE: Multi-stage Virtual Network Embedding in Cloud Data Centers using Reinforcement Learning based Predictions](https://arxiv.org/pdf/2111.02737.pdf) | JSAC        | 2020    | Admission Control |
 | TD      | `td`      | `learning`   | `two-stage` | [VNE-TD: A virtual network embedding algorithm based on temporal-difference learning](https://www.sciencedirect.com/science/article/pii/S138912861830584X?via%3Dihub) | CN          | 2019      |  |
 | RNN          | `rnn`         | `learning`   | `two-stage` | [Boost Online Virtual Network Embedding: Using Neural Networks for Admission Control](https://mediatum.ub.tum.de/doc/1346092/1346092.pdf) | CNSM        | 2016    | Admission Control |
-
-### Module Testing
-
-#### config
-
-- [x] `config`
-
-#### data
-
-- [x] `data.attribute`
-- [x] `data.network`
-- [x] `data.physical_network`
-- [x] `data.virtual_network`
-- [x] `data.v_net_simulator`
-
-#### solver
-
-- [x] `base.recorder`
-- [x] `base.controller`
-- [x] `base.enviroment`
-- [x] `solver.rank.node_rank`
-- [x] `solver.rank.link_rank`
-- [x] `solver.heuristic`
-- [x] `solver.learning.mcts`
-- [ ] ...

@@ -1,7 +1,0 @@
-embedding_dim: 128  # Embedding dimension
-hidden_dim: 128     # Hidden dimension
-num_layers: 1       # Number of GRU stacks' layers
-num_gnn_layers: 5   # Number of GNN layers
-dropout_prob: 0.0   # Droput rate
-batch_norm: False   # Batch normalization
-l2reg_rate: 2.5e-4  # L2 regularization rate

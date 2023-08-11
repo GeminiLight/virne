@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "virne"
-"version" = "0.0.0"
+"version" = "0.5.0"
 description = "A unified framework for virtual network embedding."
 readme = "README.md"
 requires-python = ">= 3.8"
