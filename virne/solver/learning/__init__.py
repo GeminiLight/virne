@@ -1,7 +1,6 @@
 try:
     import torch_sparse, torch_scatter, torch_cluster
 except ImportError:
-    # raise ImportError('Please install PyTorch Geometric first.')
     print('PyTorch Geometric is not installed completely. Installing now...')
     import os
     import torch
@@ -13,7 +12,7 @@ except ImportError:
     else:
         cuda_suffix = 'cu117'
     os.system(f'pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.0+{cuda_suffix}.html')
-    os.system('cls' if os.name == 'nt' else 'clear')
+    # os.system('cls' if os.name == 'nt' else 'clear')
 
 
 from .hopfield_network import HopfieldNetworkSolver
