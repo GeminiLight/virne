@@ -15,10 +15,216 @@ from torch_geometric.nn.inits import reset, zeros
 from torch_geometric.typing import Adj, OptPairTensor, OptTensor, Size
 
 
-class EdgeFusionGATConv(MessagePassing):
+class NNConv(MessagePassing):
+    """The continuous kernel-based convolutional operator from the
+    `"Neural Message Passing for Quantum Chemistry"
+    <https://arxiv.org/abs/1704.01212>`_ paper.
+    This convolution is also known as the edge-conditioned convolution from the
+    `"Dynamic Edge-Conditioned Filters in Convolutional Neural Networks on
+    Graphs" <https://arxiv.org/abs/1704.02901>`_ paper (see
+    :class:`torch_geometric.nn.conv.ECConv` for an alias):
+
+    .. math::
+        \mathbf{x}^{\prime}_i = \mathbf{\Theta} \mathbf{x}_i +
+        \sum_{j \in \mathcal{N}(i)} \mathbf{x}_j \cdot
+        h_{\mathbf{\Theta}}(\mathbf{e}_{i,j}),
+
+    where :math:`h_{\mathbf{\Theta}}` denotes a neural network, *.i.e.*
+    a MLP.
+
+    Args:
+        in_channels (int or tuple): Size of each input sample, or :obj:`-1` to
+            derive the size from the first input(s) to the forward method.
+            A tuple corresponds to the sizes of source and target
+            dimensionalities.
+        out_channels (int): Size of each output sample.
+        nn (torch.nn.Module): A neural network :math:`h_{\mathbf{\Theta}}` that
+            maps edge features :obj:`edge_attr` of shape :obj:`[-1,
+            num_edge_features]` to shape
+            :obj:`[-1, in_channels * out_channels]`, *e.g.*, defined by
+            :class:`torch.nn.Sequential`.
+        aggr (string, optional): The aggregation scheme to use
+            (:obj:`"add"`, :obj:`"mean"`, :obj:`"max"`).
+            (default: :obj:`"add"`)
+        root_weight (bool, optional): If set to :obj:`False`, the layer will
+            not add the transformed root node features to the output.
+            (default: :obj:`True`)
+        bias (bool, optional): If set to :obj:`False`, the layer will not learn
+            an additive bias. (default: :obj:`True`)
+        **kwargs (optional): Additional arguments of
+            :class:`torch_geometric.nn.conv.MessagePassing`.
+
+    Shapes:
+        - **input:**
+          node features :math:`(|\mathcal{V}|, F_{in})` or
+          :math:`((|\mathcal{V_s}|, F_{s}), (|\mathcal{V_t}|, F_{t}))`
+          if bipartite,
+          edge indices :math:`(2, |\mathcal{E}|)`,
+          edge features :math:`(|\mathcal{E}|, D)` *(optional)*
+        - **output:** node features :math:`(|\mathcal{V}|, F_{out})` or
+          :math:`(|\mathcal{V}_t|, F_{out})` if bipartite
     """
-    The graph attentional operator from the Graph Attention Networks
+    def __init__(self, in_channels: Union[int, Tuple[int, int]],
+                 out_channels: int, edge_dim: Optional[int] = None, aggr: str = 'add',
+                 root_weight: bool = True, bias: bool = True, **kwargs):
+        super().__init__(aggr=aggr, **kwargs)
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        if edge_dim is not None:
+            self.edge_nn = Linear(in_channels[1], out_channels, bias=False,
+                              weight_initializer='uniform')
+        self.root_weight = root_weight
+
+        if isinstance(in_channels, int):
+            in_channels = (in_channels, in_channels)
+
+        self.in_channels_l = in_channels[0]
+
+        if root_weight:
+            self.lin = Linear(in_channels[1], out_channels, bias=False,
+                              weight_initializer='uniform')
+
+        if bias:
+            self.bias = Parameter(torch.Tensor(out_channels))
+        else:
+            self.register_parameter('bias', None)
+
+        self.pre_nns = ModuleList()
+        modules = [Linear(3 * self.F_in, self.F_in)]
+        for _ in range(1):
+            modules += [ReLU()]
+            modules += [Linear(self.F_in, self.F_in)]
+        self.pre_nns.append(Sequential(*modules))
+
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        reset(self.nn)
+        if self.root_weight:
+            self.lin.reset_parameters()
+        zeros(self.bias)
+
+    def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
+                edge_attr: OptTensor = None, size: Size = None) -> Tensor:
+        """"""
+        if isinstance(x, Tensor):
+            x: OptPairTensor = (x, x)
+        out = self.propagate(edge_index, x=x, edge_attr=edge_attr, size=size)
+
+        x_r = x[1]
+        if x_r is not None and self.root_weight:
+            out += self.lin(x_r)
+
+        if self.bias is not None:
+            out += self.bias
+
+        return out
+
+    def message(self, x_i: Tensor, x_j: Tensor, edge_attr: Tensor) -> Tensor:
+        weight = self.nn(edge_attr)
+        weight = weight.view(-1, self.in_channels_l, self.out_channels)
+        h: Tensor = x_i  # Dummy.
+        if edge_attr is not None:
+            edge_attr = self.edge_encoder(edge_attr)
+            edge_attr = edge_attr.view(-1, 1, self.F_in)
+            edge_attr = edge_attr.repeat(1, self.towers, 1)
+            h = torch.cat([x_i, x_j, edge_attr], dim=-1)
+        else:
+            h = torch.cat([x_i, x_j], dim=-1)
+
+        hs = [nn(h[:, i]) for i, nn in enumerate(self.pre_nns)]
+        return torch.stack(hs, dim=1)
+
+
+    def __repr__(self) -> str:
+        return (f'{self.__class__.__name__}({self.in_channels}, '
+                f'{self.out_channels}, aggr={self.aggr}, nn={self.nn})')
+
+
+class EdgeFusionGATConv(MessagePassing):
+    """The graph attentional operator from the `"Graph Attention Networks"
     <https://arxiv.org/abs/1710.10903>`_ paper
+
+    .. math::
+        \mathbf{x}^{\prime}_i = \alpha_{i,i}\mathbf{\Theta}\mathbf{x}_{i} +
+        \sum_{j \in \mathcal{N}(i)} \alpha_{i,j}\mathbf{\Theta}\mathbf{x}_{j},
+
+    where the attention coefficients :math:`\alpha_{i,j}` are computed as
+
+    .. math::
+        \alpha_{i,j} =
+        \frac{
+        \exp\left(\mathrm{LeakyReLU}\left(\mathbf{a}^{\top}
+        [\mathbf{\Theta}\mathbf{x}_i \, \Vert \, \mathbf{\Theta}\mathbf{x}_j]
+        \right)\right)}
+        {\sum_{k \in \mathcal{N}(i) \cup \{ i \}}
+        \exp\left(\mathrm{LeakyReLU}\left(\mathbf{a}^{\top}
+        [\mathbf{\Theta}\mathbf{x}_i \, \Vert \, \mathbf{\Theta}\mathbf{x}_k]
+        \right)\right)}.
+
+    If the graph has multi-dimensional edge features :math:`\mathbf{e}_{i,j}`,
+    the attention coefficients :math:`\alpha_{i,j}` are computed as
+
+    .. math::
+        \alpha_{i,j} =
+        \frac{
+        \exp\left(\mathrm{LeakyReLU}\left(\mathbf{a}^{\top}
+        [\mathbf{\Theta}\mathbf{x}_i \, \Vert \, \mathbf{\Theta}\mathbf{x}_j
+        \, \Vert \, \mathbf{\Theta}_{e} \mathbf{e}_{i,j}]\right)\right)}
+        {\sum_{k \in \mathcal{N}(i) \cup \{ i \}}
+        \exp\left(\mathrm{LeakyReLU}\left(\mathbf{a}^{\top}
+        [\mathbf{\Theta}\mathbf{x}_i \, \Vert \, \mathbf{\Theta}\mathbf{x}_k
+        \, \Vert \, \mathbf{\Theta}_{e} \mathbf{e}_{i,k}]\right)\right)}.
+
+    Args:
+        in_channels (int or tuple): Size of each input sample, or :obj:`-1` to
+            derive the size from the first input(s) to the forward method.
+            A tuple corresponds to the sizes of source and target
+            dimensionalities.
+        out_channels (int): Size of each output sample.
+        heads (int, optional): Number of multi-head-attentions.
+            (default: :obj:`1`)
+        concat (bool, optional): If set to :obj:`False`, the multi-head
+            attentions are averaged instead of concatenated.
+            (default: :obj:`True`)
+        negative_slope (float, optional): LeakyReLU angle of the negative
+            slope. (default: :obj:`0.2`)
+        dropout (float, optional): Dropout probability of the normalized
+            attention coefficients which exposes each node to a stochastically
+            sampled neighborhood during training. (default: :obj:`0`)
+        add_self_loops (bool, optional): If set to :obj:`False`, will not add
+            self-loops to the input graph. (default: :obj:`True`)
+        edge_dim (int, optional): Edge feature dimensionality (in case
+            there are any). (default: :obj:`None`)
+        fill_value (float or Tensor or str, optional): The way to generate
+            edge features of self-loops (in case :obj:`edge_dim != None`).
+            If given as :obj:`float` or :class:`torch.Tensor`, edge features of
+            self-loops will be directly given by :obj:`fill_value`.
+            If given as :obj:`str`, edge features of self-loops are computed by
+            aggregating all features of edges that point to the specific node,
+            according to a reduce operation. (:obj:`"add"`, :obj:`"mean"`,
+            :obj:`"min"`, :obj:`"max"`, :obj:`"mul"`). (default: :obj:`"mean"`)
+        bias (bool, optional): If set to :obj:`False`, the layer will not learn
+            an additive bias. (default: :obj:`True`)
+        **kwargs (optional): Additional arguments of
+            :class:`torch_geometric.nn.conv.MessagePassing`.
+
+    Shapes:
+        - **input:**
+          node features :math:`(|\mathcal{V}|, F_{in})` or
+          :math:`((|\mathcal{V_s}|, F_{s}), (|\mathcal{V_t}|, F_{t}))`
+          if bipartite,
+          edge indices :math:`(2, |\mathcal{E}|)`,
+          edge features :math:`(|\mathcal{E}|, D)` *(optional)*
+        - **output:** node features :math:`(|\mathcal{V}|, H * F_{out})` or
+          :math:`((|\mathcal{V}_t|, H * F_{out})` if bipartite.
+          If :obj:`return_attention_weights=True`, then
+          :math:`((|\mathcal{V}|, H * F_{out}),
+          ((2, |\mathcal{E}|), (|\mathcal{E}|, H)))`
+          or :math:`((|\mathcal{V_t}|, H * F_{out}), ((2, |\mathcal{E}|),
+          (|\mathcal{E}|, H)))` if bipartite
     """
     _alpha: OptTensor
 
