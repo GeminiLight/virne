@@ -5,17 +5,26 @@ Installation
 
     Owing to the significant changes in the latest version of gym, 
     the current version of the code is not compatible with the latest version of gym.
-    Please ensure that the version of gym is **0.21.0**.
+    Please ensure that the version of gym is **0.22.0**.
 
-Complete installation
----------------------
+
+Install with pip
+----------------
+
+.. code-block:: bash
+
+    pip install virne
+
+
+Install with script
+-------------------
 
 .. code-block:: bash
 
     # only cpu
     bash install.sh -c 0
 
-    # use cuda (optional version: 10.2, 11.3)
+    # use cuda (e.g. cuda 11.3)
     bash install.sh -c 11.3
 
 
@@ -28,18 +37,11 @@ Necessary
 
 .. code-block:: bash
     
-    pip install networkx numpy pandas matplotlib pyyaml
+    pip install numpy pandas matplotlib networkx pyyaml tqdm ortools colorama
 
 
 Expansion
 ~~~~~~~~~
-
-- Exact Solver or MCF Routing
-
-.. code-block:: bash
-
-    pip install ortools
-
 
 - Deep Learning
 
@@ -47,16 +49,18 @@ Expansion
 
     # use cuda
     conda install pytorch cudatoolkit=11.3 -c pytorch
-    
+    pip install tensorboard
+
     # only cpu
     conda install pytorch -c pytorch
+    pip install tensorboard
 
 
 - Reinfocement Learning
 
 .. code-block:: bash
 
-    pip install gym=0.21.0
+    pip install gym=0.22.0
 
 
 - Graph Neural Network

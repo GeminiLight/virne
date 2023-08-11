@@ -39,5 +39,5 @@ echo -e "y" | conda install ${pytorch_install_command} -c pytorch
 # Additional packages
 pip install tensorboard
 echo -e "y" | conda install pyg -c pyg -c conda-forge
-pip install gym==0.21.0
+pip install gym==0.22.0
 pip install --force-reinstall scipy

@@ -3,6 +3,7 @@
 # ==============================================================================
 
 
+from dataclasses import dataclass
 import os
 import json
 import time
@@ -15,111 +16,111 @@ from .utils.setting import read_setting, write_setting
 
 from typing import Any
 
-
+@dataclass
 class Config(ClassDict):
     """
     Config class for all the settings.
     """
-    def __init__(self, **kwargs):
-        ### Dataset ###
-        path = os.path.dirname(os.path.abspath(__file__))
-        self.p_net_setting_path = kwargs.get('p_net_setting_path', os.path.join(path, 'settings/p_net_setting.yaml'))
-        self.v_sim_setting_path = kwargs.get('v_sim_setting_path', os.path.join(path, 'settings/v_sim_setting.yaml'))
+    ### Dataset ###
+    p_net_setting_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings/p_net_setting.yaml')
+    v_sim_setting_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings/v_sim_setting.yaml')
 
-        ### Environment ###
-        self.time_window_size = kwargs.get('time_window_size', 100)
-        self.renew_v_net_simulator = False
-        self.node_resource_unit_price = 1.
-        self.link_resource_unit_price = 1.
-        self.revenue_service_time_weight = 0.001
-        self.revenue_start_price_weight = 1.
-        self.r2c_ratio_threshold = 0.0
-        self.vn_size_threshold = 10000
-        
-        # log & save
-        self.if_save_records = True
-        self.if_temp_save_records = True
-        self.if_save_config = True
-        self.summary_dir = 'save/'
-        self.save_dir = 'save/'
-        self.summary_file_name = 'global_summary.csv'
+    ### System ###
+    time_window_size: int = 100
+    renew_v_net_simulator: bool = False
+    node_resource_unit_price: float = 1.
+    link_resource_unit_price: float = 1.
+    revenue_service_time_weight: float = 0.001
+    revenue_start_price_weight: float = 1.
+    r2c_ratio_threshold: float = 0.0
+    vn_size_threshold: int = 10000
 
-        ### solver  ###
-        self.solver_name = 'nrm_rank'
-        self.sub_solver_name = None
-        self.pretrained_model_path = ''
-        self.pretrained_subsolver_model_path = ''
-        # self.solver_name = 'nrm_rank'
-        self.verbose = 1                      # Level of showing information 0: no output, 1: output summary, 2: output detailed info
-        self.reusable = False                 # Whether or not to allow to deploy several virtual nodes on the same physical node
-        ### ranking & mapping ###
-        self.node_ranking_method = 'order'    # Method of node ranking: 'order' or 'greedy'
-        self.link_ranking_method = 'order'    # Method of link ranking: 'order' or 'greedy'
-        self.matching_mathod = 'greedy'       # Method of node matching: 'greedy' or 'l2s2'
-        self.shortest_method = 'k_shortest'   # Method of path finding: 'bfs_shortest' or 'k_shortest'
-        self.k_shortest = 10                  # Number of shortest paths to be found
-        self.allow_revocable = False          # Whether or not to allow to revoke a virtual node
-        self.allow_rejection = False          # Whether or not to allow to reject a virtual node
+    # log & save
+    if_save_records: bool = True
+    if_temp_save_records: bool = True
+    if_save_config: bool = True
+    summary_dir: str = 'save/'
+    save_dir: str = 'save/'
+    summary_file_name: str = 'global_summary.csv'
 
-        ### Training ###
-        self.num_epochs = 1
-        self.seed = None
-        self.use_cuda = True
-        self.cuda_id = 0
-        self.distributed_training = False
-        self.num_train_epochs = 100
-        self.num_workers = 10
-        self.batch_size = 128
-        self.target_steps = self.batch_size * 2
-        self.repeat_times = 10
-        self.save_interval = 10
-        self.eval_interval = 10
+    ### solver  ###
+    solver_name: str = 'random_rank'
+    sub_solver_name: str = None
+    pretrained_model_path: str = ''
+    pretrained_subsolver_model_path: str = ''
+    # solver_name: str = 'nrm_rank'
+    verbose: int = 1                      # Level of showing information 0: no output, 1: output summary, 2: output detailed info
+    reusable: bool = False                 # Whether or not to allow to deploy several virtual nodes on the same physical node
+    ### ranking & mapping ###
+    node_ranking_method: str = 'order'    # Method of node ranking: 'order' or 'greedy'
+    link_ranking_method: str = 'order'    # Method of link ranking: 'order' or 'greedy'
+    matching_mathod: str = 'greedy'       # Method of node matching: 'greedy' or 'l2s2'
+    shortest_method: str = 'k_shortest'   # Method of path finding: 'bfs_shortest' or 'k_shortest'
+    k_shortest: int = 10                  # Number of shortest paths to be found
+    allow_revocable: bool = False          # Whether or not to allow to revoke a virtual node
+    allow_rejection: bool = False          # Whether or not to allow to reject a virtual node
 
-        ### Neural Network ###
-        self.embedding_dim = 128   # Embedding dimension
-        self.hidden_dim = 128      # Hidden dimension
-        self.num_layers = 1        # Number of GRU stacks' layers
-        self.num_gnn_layers = 5    # Number of GNN layers
-        self.dropout_prob = 0.0    # Droput rate
-        self.batch_norm = False    # Batch normalization
-        self.l2reg_rate = 2.5e-4   # L2 regularization rate
-        self.lr = 1e-3
+    ### Training ###
+    num_epochs: int = 1
+    seed: int = None
+    use_cuda: bool = True
+    cuda_id: int = 0
+    distributed_training: bool = False
+    num_train_epochs: int = 100
+    num_workers: int = 10
+    batch_size: int = 128
+    target_steps: int = batch_size * 2
+    repeat_times: int = 10
+    save_interval: int = 10
+    eval_interval: int = 10
 
-        ### Reinforcement Learning ###
-        self.rl_gamma = 0.99
-        self.explore_rate = 0.9
-        self.gae_lambda = 0.98
-        self.lr_actor = 1e-3
-        self.lr_critic = 1e-3
-        self.decode_strategy = 'greedy'
-        self.k_searching = 1
+    ### Neural Network ###
+    embedding_dim: int = 128   # Embedding dimension
+    hidden_dim: int = 128      # Hidden dimension
+    num_layers: int = 1        # Number of GRU stacks' layers
+    num_gnn_layers: int = 5    # Number of GNN layers
+    dropout_prob: float = 0.0    # Droput rate
+    batch_norm: bool = False    # Batch normalization
+    l2reg_rate: float = 2.5e-4    # L2 regularization rate
+    lr: float = 0.001          # Learning rate
+    # lr_decay: float = 0.5      # Learning rate decay
 
-        # loss
-        self.coef_critic_loss = 0.5
-        self.coef_entropy_loss = 0.01
-        self.coef_mask_loss = 0.01
-        self.reward_weight = 0.1
+    ### Reinforcement Learning ###
+    rl_gamma: float = 0.99
+    explore_rate: float = 0.9
+    gae_lambda: float = 0.98
+    lr_actor: float = 1e-3
+    lr_critic: float = 1e-3
+    decode_strategy: str = 'greedy'
+    k_searching: int = 1
 
-        self.lr_penalty_params = 1e-3
-        self.lr_cost_critic = 1e-3
+    ### Loss ###
+    coef_critic_loss: float = 0.5
+    coef_entropy_loss: float = 0.01
+    coef_mask_loss: float = 0.01
+    reward_weight: float = 0.1
 
-        # tricks
-        self.mask_actions = True
-        self.maskable_policy = True
-        self.use_negative_sample = True
-        self.norm_advantage = True
-        self.clip_grad = True
-        self.eps_clip = 0.2
-        self.max_grad_norm = 0.5
-        self.norm_critic_loss = False
-        self.use_baseline_solver = False
-        self.weight_decay = 0.00001
+    lr_penalty_params: float = 1e-3
+    lr_cost_critic: float = 1e-3
 
-        ### Safe RL ###
-        self.srl_cost_budget = 0.2
-        self.srl_alpha = 1.
-        self.srl_beta = 0.1
+    ### Tricks ###
+    mask_actions: bool = True
+    maskable_policy: bool = True
+    use_negative_sample: bool = True
+    norm_advantage: bool = True
+    clip_grad: bool = True
+    eps_clip: float = 0.2
+    max_grad_norm: float = 0.5
+    norm_critic_loss: bool = False
+    use_baseline_solver: bool = False
+    weight_decay: float = 0.00001
 
+    ### Safe RL ###
+    srl_cost_budget: float = 0.2
+    srl_alpha: float = 1.
+    srl_beta: float = 0.1
+
+    def __post_init__(self):
         ### Read settings ###
         self.read_settings(p_net=True, v_sim=True)
         self.create_dirs()

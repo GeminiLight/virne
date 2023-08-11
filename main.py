@@ -1,6 +1,7 @@
 from virne.base import BasicScenario
 from virne import Config, REGISTRY, Generator, update_simulation_setting
 
+
 def run(config):
     print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
     # Load solver info: environment and solver class
@@ -15,7 +16,10 @@ def run(config):
 
 
 if __name__ == '__main__':
-    config = Config()
-    config.solver_name = 'nrm_rank'
-    p_net, v_net_simulator = Generator.generate_dataset(config, p_net=False, v_nets=False, save=False)
+    config = Config(
+        solver_name='nrm_rank',
+        # p_net_setting_path='customized_p_net_setting_file_path',
+        # v_sim_setting_path='customized_v_sim_setting_file_path',
+    )
+    Generator.generate_dataset(config, p_net=False, v_nets=False, save=False)
     run(config)
