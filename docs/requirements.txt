@@ -3,6 +3,7 @@ sphinx-design
 sphinx
 sphinx-copybutton
 sphinx-press-theme
+sphinx-rtd-theme
 sphinx-markdown-tables
 recommonmark
 sphinx-autoapi
