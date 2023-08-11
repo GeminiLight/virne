@@ -38,4 +38,5 @@ __all__ = [
     'PgCnn2Solver',
     'PgSeq2SeqSolver',
     'A3CGcnSeq2SeqSolver',
+    'DdpgAttentionSolver'
 ]

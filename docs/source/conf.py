@@ -14,8 +14,6 @@ import pathlib
 ROOT_DIR = pathlib.Path(__file__).absolute().parent.parent.parent
 # sys.path.insert(0, str(ROOT_DIR / 'virne'))
 sys.path.insert(0, str(ROOT_DIR))
-print(ROOT_DIR)
-print(sys.path)
 
 
 project = 'virne'
