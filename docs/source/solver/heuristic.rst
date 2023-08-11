@@ -1,7 +1,7 @@
 Heuristic Solver
 ================
 
-.. currentmodule:: solver.heuristic
+.. currentmodule:: virne.solver.heuristic
 
 .. autosummary::
     OrderRankSolver

@@ -9,10 +9,14 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('../../'))
+import pathlib
+
+ROOT_DIR = pathlib.Path(__file__).absolute().parent.parent.parent
+# sys.path.insert(0, str(ROOT_DIR / 'virne'))
+sys.path.insert(0, str(ROOT_DIR))
+print(ROOT_DIR)
 print(sys.path)
+
 
 project = 'virne'
 copyright = '2023, GeminiLight'

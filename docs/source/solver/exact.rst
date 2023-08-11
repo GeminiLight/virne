@@ -1,7 +1,7 @@
 Exact Solver
 ============
 
-.. currentmodule:: solver.exact
+.. currentmodule:: virne.solver.exact
 
 .. autosummary::
 

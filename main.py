@@ -1,6 +1,5 @@
 # os.chdir(os.path.join(os.getcwd(), 'code/virne-dev'))
 import os
-from args import get_args
 from virne.base import BasicScenario
 from virne import Config, REGISTRY, Generator, update_simulation_setting
 
@@ -19,6 +18,7 @@ def run(config):
 
 if __name__ == '__main__':
     config = Config()
+    config.solver_name = 'nrm_rank'
     config.renew_v_net_simulator = False
     p_net, v_net_simulator = Generator.generate_dataset(config, p_net=False, v_nets=False, save=False)
     run(config)

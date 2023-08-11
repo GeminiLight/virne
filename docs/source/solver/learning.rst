@@ -1,7 +1,7 @@
 Learning-based Solver
 =====================
 
-.. currentmodule:: solver.learning
+.. currentmodule:: virne.solver.learning
 
 .. autosummary::
 

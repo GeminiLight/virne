@@ -5,9 +5,9 @@ API
    :recursive:
    :toctree: generated
 
-   base
-   data
-   solver
+   virne.base
+   virne.data
+   virne.solver
 
    .. Controller
    .. Counter

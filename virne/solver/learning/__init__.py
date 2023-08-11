@@ -36,7 +36,6 @@ __all__ = [
     'PgMlpSolver',
     'PgCnnSolver',
     'PgCnn2Solver',
-    'PgGcnSolver',
     'PgSeq2SeqSolver',
     'A3CGcnSeq2SeqSolver',
 ]

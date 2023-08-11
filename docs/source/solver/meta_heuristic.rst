@@ -1,7 +1,7 @@
 Meta-heuristic Solver
 =====================
 
-.. currentmodule:: solver.meta_heuristic
+.. currentmodule:: virne.solver.meta_heuristic
 
 .. autosummary::
 
