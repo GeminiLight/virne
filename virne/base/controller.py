@@ -17,6 +17,7 @@ from virne.data.physical_network import PhysicalNetwork
 from virne.data.virtual_network import VirtualNetwork
 from virne.data.attribute import create_attrs_from_setting
 
+
 class Controller:
     """
     A class that controls changes in the physical network, i.e., execute the resource allocation process

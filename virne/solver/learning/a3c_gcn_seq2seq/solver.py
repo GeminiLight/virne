@@ -37,17 +37,8 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
     """
     def __init__(self, controller, recorder, counter, **kwargs):
         InstanceAgent.__init__(self, InstanceEnv)
-        A2CSolver.__init__(self, controller, recorder, counter, **kwargs)
-        num_p_net_nodes = kwargs['p_net_setting']['num_nodes']
-        self.policy = ActorCritic(p_net_num_nodes=num_p_net_nodes, p_net_feature_dim=5, v_net_feature_dim=2, embedding_dim=self.embedding_dim).to(self.device)
-        self.optimizer = torch.optim.Adam([
-                {'params': self.policy.actor.parameters(), 'lr': self.lr_actor},
-                {'params': self.policy.critic.parameters(), 'lr': self.lr_critic},
-            ],
-        )
-        self.preprocess_obs = obs_as_tensor
+        A2CSolver.__init__(self, controller, recorder, counter, make_policy, obs_as_tensor, **kwargs)
         self.preprocess_encoder_obs = encoder_obs_to_tensor
-        self.compute_advantage_method = 'mc'
 
     def solve(self, instance):
         v_net, p_net = instance['v_net'], instance['p_net']
@@ -106,8 +97,6 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
             value = self.estimate_value(tensor_instance_obs) if hasattr(self.policy, 'evaluate') else None
             next_instance_obs, instance_reward, instance_done, instance_info = sub_env.step(action)
 
-            p_node_id = action.item()
-
             sub_buffer.add(instance_obs, action, instance_reward, instance_done, action_logprob, value=value)
 
             next_instance_obs = {
@@ -126,6 +115,22 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
         last_value = self.estimate_value(self.preprocess_obs(next_instance_obs, self.device)) if hasattr(self.policy, 'evaluate') else None
         solution = sub_env.solution
         return solution, sub_buffer, last_value
+
+
+def make_policy(agent, **kwargs):
+    action_dim = agent.p_net_setting_num_nodes
+    feature_dim = agent.p_net_setting_num_node_resource_attrs + agent.p_net_setting_num_link_resource_attrs + 5
+    policy = ActorCritic(
+        p_net_num_nodes=action_dim, 
+        p_net_feature_dim=5, 
+        v_net_feature_dim=2, 
+        embedding_dim=agent.embedding_dim).to(agent.device)
+    optimizer = torch.optim.Adam([
+        {'params': policy.encoder.parameters(), 'lr': agent.lr_actor},
+        {'params': policy.actor.parameters(), 'lr': agent.lr_actor},
+        {'params': policy.critic.parameters(), 'lr': agent.lr_critic}
+    ], weight_decay=agent.weight_decay)
+    return policy, optimizer
 
 
 def encoder_obs_to_tensor(obs, device):
@@ -181,12 +186,12 @@ def obs_as_tensor(obs, device):
         obs_p_node_id = torch.LongTensor(np.array(p_node_id_list)).to(device)
         obs_hidden_state = torch.FloatTensor(np.array(hidden_state_list)).to(device)
         obs_p_net = Batch.from_data_list(p_net_data_list).to(device)
-        obs_action_mask = torch.FloatTensor(action_mask_list).to(device)
+        obs_action_mask = torch.FloatTensor(np.array(action_mask_list)).to(device)
         # Pad sequences with zeros and get the mask of padded elements
         sequences = encoder_outputs_list
         max_length = max([seq.shape[0] for seq in sequences])
         padded_sequences = np.zeros((len(sequences), max_length, sequences[0].shape[1]))
-        mask = np.zeros((len(sequences), max_length), dtype=np.bool)
+        mask = np.zeros((len(sequences), max_length), dtype='bool')
         for i, seq in enumerate(sequences):
             seq_len = seq.shape[0]
             padded_sequences[i, :seq_len, :] = seq
