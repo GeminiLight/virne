@@ -138,7 +138,7 @@ Supported Features
 Citation
 --------
 
-Please cite our papers if you use Virne in your research.
+If you find Virne helpful to your research, please feel free to cite our related papers.
 
 .. Project Citation
 .. ~~~~~~~~~~~~~~~~
@@ -154,6 +154,8 @@ Please cite our papers if you use Virne in your research.
 ..       howpublished = {\url{https://github.com/GeminiLight/virne}},
 ..       commit = {cf68db31dbf07db0976d1afeda09d5c6070936d3}
 ..     }
+
+
 
 Our Related Papers
 ~~~~~~~~~~~~~~~~~~
@@ -173,7 +175,21 @@ Our Related Papers
       doi={10.1109/ICC42927.2021.9500964}
     }
 
-**[TSC, Reviewing] HRL-ACRA**
+**[TSC, 2023] HRL-ACRA**
+
+..  code-block:: bib
+
+    @ARTICLE {tfw-tsc-2023-hrl-acra,
+      author={Wang, Tianfu and Shen, Li and Fan, Qilin and Xu, Tong and Liu, Tongliang and Xiong, Hui},
+      journal={IEEE Transactions on Services Computing},
+      title={Joint Admission Control and Resource Allocation of Virtual Network Embedding Via Hierarchical Deep Reinforcement Learning},
+      year={2023},
+      volume={},
+      number={},
+      pages={1-14},
+      doi={10.1109/TSC.2023.3326539}
+    }
+
 
 
 Indices and tables

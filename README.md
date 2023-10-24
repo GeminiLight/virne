@@ -26,12 +26,9 @@ Its main characteristics are as follows.
 > - Completing the documentation
 > - Implementing more VNE algorithms
 
+### Citations
 
-### Citation
-
-Please cite our papers if you use Virne in your research.
-
-Our Related Papers
+If you find Virne helpful to your research, please feel free to cite our related papers.
 
 **[ICC, 2021] DRL-SFCP**
 
@@ -48,7 +45,20 @@ Our Related Papers
 }
 ```
 
-**[TSC, Reviewing] HRL-ACRA**
+**[TSC, 2023] HRL-ACRA**
+
+```bibtex
+@ARTICLE {tfw-tsc-2023-hrl-acra,
+  author={Wang, Tianfu and Shen, Li and Fan, Qilin and Xu, Tong and Liu, Tongliang and Xiong, Hui},
+  journal={IEEE Transactions on Services Computing},
+  title={Joint Admission Control and Resource Allocation of Virtual Network Embedding Via Hierarchical Deep Reinforcement Learning},
+  year={2023},
+  volume={},
+  number={},
+  pages={1-14},
+  doi={10.1109/TSC.2023.3326539}
+}
+```
 
 ### Table of Contents
 
