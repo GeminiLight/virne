@@ -5,12 +5,12 @@ except ImportError:
     import os
     import torch
     cuda_version = torch.version.cuda
-    if cuda_version is None:
-        cuda_suffix = 'cpu'
-    elif cuda_version in [11.7, 11.8]:
+    # if cuda_version is None:
+    #     cuda_suffix = 'cpu'
+    if cuda_version in [11.7, 11.8, 12.1]:
         cuda_suffix = 'cu' + cuda_version.replace('.', '')
     else:
-        cuda_suffix = 'cu117'
+        cuda_suffix = 'cpu'
     os.system(f'pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.0+{cuda_suffix}.html')
     # os.system('cls' if os.name == 'nt' else 'clear')
 
