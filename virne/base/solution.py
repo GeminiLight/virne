@@ -114,6 +114,9 @@ class Solution(ClassDict):
         """Pretty print the solution object's attributes using pprint module."""
         pprint.pprint(self.__dict__)
 
+    def update(self, new_dict):
+        for key, value in new_dict.items():
+            setattr(self, key, value)
 
     def __repr__(self):
         pprint.pprint(self.__dict__)
