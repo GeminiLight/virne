@@ -9,10 +9,10 @@ from gym import spaces
 from virne.solver.learning.rl_base import JointPRStepInstanceRLEnv, PlaceStepInstanceRLEnv
 
 
-class InstanceEnv(PlaceStepInstanceRLEnv):
+class InstanceRLEnv(PlaceStepInstanceRLEnv):
 
     def __init__(self, p_net, v_net, controller, recorder, counter, **kwargs):
-        super(InstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, **kwargs)
+        super(InstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, **kwargs)
         num_p_net_node_attrs = len(self.p_net.get_node_attrs(['resource']))
         num_p_net_link_attrs = len(self.p_net.get_link_attrs(['resource']))
         num_obs_attrs = num_p_net_node_attrs + num_p_net_link_attrs + 2
