@@ -63,7 +63,7 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
             action, action_logprob = self.select_action(tensor_instance_obs, sample=True)
             next_instance_obs, instance_reward, instance_done, instance_info = sub_env.step(action)
 
-            p_node_id = action.item()
+            p_node_id = action
 
             if instance_done:
                 break
