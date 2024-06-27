@@ -1,10 +1,18 @@
-# Virne | <img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" />
+# <center>Virne</center>
+
 
 <p align="center">
   <a href="https://virne.readthedocs.io">Documentation</a> |
+  <a href="https://github.com/GeminiLight/virne#citations">Citations</a> | 
   <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a> |
   <a href="https://github.com/GeminiLight/virne#license">License</a>
 </p>
+
+<center>
+<img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" />
+<img src="https://img.shields.io/badge/author-Tianfu%20Wang-blue" />
+  <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
+</center>
 
 --------------------------------------------------------------------------------
 
@@ -28,12 +36,40 @@ Its main characteristics are as follows.
 
 ### Citations
 
-If you find Virne helpful to your research, please feel free to cite our related papers.
+:sparkles: If you find Virne helpful to your research, please feel free to cite our related papers:heart:
+
+**[IJCAI, 2024] FlagVNE**
+
+```bibtex
+@INPROCEEDINGS{ijcai-2024-flagvne,
+  abbr={IJCAI},
+  title={FlagVNE: A Flexible and Generalizable RL Framework for Network Resource Allocation},
+  author={Wang, Tianfu and Fan, Qilin and Wang, Chao and Ding, Leilei and Yuan, Nicholas Jing and Xiong, Hui},
+  booktitle={Proceedings of the 33rd International Joint Conference on Artificial Intelligence},
+  pages={},
+  year={2024},
+}
+```
+
+**[TSC, 2023] HRL-ACRA**
+
+```bibtex
+@ARTICLE {tfwang-tsc-2023-hrl-acra,
+  author={Wang, Tianfu and Shen, Li and Fan, Qilin and Xu, Tong and Liu, Tongliang and Xiong, Hui},
+  journal={IEEE Transactions on Services Computing},
+  title={Joint Admission Control and Resource Allocation of Virtual Network Embedding Via Hierarchical Deep Reinforcement Learning},
+  volume={17},
+  number={03},
+  pages={1001--1015},
+  year={2024},
+  doi={10.1109/TSC.2023.3326539}
+}
+```
 
 **[ICC, 2021] DRL-SFCP**
 
 ```bibtex
-@INPROCEEDINGS{tfw-icc-2021-drl-sfcp,
+@INPROCEEDINGS{tfwang-icc-2021-drl-sfcp,
   author={Wang, Tianfu and Fan, Qilin and Li, Xiuhua and Zhang, Xu and Xiong, Qingyu and Fu, Shu and Gao, Min},
   booktitle={ICC 2021 - IEEE International Conference on Communications}, 
   title={DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning}, 
@@ -42,21 +78,6 @@ If you find Virne helpful to your research, please feel free to cite our related
   number={},
   pages={1-6},
   doi={10.1109/ICC42927.2021.9500964}
-}
-```
-
-**[TSC, 2023] HRL-ACRA**
-
-```bibtex
-@ARTICLE {tfw-tsc-2023-hrl-acra,
-  author={Wang, Tianfu and Shen, Li and Fan, Qilin and Xu, Tong and Liu, Tongliang and Xiong, Hui},
-  journal={IEEE Transactions on Services Computing},
-  title={Joint Admission Control and Resource Allocation of Virtual Network Embedding Via Hierarchical Deep Reinforcement Learning},
-  year={2023},
-  volume={},
-  number={},
-  pages={1-14},
-  doi={10.1109/TSC.2023.3326539}
 }
 ```
 
