@@ -38,7 +38,6 @@ Its main characteristics are as follows.
 
 ```bibtex
 @INPROCEEDINGS{ijcai-2024-flagvne,
-  abbr={IJCAI},
   title={FlagVNE: A Flexible and Generalizable RL Framework for Network Resource Allocation},
   author={Wang, Tianfu and Fan, Qilin and Wang, Chao and Ding, Leilei and Yuan, Nicholas Jing and Xiong, Hui},
   booktitle={Proceedings of the 33rd International Joint Conference on Artificial Intelligence},
