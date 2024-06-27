@@ -1,4 +1,4 @@
-# <center>Virne</center>
+<h1 align="center">Virne</h1>
 
 <div align="center">
 <img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" /> <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
