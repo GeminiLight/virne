@@ -1,5 +1,8 @@
 # <center>Virne</center>
 
+<div align="center">
+<img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" /> <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
+</div>
 
 <p align="center">
   <a href="https://virne.readthedocs.io">Documentation</a> |
@@ -7,12 +10,6 @@
   <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a> |
   <a href="https://github.com/GeminiLight/virne#license">License</a>
 </p>
-
-<center>
-<img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" />
-<img src="https://img.shields.io/badge/author-Tianfu%20Wang-blue" />
-  <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
-</center>
 
 --------------------------------------------------------------------------------
 
