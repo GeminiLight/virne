@@ -6,9 +6,8 @@
 
 <p align="center">
   <a href="https://virne.readthedocs.io">Documentation</a> |
-  <a href="https://github.com/GeminiLight/virne#citations">Citations</a> | 
-  <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a> |
-  <a href="https://github.com/GeminiLight/virne#license">License</a>
+  <a href="https://github.com/GeminiLight/virne?tab=readme-ov-file#citations">Citations</a> | 
+  <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a>
 </p>
 
 --------------------------------------------------------------------------------
