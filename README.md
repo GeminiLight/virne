@@ -34,7 +34,7 @@ Its main characteristics are as follows.
 
 :sparkles: If you find Virne helpful to your research, please feel free to cite our related papers:heart:
 
-**[IJCAI, 2024] FlagVNE**
+**[IJCAI, 2024] FlagVNE** ([paper](https://arxiv.org/pdf/2404.12633) & [code](https://github.com/GeminiLight/flag-vne))
 
 ```bibtex
 @INPROCEEDINGS{ijcai-2024-flagvne,
@@ -46,7 +46,7 @@ Its main characteristics are as follows.
 }
 ```
 
-**[TSC, 2023] HRL-ACRA**
+**[TSC, 2023] HRL-ACRA** ([paper](https://arxiv.org/pdf/2406.17334) & [code](https://github.com/GeminiLight/hrl-acra))
 
 ```bibtex
 @ARTICLE{tfwang-tsc-2023-hrl-acra,
@@ -61,7 +61,7 @@ Its main characteristics are as follows.
 }
 ```
 
-**[ICC, 2021] DRL-SFCP**
+**[ICC, 2021] DRL-SFCP** ([paper](https://ieeexplore.ieee.org/document/9500964) & [code](https://github.com/GeminiLight/drl-sfcp))
 
 ```bibtex
 @INPROCEEDINGS{tfwang-icc-2021-drl-sfcp,
