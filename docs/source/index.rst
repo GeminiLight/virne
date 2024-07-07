@@ -160,7 +160,33 @@ If you find Virne helpful to your research, please feel free to cite our related
 Our Related Papers
 ~~~~~~~~~~~~~~~~~~
 
-**[ICC, 2021] DRL-SFCP**
+**[IJCAI-2024] FlagVNE**
+
+..  code-block:: bib
+
+    @INPROCEEDINGS{ijcai-2024-flagvne,
+      title={FlagVNE: A Flexible and Generalizable RL Framework for Network Resource Allocation},
+      author={Wang, Tianfu and Fan, Qilin and Wang, Chao and Ding, Leilei and Yuan, Nicholas Jing and Xiong, Hui},
+      booktitle={Proceedings of the 33rd International Joint Conference on Artificial Intelligence},
+      year={2024},
+    }
+
+**[TSC-2023] HRL-ACRA**
+
+..  code-block:: bib
+
+    @ARTICLE{tfwang-tsc-2023-hrl-acra,
+      author={Wang, Tianfu and Shen, Li and Fan, Qilin and Xu, Tong and Liu, Tongliang and Xiong, Hui},
+      journal={IEEE Transactions on Services Computing},
+      title={Joint Admission Control and Resource Allocation of Virtual Network Embedding Via Hierarchical Deep Reinforcement Learning},
+      volume={17},
+      number={03},
+      pages={1001--1015},
+      year={2024},
+      doi={10.1109/TSC.2023.3326539}
+    }
+
+**[ICC-2021] DRL-SFCP**
 
 ..  code-block:: bib
 
@@ -174,23 +200,6 @@ Our Related Papers
       pages={1-6},
       doi={10.1109/ICC42927.2021.9500964}
     }
-
-**[TSC, 2023] HRL-ACRA**
-
-..  code-block:: bib
-
-    @ARTICLE {tfw-tsc-2023-hrl-acra,
-      author={Wang, Tianfu and Shen, Li and Fan, Qilin and Xu, Tong and Liu, Tongliang and Xiong, Hui},
-      journal={IEEE Transactions on Services Computing},
-      title={Joint Admission Control and Resource Allocation of Virtual Network Embedding Via Hierarchical Deep Reinforcement Learning},
-      year={2023},
-      volume={},
-      number={},
-      pages={1-14},
-      doi={10.1109/TSC.2023.3326539}
-    }
-
-
 
 Indices and tables
 ------------------
