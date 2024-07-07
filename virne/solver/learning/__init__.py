@@ -5,13 +5,21 @@ except ImportError:
     import os
     import torch
     cuda_version = torch.version.cuda
-    # if cuda_version is None:
-    #     cuda_suffix = 'cpu'
-    if cuda_version in [11.7, 11.8, 12.1]:
-        cuda_suffix = 'cu' + cuda_version.replace('.', '')
-    else:
+    if cuda_version is None:
         cuda_suffix = 'cpu'
-    os.system(f'pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.0+{cuda_suffix}.html')
+    else:
+        if cuda_version in ['11.8', '12.1']:
+            cuda_suffix = 'cu' + cuda_version.replace('.', '')
+        else:
+            cuda_suffix = 'cu118'
+    print(f'cuda version: {cuda_version} (suffix: {cuda_suffix})')
+    torch_version = torch.__version__.split('+')[0]
+    torch_version_parts = torch_version.split(".")
+    torch_version_parts[-1] = "0"
+    torch_version = ".".join(torch_version_parts)
+    print(f'torch version: {torch_version}')
+    print(f'Install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv based on torch-{torch_version}+{cuda_suffix}')
+    os.system(f'pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://pytorch-geometric.com/whl/torch-{torch_version}+{cuda_suffix}.html')
     # os.system('cls' if os.name == 'nt' else 'clear')
 
 

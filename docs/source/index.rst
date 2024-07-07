@@ -140,26 +140,6 @@ Citation
 
 If you find Virne helpful to your research, please feel free to cite our related papers.
 
-.. Project Citation
-.. ~~~~~~~~~~~~~~~~
-
-.. ..  code-block:: bib
-
-..     @misc{tfw-virne-2023,
-..       author = {Tianfu Wang},
-..       title = {Virne: A Python Framework for Virtual Network Embedding},
-..       year = {2023},
-..       publisher = {GitHub},
-..       journal = {GitHub repository},
-..       howpublished = {\url{https://github.com/GeminiLight/virne}},
-..       commit = {cf68db31dbf07db0976d1afeda09d5c6070936d3}
-..     }
-
-
-
-Our Related Papers
-~~~~~~~~~~~~~~~~~~
-
 **[IJCAI-2024] FlagVNE**
 
 ..  code-block:: bib
