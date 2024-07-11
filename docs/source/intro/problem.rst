@@ -1,5 +1,5 @@
-Formulation
-===========
+Network Resource Allocation Problem
+============================================
 
 
 .. card::
@@ -17,44 +17,102 @@ onto the substrate network while satisfying various constraints,
 such as resource availability, capacity, and latency requirements. 
 VNE can be divided into two subproblems: node mapping and link mapping.
 
+.. image:: ../_static/vne-example.png
+   :width: 1000
+   :alt: An example of resource allocation problem in network virtualization (source: `IJCAI'24 - FlagVNE<https://arxiv.org/abs/2404.12633>`_)
 
-Node Mapping
+System Model
 ------------
+In a practical network system, users' service requests continuously arrive at the network infrastructure.
 
-The node mapping problem aims to map the virtual nodes to the substrate nodes 
-while ensuring that the resources required by the virtual nodes are available on the substrate nodes. 
-The objective is to minimize the overall resource consumption of the substrate nodes, 
-while satisfying constraints such as bandwidth, delay, and node capacity.
+- **Physical Network**: Network infrastructure is virtualized as a physical network
+- **Virtual Network**: User service requests are virtualized as virtual networks
 
-Constraints
-~~~~~~~~~~~
+.. card::
+   :class-header: sd-bg-info  sd-text-white sd-font-weight-bold
+   :class-card: sd-outline-info  sd-rounded-1
+   :class-footer: sd-font-weight-bold
 
-- **Node Resource constraints**: the capacity of the physical node must be greater than or equal to the total resource requirements of the mapped virtual nodes.
+   Physical Network
+   ^^^
 
-- **One-to-one mapping constraints**: Each virtual node should be mapped to exactly one substrate node.
+   The physical network is modelled as a undirected graph :math:`G^p=(N^p, L^p)`, where
 
-- **Connectivity constraints**: the mapping should preserve the connectivity of the virtual network, i.e., if there is a virtual link between two virtual nodes, the corresponding physical nodes should be connected by a physical link.
+   - :math:`N^p` is the set of physical nodes. Each physical node :math:`n^p \in N^p` has a set of computing resources, such as CPU, GPU memory, and bandwidth, which are represented as a vector :math:`C(n^p)`.
+   - :math:`L^p` is the set of physical links. Each physical link :math:`l^p \in L^p` has a bandwidth capacity :math:`B(l^p)`.
+
+.. card::
+   :class-header: sd-bg-info  sd-text-white sd-font-weight-bold
+   :class-card: sd-outline-info  sd-rounded-1
+   :class-footer: sd-font-weight-bold
+
+   Virtual Network
+   ^^^
+
+   Each virtual network is modelled as a undirected graph :math:`G^v=(N^v, L^v, d^v)`, where
+
+   - :math:`N^v` is the set of virtual nodes. Each virtual node :math:`n^v \in N^v` has a set of resource requirements, such as CPU, GPU memory, and bandwidth, which are represented as a vector :math:`R(n^v)`.
+   - :math:`L^v` is the set of virtual links. Each virtual link :math:`l^v \in L^v` has a bandwidth requirement :math:`B(l^v)`.
+   - :math:`d^v` is the lifetime of the user service request. Once the VNR is accepted, it will be maintained for :math:`d^v` time slots.
 
 
+Mapping Process
+---------------
 
-Link Mapping
-------------
+The mapping process aims to map the virtual nodes and links onto the substrate network with minimal resource cost while satisfying various QoS constraints.
 
-The link mapping problem aims to map the virtual links to the substrate links 
-while ensuring that the required bandwidth of the virtual links is available on the substrate links. 
-The objective is to minimize the overall cost of the substrate links,
-while satisfying constraints such as bandwidth, delay, and node capacity.
+This graph mapping process :math:`f: G^v \rightarrow G^p` can be divided into two subproblems: node mapping and link mapping.
+
+.. card::
+   :class-header: sd-bg-info  sd-text-white sd-font-weight-bold
+   :class-card: sd-outline-info  sd-rounded-1
+   :class-footer: sd-font-weight-bold
+
+   Node Mapping :math:`f_n: N^v \rightarrow N^p`
+   ^^^
+
+   Node mapping involves assigning each virtual node :math:`n^v \in N^v` to a physical node :math:`n^p \in N^p`.
+
+   In this process, the following constraints should be satisfied:
+
+   - **One-to-one mapping constraints**: Each virtual node should be mapped to exactly one substrate node.
+
+   .. math::
+       :label: formulation-eq-node-1
+
+       f_n(n^v) = n^p, \quad \forall n^v \in N^v
+
+   - **Computing Resource Availability**: The computing resources required by the virtual node should be available on the physical node.
+
+   .. math::
+       :label: formulation-eq-node-2
+
+       C(n^p) \geq C(n^v), \quad \forall n^v \in N^v, n^p = f_n(n^v)
 
 
-Constraints
-~~~~~~~~~~~
+.. card::
+   :class-header: sd-bg-info  sd-text-white sd-font-weight-bold
+   :class-card: sd-outline-info  sd-rounded-1
+   :class-footer: sd-font-weight-bold
+
+   Link Mapping :math:`f_l: L^v \rightarrow P^p`
+   ^^^
+
+   Link mapping involves finding a physical path :math:`p^p \in P^p` for each virtual link :math:`l^v \in L^v`.
+
+   In this process, the following constraints should be satisfied:
+    
+   - **Connectivity constraints**: The mapping should preserve the connectivity of the virtual network, i.e., if there is a virtual link between two virtual nodes, the corresponding physical nodes should be connected by a physical link.
+
+   .. math::
+       :label: formulation-eq-link-1
+
+         f_n(n^v_1) \neq f_n(n^v_2) \Rightarrow \exists l^p \in L^p, f_l(l^v) = l^p, n^v_1, n^v_2 \in N^v
 
 
-- **Link resource constraint**:  The sum of the bandwidth requirements of the virtual links mapped to a physical link cannot exceed its capacity.
-
-- **Link-to-path mapping constraint**: Each virtual link can only be mapped to a path consisting of physical links.
-
-- **Path length constraint**:  The length of the path used to map a virtual link cannot exceed a predefined maximum value, resulting from the QoS requirements (e.g., delay).
+   - **Link resource constraint**:  The sum of the bandwidth requirements of the virtual links mapped to a physical link cannot exceed its capacity.
+   - **Link-to-path mapping constraint**: Each virtual link can only be mapped to a path consisting of physical links.
+   - **Path length constraint**:  The length of the path used to map a virtual link cannot exceed a predefined maximum value, resulting from the QoS requirements (e.g., delay).
 
 
 Evaluation Metric

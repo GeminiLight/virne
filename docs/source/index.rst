@@ -96,7 +96,7 @@ Supported Features
     :caption: introduction
 
     intro/background
-    intro/formulation
+    intro/problem
 
 .. toctree::
     :hidden:
