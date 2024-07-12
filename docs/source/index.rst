@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Virne: A Simulator for NFV
+Virne: A Simulator for NV-RA
 ===================================
 
 .. note::
@@ -55,92 +55,9 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
         ^^^^^^^^^^^^
         Implement concisely with less necessary dependencies, and can be extended easily for specific algorithms.
 
-
-Supported Features
-------------------
-
-- **Diverse Network Topologies for Simulation**
-  
-  - Simple Network Structures: e.g. Star for Centralized Network, Path for Chain-style Network, etc.
-  - Random Network Topologies: e.g. Waxman Graph, Edge Probabilistic Connection Graph, etc.
-  - Real-world Network Topologies: e.g. Abilene, Geant, etc.
-  
-- **Multiple level Attributes for QoS**: 
-
-  - Graph Level: e.g. the global requirements of user service requests, etc.
-  - Node level: e.g. computing resource, server position, energy consumption, etc.
-  - Link level: e.g. bandwidth resource, communication delay, etc.
-  
-- **Unified Reinforcement Learning Interface for Extension**
-  
-  - Provide serval RL Environments in gym.Env-style.
-  - Implement the many RL training algorithms, including MCTS, PPO, A2C, etc.
-  - Support the integration of RL algorithms from other libraries.
-  
-- **Various Simulation Scenarios**
-  
-  - Admission control: Early Reject some not cost-effective service requests.
-  - Cloud-Edge: Heteregenous infrastructure with different QoS provision.
-  - Time window: Globally process the a batch service requests in a time window.
-
-- **Predefined QoS Awarenesses** (Additional Constraints/ Objectives)
-
-  - [x] Position (Node level)
-  - [x] Latency (Graph, Node and Link level)
-  - [x] Security (Graph, Node and Link level)
-  - [ ] Congestion (Graph, Node and Link level)
-  - [ ] Energy (Graph, Node and Link level)
-  - [x] Reliability (Graph, Node and Link level)
-  - [ ] Dynamic (Graph, Node and Link level)
-  - [ ] Parallelization
-  - [ ] Privacy
-
 .. image:: _static/workflow.jpg
   :width: 1000
   :alt: Overall Workflow of Virne
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: introduction
-
-    intro/background
-    intro/problem
-    intro/framework
-
-.. toctree::
-    :hidden:
-    :caption: get start
-
-    start/installation
-    start/usage
-    start/solver_list
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: customlization
-
-    customlization/simulation
-    customlization/sfc_deployment
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: Solver List
-
-    solver/exact
-    solver/heuristic
-    solver/meta_heuristic
-    solver/learning
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: API Reference
-
-    api
-
 
 Citations
 ---------
@@ -188,9 +105,92 @@ If you find Virne helpful to your research, please feel free to cite our related
       doi={10.1109/ICC42927.2021.9500964}
     }
 
+
+Supported Features
+------------------
+
+- **Diverse Network Topologies for Simulation**
+  
+  - Simple Network Structures: e.g. Star for Centralized Network, Path for Chain-style Network, etc.
+  - Random Network Topologies: e.g. Waxman Graph, Edge Probabilistic Connection Graph, etc.
+  - Real-world Network Topologies: e.g. Abilene, Geant, etc.
+  
+- **Multiple level Attributes for QoS**: 
+
+  - Graph Level: e.g. the global requirements of user service requests, etc.
+  - Node level: e.g. computing resource, server position, energy consumption, etc.
+  - Link level: e.g. bandwidth resource, communication delay, etc.
+  
+- **Unified Reinforcement Learning Interface for Extension**
+  
+  - Provide serval RL Environments in gym.Env-style.
+  - Implement the many RL training algorithms, including MCTS, PPO, A2C, etc.
+  - Support the integration of RL algorithms from other libraries.
+  
+- **Various Simulation Scenarios**
+  
+  - Admission control: Early Reject some not cost-effective service requests.
+  - Cloud-Edge: Heteregenous infrastructure with different QoS provision.
+  - Time window: Globally process the a batch service requests in a time window.
+
+- **Predefined QoS Awarenesses** (Additional Constraints/ Objectives)
+
+  - [x] Position (Node level)
+  - [x] Latency (Graph, Node and Link level)
+  - [x] Security (Graph, Node and Link level)
+  - [ ] Congestion (Graph, Node and Link level)
+  - [ ] Energy (Graph, Node and Link level)
+  - [x] Reliability (Graph, Node and Link level)
+  - [ ] Dynamic (Graph, Node and Link level)
+  - [ ] Parallelization
+  - [ ] Privacy
+
 Indices and tables
 ------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+.. toctree::
+    :hidden:
+    :maxdepth: 3
+    :caption: introduction
+
+    intro/background
+    intro/problem
+    intro/framework
+
+.. toctree::
+    :hidden:
+    :caption: get start
+
+    start/installation
+    start/usage
+    start/solver_list
+
+.. toctree::
+    :hidden:
+    :maxdepth: 3
+    :caption: customlization
+
+    customlization/simulation
+    customlization/sfc_deployment
+
+.. toctree::
+    :hidden:
+    :maxdepth: 3
+    :caption: Solver List
+
+    solver/exact
+    solver/heuristic
+    solver/meta_heuristic
+    solver/learning
+
+.. toctree::
+    :hidden:
+    :maxdepth: 3
+    :caption: API Reference
+
+    api

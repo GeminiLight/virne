@@ -104,7 +104,7 @@ The embedding process of mapping VNs onto the PN is a crucial step in network vi
 
 These processes are essential for optimal resource utilization and maintaining service quality in network environments.
 
-.. hint::
+.. note::
 
     This resource allocation process is characterized as a **NP-hard online combinatorial optimization problem**.
 

@@ -96,16 +96,27 @@ This graph mapping process :math:`f: G^v \rightarrow G^p` can be divided into tw
 
    In this process, the following constraints should be satisfied:
     
-   - **Connectivity constraints**: The mapping should preserve the connectivity of the virtual network, i.e., if there is a virtual link between two virtual nodes, the corresponding physical nodes should be connected by a physical link.
-
+   - **Link-to-path mapping constraint**: Each virtual link can only be mapped to a path consisting of physical links.
+   
    .. math::
        :label: formulation-eq-link-1
 
-         f_n(n^v_1) \neq f_n(n^v_2) \Rightarrow \exists l^p \in L^p, f_l(l^v) = l^p, n^v_1, n^v_2 \in N^v
+       f_l(l^v) = p^p \{l^p_1, l^p_2, \ldots, l^p_k\}, \quad \forall l^v \in L^v
+
+   - **Connectivity constraints**: The mapping should preserve the connectivity of the virtual network, i.e., if there is a virtual link between two virtual nodes, the corresponding physical nodes should be connected by a physical link.
+
+   .. math::
+       :label: formulation-eq-link-2
+
+         f_n(n^v_1) = n^p_1, f_n(n^v_2) = n^p_2 \Rightarrow \exists l^p \in L^p, f_l(l^v) = l^p, \quad \forall l^v = (n^v_1, n^v_2) \in L^v
+
 
    - **Link resource constraint**:  The sum of the bandwidth requirements of the virtual links mapped to a physical link cannot exceed its capacity.
-   - **Link-to-path mapping constraint**: Each virtual link can only be mapped to a path consisting of physical links.
-   - **Path length constraint**:  The length of the path used to map a virtual link cannot exceed a predefined maximum value, resulting from the QoS requirements (e.g., delay).
+   
+   .. math::
+       :label: formulation-eq-link-3
+
+       \sum_{l^v \in L^v, f_l(l^v) = l^p} B(l^v) \leq B(l^p), \quad \forall l^p \in L^p
 
 
 Evaluation Metric

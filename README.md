@@ -179,22 +179,21 @@ if __name__ == '__main__':
   - [ ] Parallelization
   - [ ] Privacy
 
-### Mapping Strategy
-
-- Two-Stage
-  - In this fromework, the VNE solving process are composed of Node mapping and Edge Mapping.
-  - Firstly, the node mapping solution is generate with node mapping algorithm, i.e., Node Ranking
-  - Secondly, the BFS algorithm is employed to route the physical link pairs obtained from the node mapping solution. 
-- Joint Place and Route
-  - The solution of node mapping consists of a sequential placement decision.
-  - Simultaneously, the available physical link pairs are routed by BFS algorithm.
-- BFS Trails
-  - Based on breadth-first search, it expands the search space by exploiting the awareness of restarts.
-
 
 ## Implemented Algorithms
 
 **Virne** has implemented the following heuristic-based and learning-based algorithms:
+
+> Mapping Strategies
+> - Two-Stage
+>   - In this fromework, the VNE solving process are composed of Node mapping and Edge Mapping.
+>   - Firstly, the node mapping solution is generate with node mapping algorithm, i.e., Node Ranking
+>   - Secondly, the BFS algorithm is employed to route the physical link pairs obtained from the node mapping solution. 
+> - Joint Place and Route
+>   - The solution of node mapping consists of a sequential placement decision.
+>   - Simultaneously, the available physical link pairs are routed by BFS algorithm.
+> - BFS Trails
+>   - Based on breadth-first search, it expands the search space by exploiting the awareness of restarts.
 
 ### Learning-based Solvers
 
