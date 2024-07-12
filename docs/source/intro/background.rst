@@ -1,14 +1,20 @@
 Background
 ========================================
 
-Network virtualization
+.. card::
+    :class-card: sd-outline-info  sd-rounded-1
+    :class-body: sd-font-weight-bold
+    
+    #. Introduction on Network virtualization
+    #. Resource Allocation Problem in NV
+
+Network Virtualization
 ----------------------
 
 Network virtualization (NV) emerges as a pioneering technology that facilitates dynamic management of Internet architecture.
-Through network slicing and shared infrastructure, NV enables the deployment of multiple user service requests within the same underlying infrastructure.
+By decoupling the underlying infrastructure from its logical representation, NV enables the dynamic allocation of network resources, enhancing flexibility, scalability, and efficiency.
 
-
-NV technology is widely used in various network environments, including cloud computing, edge computing, Internet of Things (IoT), and 5G networks.
+NV technology is widely adopted across various network environments, including cloud computing, edge computing, Internet of Things (IoT), and 5G networks, facilitating advanced applications and services in each domain.
 
 .. tab-set::
 
@@ -22,8 +28,12 @@ NV technology is widely used in various network environments, including cloud co
 
             NV-enabled Cloud computing
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            In cloud computing, customers often require the ability to deploy complex virtual networks with multiple nodes and links. 
-            VNE can be used to efficiently map these virtual networks onto physical infrastructure, ensuring high performance and availability.
+
+            Cloud computing environments are characterized by the vast, scalable resources provided on-demand over the internet. 
+            They support a wide range of services, including storage, computing power, and applications.
+
+            NV in cloud computing allows for the efficient utilization of these scalable resources by dynamically allocating virtual networks based on demand. 
+            This leads to improved resource management, reduced operational costs, and enhanced service delivery, enabling cloud providers to offer flexible and cost-effective services.
     
     .. tab-item:: Edge computing
         :sync: key2
@@ -35,8 +45,11 @@ NV technology is widely used in various network environments, including cloud co
 
             NV-enabled Edge computing
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            Edge computing involves distributing computing resources and services closer to the edge of the network, near where the data is generated. 
-            VNE can be used to map virtual networks onto edge infrastructure, ensuring efficient use of resources and optimal performance.
+            Edge computing involves processing data closer to the source of data generation rather than relying on a centralized data-processing warehouse. 
+            This reduces latency and bandwidth use, making it ideal for applications requiring real-time responses.
+
+            NV enables edge computing by providing flexible network management closer to the data source. 
+            It minimizes latency, optimizes bandwidth usage, and ensures efficient resource distribution for edge devices and applications, thereby enhancing the performance and reliability of edge computing solutions.
 
     .. tab-item:: Internet of Things
         :sync: key3
@@ -48,7 +61,12 @@ NV technology is widely used in various network environments, including cloud co
 
             NV-enabled Internet of Things
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            IoT devices often require connectivity and access to various services. VNE can be used to create virtual networks that connect these devices to each other and to services in the cloud.
+            The IoT consists of a network of physical devices that communicate and exchange data over the internet. 
+            These devices range from everyday household objects to sophisticated industrial tools, all equipped with sensors and software.
+
+            In IoT environments, NV facilitates the seamless integration and management of numerous interconnected devices. 
+            It ensures efficient data transmission, real-time processing, and scalability to accommodate the growing number of IoT devices, thus enhancing the overall efficiency and effectiveness of IoT deployments.
+
 
     .. tab-item:: 5G Networks
         :sync: key4
@@ -60,30 +78,39 @@ NV technology is widely used in various network environments, including cloud co
 
             NV-enabled 5G Networks
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            With the emergence of 5G technology, there is a need for efficient and optimized network resource utilization. VNE can be used to allocate virtual network resources in a 5G network, improving performance and reducing costs.
+            5G networks are the next generation of mobile networks, offering significantly higher speeds, lower latency, and more reliable connections. 
+            They support a wide range of new applications, including autonomous vehicles, smart cities, and advanced mobile broadband services.
+
+            NV plays a crucial role in 5G networks by enabling network slicing, which allows multiple virtual networks to operate on a single physical infrastructure.
+            This enhances network efficiency, supports diverse use cases, and ensures robust performance, thus fully leveraging the capabilities of 5G technology.
+
 
 Resource Allocation Problem
 ---------------------------
 
-Under the NV paradigm, 
+Under the NV paradigm, both the infrastructure and the services are abstracted into two distinct layers:
 
 - The user service requests are abstracted as **Virtual Network (VNs)** Requests
 - The underlying infrastructure is abstracted as a **Physical Network (PN)**.
 
-A primary challenge in NV involves the efficient embedding of VNs on the PN, which referred to as 
+In practical network systems, users' service requests continuously arrive at the PN. 
+The network provider must allocate resources to these requests efficiently while ensuring that the Quality of Service (QoS) requirements are met.
 
-- Virtual Network Embedding (VNE)
-- Virtual Network Function Placement (VNF Placement)
-- Service Function Chain Deployment (SFC Deployment)
+The embedding process of mapping VNs onto the PN is a crucial step in network virtualization, commonly referred to as:
 
-In network environments, multiple tenants request virtual networks with varying resource requirements, 
-and each tenant's virtual network should be isolated from others. 
-To support the rapid and efficient deployment of virtual networks, 
-network virtualization technology is used to abstract the underlying physical infrastructure 
-and provide a logical view of the network to the tenants. 
-The VNE problem involves mapping virtual networks to the physical infrastructure while ensuring various constraints and QoS requirements .
+- **Virtual Network Embedding (VNE)**
+- **Virtual Network Function Placement (VNF Placement)**
+- **Service Function Chain Deployment (SFC Deployment)**
+
+These processes are essential for optimal resource utilization and maintaining service quality in network environments.
 
 .. hint::
 
-    This resource allocation is a **NP-hard online combinatorial optimization problem**.
+    This resource allocation process is characterized as a **NP-hard online combinatorial optimization problem**.
 
+.. image:: ../_static/illustration-nv-ra.png
+   :width: 1000
+   :alt: Resource Allocation Problem in Network Virtualization
+   :align: center
+
+**Figure**: Resource Allocation Problem in Network Virtualization. (Source: `COMST'24 - A Survey of AI-powered VNE  <https://ieeexplore.ieee.org/document/10587211>`_)

@@ -84,7 +84,6 @@ Its main characteristics are as follows.
     - [Install with pip](#install-with-pip)
     - [Install with script](#install-with-script)
   - [Minimal Example](#minimal-example)
-- [VNE Problem](#vne-problem)
 - [Supported Features](#supported-features)
 - [Implemented Algorithms](#implemented-algorithms)
   - [Exact Algorithms](#exact-algorithms)
@@ -142,54 +141,43 @@ if __name__ == '__main__':
     run(config)
 ```
 
-## VNE Problem
+## Supported Features
 
-### Brife Defination
+- **Diverse Network Topologies for Simulation**
+  
+  - Simple Network Structures: e.g. Star for Centralized Network, Path for Chain-style Network, etc.
+  - Random Network Topologies: e.g. Waxman Graph, Edge Probabilistic Connection Graph, etc.
+  - Real-world Network Topologies: e.g. Abilene, Geant, etc.
+  
+- **Multiple level Attributes for QoS**: 
 
-![](resource/figures/vne-example.p_net)
+  - Graph Level: e.g. the global requirements of user service requests, etc.
+  - Node level: e.g. computing resource, server position, energy consumption, etc.
+  - Link level: e.g. bandwidth resource, communication delay, etc.
+  
+- **Unified Reinforcement Learning Interface for Extension**
+  
+  - Provide serval RL Environments in gym.Env-style.
+  - Implement the many RL training algorithms, including MCTS, PPO, A2C, etc.
+  - Support the integration of RL algorithms from other libraries.
+  
+- **Various Simulation Scenarios**
+  
+  - Admission control: Early Reject some not cost-effective service requests.
+  - Cloud-Edge: Heteregenous infrastructure with different QoS provision.
+  - Time window: Globally process the a batch service requests in a time window.
 
-### Main Objectives
+- **Predefined QoS Awarenesses** (Additional Constraints/ Objectives)
 
-- Acceptance rate
-
-$$
-\text{Acceptance Rate} = \cfrac{\sum_{t=0}^{t=T} \text{Number}(VNR_{accept})}{\sum_{t=0}^{t=T} \text{Number}(VNR_{reject})}
-$$
-
-- Long-term revenue
-
-$$
-\text{Long-term Revenue} = \sum_{n_v \in N_v}{Revenue(n_v)} + \sum_{e_v \in E_v}{Revenue(e_v)}
-$$
-
-- Revenue-to-cost Ratio
-
-$$
-\text{Long-term Revenue} = \cfrac{\text{Long-term Revenue}}{\text{Long-term Cost}}
-$$
-
-- Running Time
-
-$$
-\text{Running Time} = \frac{\text{Time consumption of solving }N\text{ instances}}{N}
-$$
-
-- Load Balancing
-
-- Latency Garentee
-
-
-### QoS Awarenesses (Additional Constraints/ Objectives)
-
-- [x] Position (Node level)
-- [x] Latency (Graph, Node and Link level)
-- [x] Security (Graph, Node and Link level)
-- [ ] Congestion (Graph, Node and Link level)
-- [ ] Energy (Graph, Node and Link level)
-- [x] Reliability (Graph, Node and Link level)
-- [ ] Dynamic (Graph, Node and Link level)
-- [ ] Parallelization
-- [ ] Privacy
+  - [x] Position (Node level)
+  - [x] Latency (Graph, Node and Link level)
+  - [x] Security (Graph, Node and Link level)
+  - [ ] Congestion (Graph, Node and Link level)
+  - [ ] Energy (Graph, Node and Link level)
+  - [x] Reliability (Graph, Node and Link level)
+  - [ ] Dynamic (Graph, Node and Link level)
+  - [ ] Parallelization
+  - [ ] Privacy
 
 ### Mapping Strategy
 
@@ -202,29 +190,6 @@ $$
   - Simultaneously, the available physical link pairs are routed by BFS algorithm.
 - BFS Trails
   - Based on breadth-first search, it expands the search space by exploiting the awareness of restarts.
-
-## Supported Features
-
-- **Adaptation to VNE Variants**
-  - Service Function Chain Deployment (SFC Deployment)
-  - Network Slicing
-- **Diverse Network Topologies**
-  - Star Graph: Data Center Network
-  - 2D-grid Graph: Grid Network
-  - Waxman Graph: General Network
-  - Path Graph: Chain-style Network
-  - Edge Probabilistic Connection Graph
-  - Customlized Topology 
-- **Graph/ Node / Link-level Attributes**: 
-  - For resources/ constraints/ QoS
-  - Graph Level: e.g. the global requirements of virtual network
-  - Node level: e.g. Node resource, node position
-  - Link level: e.g. Link resource, link latency
-- **Multiple RL Environments**
-  - Provide serval RL Environments in gym.Env-style
-- **Various Simulation Scenarios**
-  - Admission control: Reject Early some not cost-effective virtual networks
-  - Time window: Developping
 
 
 ## Implemented Algorithms
