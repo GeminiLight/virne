@@ -13,11 +13,15 @@ Virne: A Simulator for NFV
   please open an new issue on `Github <https://github.com/GeminiLight/virne>`_  or 
   contact me via email: wtfly2018@gmail.com.
 
-**Virne** is a simulator for **resource allocation problems in network virtualization**, mainly for **virtual network embedding (VNE)**. 
-It also is adaptable to VNE's variants, such as **service function chain deployment (SFC Deployment)**, **network slicing**, etc. 
-Specifically, it provides a unified interface for various VNE algorithms, and provides a variety of network topologies, network attributes, and RL environments.
 
-Its main characteristics are as follows.
+**Virne** is a simulator designed to address **resource allocation problems in network virtualization**. This category of problems is often referred to by various names, including:
+
+- Virtual Network Embedding (VNE)
+- Virtual Network Function Placement (VNF Placement)
+- Service Function Chain Deployment (SFC Deployment)
+- Network Slicing
+
+The main goal of Virne is to provide a unified and flexible framework for solving these problems. Its main characteristics are as follows.
 
 .. grid:: 12 4 4 4
 
@@ -29,7 +33,7 @@ Its main characteristics are as follows.
 
         Rich Implementations
         ^^^^^^^^^^^^^^^^^^^^
-        Provide 20+ solvers, including exact, heuristic, meta-heuristic, and learning-based algorithms.
+        Provide 20+ solvers, including exact, heuristic, meta-heuristic, and machine learning-based algorithms.
 
     .. grid-item-card::
         :class-item: sd-font-weight-bold
@@ -37,7 +41,7 @@ Its main characteristics are as follows.
         :class-card: sd-outline-success  sd-rounded-1
         :columns: 12 6 6 4
 
-        Extensible Development
+        Flexible Extensions 
         ^^^^^^^^^^^^^^^^^^^^^^
         Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
         
@@ -55,35 +59,29 @@ Its main characteristics are as follows.
 Supported Features
 ------------------
 
-- **Adaptation to VNE Variants**
- 
-  - Service Function Chain Deployment (SFC Deployment)
-  - Network Slicing
+- **Diverse Network Topologies for Simulation**
+  
+  - Simple Network Structures, e.g. Star for Centralized Network, Path for Chain-style Network, etc.
+  - Random Graph, e.g. Waxman Graph, Edge Probabilistic Connection Graph, etc.
+  - Customlized Real-world Network Topologies, e.g. Abilene, Geant, etc.
+  
+- **Multiple level Attributes for QoS**: 
 
-- **Diverse Network Topologies**
+  - Graph Level: e.g. the global requirements of user service requests
+  - Node level: e.g. computing resource, server position, energy consumption
+  - Link level: e.g. bandwidth resource, communication delay
   
-  - Star Graph: Data Center Network
-  - 2D-grid Graph: Grid Network
-  - Waxman Graph: General Network
-  - Path Graph: Chain-style Network
-  - Edge Probabilistic Connection Graph
-  - Customlized Topology 
-  
-- **Graph/ Node / Link-level Attributes**: 
-
-  - For resources/ constraints/ QoS
-  - Graph Level: e.g. the global requirements of virtual network
-  - Node level: e.g. Node resource, node position
-  - Link level: e.g. Link resource, link latency
-  
-- **Multiple RL Environments**
+- **Unified Reinforcement Learning Interface for Extension**
   
   - Provide serval RL Environments in gym.Env-style
+  - Implement the many RL training algorithms, including MCTS, PPO, A2C, etc.
+  - Support the integration of RL algorithms from other libraries, e.g. Stable-baselines, etc.
   
 - **Various Simulation Scenarios**
   
-  - Admission control: Reject Early some not cost-effective virtual networks
-  - Time window: Developping
+  - Admission control: Early Reject some not cost-effective service requests
+  - Cloud-Edge: Heteregenous infrastructure with different QoS provision
+  - Time window: Globally process the a batch service requests in a time window
 
 .. image:: _static/workflow.jpg
   :width: 1000
@@ -135,12 +133,12 @@ Supported Features
 .. you can use the ``lumache.get_random_ingredients()`` function:
 
 
-Citation
---------
+Citations
+---------
 
 If you find Virne helpful to your research, please feel free to cite our related papers.
 
-**[IJCAI-2024] FlagVNE**
+**[IJCAI-2024] FlagVNE** (`paper <https://arxiv.org/abs/2404.12633>`__ & `code <https://github.com/GeminiLight/flag-vne>`__)
 
 ..  code-block:: bib
 
@@ -151,7 +149,7 @@ If you find Virne helpful to your research, please feel free to cite our related
       year={2024},
     }
 
-**[TSC-2023] HRL-ACRA**
+**[TSC-2023] HRL-ACRA** (`paper <https://ieeexplore.ieee.org/document/10291038>`__ & `code <https://github.com/GeminiLight/hrl-acra>`__)
 
 ..  code-block:: bib
 
@@ -166,7 +164,7 @@ If you find Virne helpful to your research, please feel free to cite our related
       doi={10.1109/TSC.2023.3326539}
     }
 
-**[ICC-2021] DRL-SFCP**
+**[ICC-2021] DRL-SFCP** (`paper <https://ieeexplore.ieee.org/document/9500964>`__ & `code <https://github.com/GeminiLight/drl-sfcp>`__)
 
 ..  code-block:: bib
 

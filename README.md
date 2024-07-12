@@ -12,13 +12,17 @@
 
 --------------------------------------------------------------------------------
 
-**Virne** is a simulator for **resource allocation problems in network virtualization**, mainly for **virtual network embedding (VNE)**. 
-It also is adaptable to VNE's variants, such as **service function chain deployment (SFC Deployment)**, **network slicing**, etc. 
-Specifically, it provides a unified interface for various VNE algorithms, and provides a variety of network topologies, network attributes, and RL environments.
+**Virne** is a simulator designed to address **resource allocation problems in network virtualization**. This category of problems is often referred to by various names, including:
 
+- Virtual Network Embedding (VNE)
+- Virtual Network Function Placement (VNF Placement)
+- Service Function Chain Deployment (SFC Deployment)
+- Network Slicing
+
+The main goal of Virne is to provide a unified and flexible framework for solving these problems. Its main characteristics are as follows.
 Its main characteristics are as follows.
 
-- **Rich Implementations**: Provide 20+ solvers, including exact, heuristic, meta-heuristic, and learning-based algorithms.
+- **Rich Implementations**: Provide 20+ solvers, including exact, heuristic, meta-heuristic, and machine learning-based algorithms.
 - **Extensible Development**: Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
 - **Light-Weight**: Implement concisely with less necessary dependencies, and can be extended easily for specific algorithms.
         

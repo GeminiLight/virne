@@ -1,4 +1,4 @@
-Network Resource Allocation Problem
+Formulation
 ============================================
 
 
@@ -23,9 +23,9 @@ VNE can be divided into two subproblems: node mapping and link mapping.
 
 System Model
 ------------
-In a practical network system, users' service requests continuously arrive at the network infrastructure.
+In a practical network system, users' service requests continuously arrive at the underlying infrastructure.
 
-- **Physical Network**: Network infrastructure is virtualized as a physical network
+- **Physical Network**: Underlying infrastructure is virtualized as a physical network
 - **Virtual Network**: User service requests are virtualized as virtual networks
 
 .. card::
@@ -64,8 +64,8 @@ The mapping process aims to map the virtual nodes and links onto the substrate n
 This graph mapping process :math:`f: G^v \rightarrow G^p` can be divided into two subproblems: node mapping and link mapping.
 
 .. card::
-   :class-header: sd-bg-info  sd-text-white sd-font-weight-bold
-   :class-card: sd-outline-info  sd-rounded-1
+   :class-header: sd-bg-primary  sd-text-white sd-font-weight-bold
+   :class-card: sd-outline-primary  sd-rounded-1
    :class-footer: sd-font-weight-bold
 
    Node Mapping :math:`f_n: N^v \rightarrow N^p`
@@ -91,8 +91,8 @@ This graph mapping process :math:`f: G^v \rightarrow G^p` can be divided into tw
 
 
 .. card::
-   :class-header: sd-bg-info  sd-text-white sd-font-weight-bold
-   :class-card: sd-outline-info  sd-rounded-1
+   :class-header: sd-bg-primary  sd-text-white sd-font-weight-bold
+   :class-card: sd-outline-primary  sd-rounded-1
    :class-footer: sd-font-weight-bold
 
    Link Mapping :math:`f_l: L^v \rightarrow P^p`
