@@ -196,7 +196,7 @@ The performance of the mapping process is evaluated based on two types of key me
 
        \text{VirResource}(G^{v},t) = \sum_{n^v \in N^v} R(n^v) + \sum_{l^v \in L^v} B(l^v)
    
-   The total available resources of the physical network are represented as
+   The total available resources of the physical network are represented as：
    
    .. math::
        :label: formulation-eq-resource-8
