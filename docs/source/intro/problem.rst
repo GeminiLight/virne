@@ -229,18 +229,18 @@ The performance of the mapping process is evaluated based on two types of key me
    .. math::
        :label: formulation-eq-qos-1
 
-       \text{Acceptance Ratio} = \frac{\text{Number of Accepted Requests}}{\text{Total Number of Requests}}
+       \text{Acceptance Ratio} = \lim_{T \to \infty}\frac{\sum_{t=0}^{T}\text{AcpReq}(G^{v},t)}{\sum_{t=0}^{T}\text{TolReq}(G^{p},t)}
 
-   where the number of accepted requests is determined based on the resource availability and QoS constraints.
+   where :math:`\text{AcpReq}(G^{v},t)` is the number of VNRs accepted at time t and the number of accepted requests is determined based on the resource availability and QoS constraints.
 
    - **QoS Violation Ratio**
 
-   The QoS violation ratio measures the percentage of virtual network requests that violate the QoS constraints.
+   The QoS violation ratio quantifies the percentage of VNRs that fail to meet the QoS constraints.
    It is defined as the ratio of the number of violated requests to the total number of requests.
 
    .. math::
        :label: formulation-eq-qos-2
 
-       \text{QoS Violation Ratio} = \frac{\text{Number of Violated Requests}}{\text{Total Number of Requests}}
+       \text{QoS Violation Ratio} = \lim_{T \to \infty}\frac{\sum_{t=0}^{T}\text{VioReq}(G^{v},t)}{\sum_{t=0}^{T}\text{TolReq}(G^{p},t)}
 
-   where the number of violated requests is determined based on the QoS constraints.
+   where :math:`\text{VioReq}(G^{v}, t)` is the number of violated requests at time t and the number of violated requests is determined based on the QoS constraints.
