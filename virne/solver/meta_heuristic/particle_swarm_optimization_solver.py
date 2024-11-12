@@ -80,13 +80,20 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
         for id in range(self.max_iteration):
             # result = mp_pool.map(self.evolve, self.particles)
             particle_runners = []
+            particle_queues = []
             for particle in self.particles:
-                particle_runners.append(mp.Process(target=self.evolve, args=(particle, )))
+                particle_queue = mp.Queue()
+                particle_queues.append(particle_queue)
+                particle_runners.append(mp.Process(target=self.evolve, args=(particle, particle_queue)))
                 # particle_runners.append(ParticleRunner(v_net, p_net, self, self.particles[i]))
             for particle_runner in particle_runners:
                 particle_runner.start()
+            new_particles = []
+            for particle_queue in particle_queues:
+                new_particles.append(particle_queue.get())
             for particle_runner in particle_runners:
                 particle_runner.join()
+            self.particles = new_particles
 
             self.update_best_individual(self.particles)
 
@@ -111,7 +118,7 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
         # initialize global best experience
         self.update_best_individual(self.particles)
 
-    def evolve(self, particle):
+    def evolve(self, particle, queue):
         particle.velocity = self.add(
                                     self.p_i, particle.velocity, 
                                     self.p_c, self.sub(particle.best_position, particle.position), 
@@ -131,4 +138,5 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
                                                 k_shortest=self.k_shortest)
         self.counter.count_solution(particle.v_net, particle.solution)
         particle.update_best_solution()
+        queue.put(particle)
         
