@@ -1,4 +1,4 @@
-<h1 align="center">Virne</h1>
+<h1 align="center">Virne: A Benchmark of NFV-RA</h1>
 
 <div align="center">
 <img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" /> <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
@@ -40,7 +40,7 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
 
 ```bibtex
 @INPROCEEDINGS{ijcai-2024-flagvne,
-  title={FlagVNE: A Flexible and Generalizable RL Framework for Network Resource Allocation},
+  title={FlagVNE: A Flexible and Generalizable Reinforcement Learning Framework for Network Resource Allocation},
   author={Wang, Tianfu and Fan, Qilin and Wang, Chao and Ding, Leilei and Yuan, Nicholas Jing and Xiong, Hui},
   booktitle={Proceedings of the 33rd International Joint Conference on Artificial Intelligence},
   year={2024},

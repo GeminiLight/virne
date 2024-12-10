@@ -69,7 +69,7 @@ If you find Virne helpful to your research, please feel free to cite our related
 ..  code-block:: bib
 
     @INPROCEEDINGS{ijcai-2024-flagvne,
-      title={FlagVNE: A Flexible and Generalizable RL Framework for Network Resource Allocation},
+      title={FlagVNE: A Flexible and Generalizable Reinforcement Learning Framework for Network Resource Allocation},
       author={Wang, Tianfu and Fan, Qilin and Wang, Chao and Ding, Leilei and Yuan, Nicholas Jing and Xiong, Hui},
       booktitle={Proceedings of the 33rd International Joint Conference on Artificial Intelligence},
       year={2024},
