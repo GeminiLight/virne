@@ -19,10 +19,10 @@ except ImportError:
     torch_version = ".".join(torch_version_parts)
     print(f'torch version: {torch_version}')
     print(f'Install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv based on torch-{torch_version}+{cuda_suffix}')
-    os.system(f'pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://pytorch-geometric.com/whl/torch-{torch_version}+{cuda_suffix}.html')
+    os.system(f'pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-{torch_version}+{cuda_suffix}.html')
     # os.system('cls' if os.name == 'nt' else 'clear')
-
-
+    import torch_sparse, torch_scatter, torch_cluster
+    
 from .hopfield_network import HopfieldNetworkSolver
 from .gae_clustering import GaeClusteringSolver
 from .mcts import MctsSolver
