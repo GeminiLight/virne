@@ -8,7 +8,7 @@ except ImportError:
     if cuda_version is None:
         cuda_suffix = 'cpu'
     else:
-        if cuda_version in ['11.8', '12.1']:
+        if cuda_version in ['11.8', '12.1', '12.4']:
             cuda_suffix = 'cu' + cuda_version.replace('.', '')
         else:
             cuda_suffix = 'cu118'
