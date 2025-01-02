@@ -451,8 +451,17 @@ class Network(nx.Graph):
         nx.write_gml(self, fpath)
 
     @classmethod
-    def from_gml(cls, fpath):
-        gml_net = nx.read_gml(fpath, destringizer=int)
+    def from_gml(cls, fpath, label='id'):
+        """
+        Create a Network object from a GML file.
+
+        Args:
+            fpath (str): The file path of the GML file.
+            label (str): The label of the nodes, default is 'id'.
+        """
+        gml_net = nx.read_gml(fpath, label=label)
+        if not all(isinstance(node, int) for node in gml_net.nodes):
+            gml_net = nx.convert_node_labels_to_integers(gml_net)
         net = cls(incoming_graph_data=gml_net)
         net.check_attrs_existence()
         return net

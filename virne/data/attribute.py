@@ -21,7 +21,7 @@ def create_attrs_from_setting(attrs_setting):
     return attrs
 
 
-class Attribute(object):
+class Attribute:
 
     def __init__(self, name, owner, type, *args, **kwargs):
         self.name = name
@@ -31,9 +31,9 @@ class Attribute(object):
         if type == 'extrema':
             self.originator = kwargs.get('originator')
         # for generative
-        self.generative = kwargs.get('generative', False)
+        self.generative = bool(kwargs.get('generative', False))
 
-        assert self.generative in [True, False]
+        assert self.generative in [True, False], ValueError('The generative attribute should be boolean')
 
         if self.generative:
             self.distribution = kwargs.get('distribution', 'normal')
@@ -53,6 +53,7 @@ class Attribute(object):
             elif self.distribution in ['customized']:
                 self.min = kwargs.get('min', 0.)
                 self.max = kwargs.get('max', 1.)
+
 
     @classmethod
     def from_dict(cls, dict):
@@ -99,25 +100,8 @@ class Attribute(object):
         return self.__dict__
 
     def __repr__(self):
-        info = [f'{key}={self._size_repr(item)}' for key, item in self.__dict__]
+        info = [f'{key}={str(item)}' for key, item in self.__dict__.items()]
         return f"{self.__class__.__name__}({', '.join(info)})"
-
-
-class InfoAttribute(Attribute):
-
-    def __init__(self, name, owner, *args, **kwargs):
-        super().__init__(name, owner, 'info', *args, **kwargs)
-
-
-class NodeInfoAttribute(InfoAttribute):
-
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, 'node', *args, **kwargs)
-
-class LinkInfoAttribute(InfoAttribute):
-
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, 'link', *args, **kwargs)
 
 
 ### Public Methods ###
@@ -171,6 +155,12 @@ class ExtremaMethod:
         return attribute_data
 
 
+class InfoAttribute(Attribute):
+
+    def __init__(self, name, owner, *args, **kwargs):
+        super().__init__(name, owner, 'info', *args, **kwargs)
+
+
 class NodeMethod:
 
     def set_data(self, network, attribute_data):
@@ -200,7 +190,7 @@ class LinkMethod:
         return adjacency_data
 
     def get_aggregation_data(self, network, aggr='sum', normalized=False):
-        assert aggr in ['sum', 'mean', 'max'], NotImplementedError
+        assert aggr in ['sum', 'mean', 'max', 'min'], NotImplementedError
         attr_sparse_matrix = nx.attr_sparse_matrix(
                 network, edge_attr=self.name, normalized=normalized, rc_order=network.nodes).toarray()
         if aggr == 'sum':
@@ -211,11 +201,27 @@ class LinkMethod:
             aggregation_data = np.asarray(aggregation_data)
         elif aggr == 'max':
             aggregation_data = attr_sparse_matrix.max(axis=0)
+        elif aggr == 'min':
+            aggregation_data = attr_sparse_matrix.min(axis=0)
         return aggregation_data
 
 
 # Node Attributes
+
+
+class NodeInfoAttribute(InfoAttribute, NodeMethod):
+
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name, 'node', *args, **kwargs)
+
+class LinkInfoAttribute(InfoAttribute, NodeMethod):
+
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name, 'link', *args, **kwargs)
+
+
 class NodeResourceAttribute(Attribute, NodeMethod, ResourceMethod):
+
     def __init__(self, name, *args, **kwargs):
         super(NodeResourceAttribute, self).__init__(name, 'node', 'resource', *args, **kwargs)
 
@@ -223,7 +229,9 @@ class NodeResourceAttribute(Attribute, NodeMethod, ResourceMethod):
         result, value = super()._check_one_element(v_node, p_node, method)
         return result, value
 
+
 class NodeExtremaAttribute(Attribute, NodeMethod, ExtremaMethod):
+
     def __init__(self, name, *args, **kwargs):
         super(NodeExtremaAttribute, self).__init__(name, 'node', 'extrema', *args, **kwargs)
 
@@ -272,27 +280,6 @@ class LinkExtremaAttribute(Attribute, LinkMethod, ExtremaMethod):
         return True
 
 
-class LinkLatencyAttribute(Attribute, LinkMethod):
-    def __init__(self, name='latency', *args, **kwargs):
-        super(LinkLatencyAttribute, self).__init__(name, 'link', 'latency', *args, **kwargs)
-
-    def generate_data(self, network):
-        # convert link attributes to node attributes
-        if 'pos' in network.nodes[0].keys():
-            pos_attr_dict = nx.get_node_attributes(network, 'pos')
-            latency_data = []
-            for e in network.links:
-                pos_a = np.array(pos_attr_dict[e[0]])
-                pos_b = np.array(pos_attr_dict[e[1]])
-                latency_data.append(np.linalg.norm(pos_a - pos_b))
-            norm_latency_data = np.array(latency_data)
-            # norm_latency_data = (norm_latency_data - norm_latency_data.min()) / (norm_latency_data.max() - norm_latency_data.min())
-            latency_data = norm_latency_data * (self.max - self.min) + self.min
-        else:
-            latency_data = self._generate_data_with_dist(network)
-        return latency_data
-
-
 class NodePositionQoSAttribute(Attribute, NodeMethod):
 
     def __init__(self, name='qos_pos', *args, **kwargs):
@@ -312,6 +299,32 @@ class NodePositionQoSAttribute(Attribute, NodeMethod):
         return 
 
 
+class LinkLatencyAttribute(Attribute, LinkMethod):
+
+    def __init__(self, name='latency', *args, **kwargs):
+        super(LinkLatencyAttribute, self).__init__(name, 'link', 'latency', *args, **kwargs)
+
+class GeographicLatencyAttribute(Attribute, LinkMethod):
+
+    def __init__(self, name='geographic_latency', *args, **kwargs):
+        super(GeographicLatencyAttribute, self).__init__(name, 'link', 'latency', *args, **kwargs)
+        self.max = kwargs.get('max', 1.)  # the maximum value of the latency
+        self.min = kwargs.get('min', 0.)  # the minimum value of the latency
+
+    def generate_data(self, network):
+        assert 'pos' in network.nodes[0].keys(), AttributeError('The generation of this attribute requires node position')
+        pos_attr_dict = nx.get_node_attributes(network, 'pos')
+        latency_data = []
+        for e in network.links:
+            pos_a = np.array(pos_attr_dict[e[0]])
+            pos_b = np.array(pos_attr_dict[e[1]])
+            latency_data.append(np.linalg.norm(pos_a - pos_b))
+        norm_latency_data = np.array(latency_data)
+        # norm_latency_data = (norm_latency_data - norm_latency_data.min()) / (norm_latency_data.max() - norm_latency_data.min())
+        latency_data = norm_latency_data * (self.max - self.min) + self.min
+        return latency_data
+
+
 ATTRIBUTES_DICT = {
     # Resource
     ('node', 'resource'): NodeResourceAttribute,
@@ -319,13 +332,16 @@ ATTRIBUTES_DICT = {
     ('link', 'resource'): LinkResourceAttribute,
     ('link', 'extrema'): LinkExtremaAttribute,
     # Fixed
+    ('node', 'info'): NodeInfoAttribute,
+    ('link', 'info'): LinkInfoAttribute,
     ('node', 'position'): NodePositionAttribute,
     ('link', 'latency'): LinkLatencyAttribute,
     # QoS
     ('node', 'qos_position'): NodePositionQoSAttribute,
-    # ('link', 'qos_latency'): LinkLatencyQosAttribute,
 }
 
 
 if __name__ == '__main__':
-    pass
+    AttributeClass = ATTRIBUTES_DICT[('node', 'resource')]
+    test_node_resource_attr = NodeResourceAttribute(name='cpu')
+    print(test_node_resource_attr)

@@ -16,7 +16,6 @@ ROOT_DIR = pathlib.Path(__file__).absolute().parent.parent.parent
 sys.path.insert(0, os.path.abspath(str(ROOT_DIR)))
 sys.path.insert(0, str(ROOT_DIR / 'virne'))
 
-print(sys.path)
 # sys.path.insert(0, str(ROOT_DIR))
 
 
