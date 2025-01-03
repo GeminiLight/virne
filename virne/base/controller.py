@@ -209,6 +209,39 @@ class Controller:
         final_result, link_satisfiability_info = self.check_attributes(v_link, p_link, self.all_link_attrs)
         return final_result, link_satisfiability_info
 
+    def check_path_latency_constraints(
+            self,
+            v_net: VirtualNetwork,
+            p_net: PhysicalNetwork,
+            v_link: dict,
+            p_path: list
+        ) -> Tuple[bool, dict]:
+        """
+        Check if the path-level latency constraints are satisfied for a given virtual link and its mapped physical path.
+
+        Args:
+            v_net (VirtualNetwork): The virtual network for which the path-level constraints are to be checked.
+            p_net (PhysicalNetwork): The physical network for which the path-level constraints are to be checked.
+            v_link (dict): A dictionary representing the virtual link.
+            p_path (list): A list of nodes representing the physical path.
+
+        Returns:
+            final_result (bool): A boolean value indicating whether all the path-level constraints are satisfied.
+            path_satisfiability_info (dict): A dictionary containing the satisfiability information of the path-level constraints.
+                                             The keys of the dictionary are the IDs of the physical links in the path,
+                                             and the values are dictionaries containing the satisfiability information of the
+                                             link-level constraints, in the same format as the return value of `check_link_constraints()`.
+        """
+        p_links = path_to_links(p_path)
+        final_result = True
+        path_satisfiability_info = dict()
+        for p_link in p_links:
+            result, info = self.check_link_constraints(v_net, p_net, v_link, p_link)
+            if not result:
+                final_result = False
+            path_satisfiability_info[p_link] = info
+
+
     def check_path_constraints(
             self, 
             v_net: VirtualNetwork, 

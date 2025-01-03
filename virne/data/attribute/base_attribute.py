@@ -16,12 +16,18 @@ Energy: Node Energy = (pmnode - pbnode)*  (snode.cpu - snode.lastcpu) / snode.cp
 """
 
 
-def create_attrs_from_setting(attrs_setting):
-    attrs = {attr_dict['name']: Attribute.from_dict(attr_dict) for attr_dict in attrs_setting}
-    return attrs
-
 
 class Attribute:
+    """
+    Attribute class for network elements (nodes and links)
+
+    Args:
+        name (str): the name of the attribute
+        owner (str): the owner of the attribute, either 'node' or 'link'
+        type (str): the type of the attribute, options: 'resource', 'extrema', 'info', 'position', 'latency'
+        *args: additional arguments
+        **kwargs: additional keyword arguments
+    """
 
     def __init__(self, name, owner, type, *args, **kwargs):
         self.name = name
@@ -53,17 +59,6 @@ class Attribute:
             elif self.distribution in ['customized']:
                 self.min = kwargs.get('min', 0.)
                 self.max = kwargs.get('max', 1.)
-
-
-    @classmethod
-    def from_dict(cls, dict):
-        dict_copy = copy.deepcopy(dict)
-        name = dict_copy.pop('name')
-        owner = dict_copy.pop('owner')
-        type = dict_copy.pop('type')
-        assert (owner, type) in ATTRIBUTES_DICT.keys(), ValueError('Unsupproted attribute!')
-        AttributeClass = ATTRIBUTES_DICT.get((owner, type))
-        return AttributeClass(name, **dict_copy)
 
     def get(self, net, id):
         if self.owner == 'node':
@@ -104,8 +99,14 @@ class Attribute:
         return f"{self.__class__.__name__}({', '.join(info)})"
 
 
-### Public Methods ###
-class ResourceMethod:
+class InfoAttribute(Attribute):
+
+    def __init__(self, name, owner, *args, **kwargs):
+        super().__init__(name, owner, 'info', *args, **kwargs)
+
+
+
+class ResourceAttributeMethod:
 
     def update(self, v, p, method='+', safe=True):
         assert self.type in ['resource']
@@ -138,7 +139,7 @@ class ResourceMethod:
             raise NotImplementedError
 
 
-class ExtremaMethod:
+class ExtremaAttributeMethod:
 
     def update(self, v, p, method='+', safe=True):
         return True
@@ -154,14 +155,7 @@ class ExtremaMethod:
         attribute_data = originator_attribute.get_data(network)
         return attribute_data
 
-
-class InfoAttribute(Attribute):
-
-    def __init__(self, name, owner, *args, **kwargs):
-        super().__init__(name, owner, 'info', *args, **kwargs)
-
-
-class NodeMethod:
+class NodeAttributeMethod:
 
     def set_data(self, network, attribute_data):
         if not isinstance(attribute_data, dict):
@@ -173,7 +167,7 @@ class NodeMethod:
         return attribute_data
 
 
-class LinkMethod:
+class LinkAttributeMethod:
 
     def set_data(self, network, attribute_data):
         if not isinstance(attribute_data, dict):
@@ -204,144 +198,3 @@ class LinkMethod:
         elif aggr == 'min':
             aggregation_data = attr_sparse_matrix.min(axis=0)
         return aggregation_data
-
-
-# Node Attributes
-
-
-class NodeInfoAttribute(InfoAttribute, NodeMethod):
-
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, 'node', *args, **kwargs)
-
-class LinkInfoAttribute(InfoAttribute, NodeMethod):
-
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, 'link', *args, **kwargs)
-
-
-class NodeResourceAttribute(Attribute, NodeMethod, ResourceMethod):
-
-    def __init__(self, name, *args, **kwargs):
-        super(NodeResourceAttribute, self).__init__(name, 'node', 'resource', *args, **kwargs)
-
-    def check(self, v_node, p_node, method='le'):
-        result, value = super()._check_one_element(v_node, p_node, method)
-        return result, value
-
-
-class NodeExtremaAttribute(Attribute, NodeMethod, ExtremaMethod):
-
-    def __init__(self, name, *args, **kwargs):
-        super(NodeExtremaAttribute, self).__init__(name, 'node', 'extrema', *args, **kwargs)
-
-
-class NodePositionAttribute(Attribute, NodeMethod):
-
-    def __init__(self, name='pos', *args, **kwargs):
-        super(NodePositionAttribute, self).__init__(name, 'node', 'position', *args, **kwargs)
-
-    def generate_data(self, network):
-        if self.generative:
-            pos_x = self._generate_data_with_dist(network)
-            pos_y = self._generate_data_with_dist(network)
-            pos_r = self._generate_data_with_dist(network)
-            pos_r = np.clip(pos_r, self.min_r, self.max_r, out=None)
-            pos_data = [(x, y, pos_r) for x, y in zip(pos_x, pos_y)]
-        elif 'pos' in network.nodes[0].keys():
-            pos_data = list(nx.get_node_attributes(network, 'pos').values())
-        else:
-            return AttributeError('Please specify how to generate data')
-        return pos_data
-
-# Link Attributes
-class LinkResourceAttribute(Attribute, LinkMethod, ResourceMethod):
-    def __init__(self, name, *args, **kwargs):
-        super(LinkResourceAttribute, self).__init__(name, 'link', 'resource', *args, **kwargs)
-
-    def check(self, v_link, p_link, method='le'):
-        result, value = super()._check_one_element(v_link, p_link, method)
-        return result, value
-
-    def update_path(self, vl, p_net, path, method='+', safe=True):
-        assert self.type in ['resource']
-        assert method in ['+', '-', 'add', 'sub'], NotImplementedError
-        assert len(path) > 1
-        links_list = path_to_links(path)
-        for link in links_list:
-            self.update(vl, p_net.links[link], method, safe=safe)
-        return True
-
-class LinkExtremaAttribute(Attribute, LinkMethod, ExtremaMethod):
-    def __init__(self, name, *args, **kwargs):
-        super(LinkExtremaAttribute, self).__init__(name, 'link', 'extrema', *args, **kwargs)
-
-    def update_path(self, vl, p_net, path, method='+', safe=True):
-        return True
-
-
-class NodePositionQoSAttribute(Attribute, NodeMethod):
-
-    def __init__(self, name='qos_pos', *args, **kwargs):
-        super(NodePositionAttribute, self).__init__(name, 'node', 'position', *args, **kwargs)
-
-    def generate_data(self, network):
-        if self.generative:
-            pos_r = self._generate_data_with_dist(network)
-        return pos_r
-
-    def check(self, v_node, p_node, **kwargs):
-        pos_p = p_node[self.name]
-        pos_v = v_node[self.name]
-        distance = ((pos_p[0] - pos_v[0]) ** 2 + (pos_p[1] - pos_v[1]) ** 2) ** 0.5
-        if distance < 0:
-            pass
-        return 
-
-
-class LinkLatencyAttribute(Attribute, LinkMethod):
-
-    def __init__(self, name='latency', *args, **kwargs):
-        super(LinkLatencyAttribute, self).__init__(name, 'link', 'latency', *args, **kwargs)
-
-class GeographicLatencyAttribute(Attribute, LinkMethod):
-
-    def __init__(self, name='geographic_latency', *args, **kwargs):
-        super(GeographicLatencyAttribute, self).__init__(name, 'link', 'latency', *args, **kwargs)
-        self.max = kwargs.get('max', 1.)  # the maximum value of the latency
-        self.min = kwargs.get('min', 0.)  # the minimum value of the latency
-
-    def generate_data(self, network):
-        assert 'pos' in network.nodes[0].keys(), AttributeError('The generation of this attribute requires node position')
-        pos_attr_dict = nx.get_node_attributes(network, 'pos')
-        latency_data = []
-        for e in network.links:
-            pos_a = np.array(pos_attr_dict[e[0]])
-            pos_b = np.array(pos_attr_dict[e[1]])
-            latency_data.append(np.linalg.norm(pos_a - pos_b))
-        norm_latency_data = np.array(latency_data)
-        # norm_latency_data = (norm_latency_data - norm_latency_data.min()) / (norm_latency_data.max() - norm_latency_data.min())
-        latency_data = norm_latency_data * (self.max - self.min) + self.min
-        return latency_data
-
-
-ATTRIBUTES_DICT = {
-    # Resource
-    ('node', 'resource'): NodeResourceAttribute,
-    ('node', 'extrema'): NodeExtremaAttribute,
-    ('link', 'resource'): LinkResourceAttribute,
-    ('link', 'extrema'): LinkExtremaAttribute,
-    # Fixed
-    ('node', 'info'): NodeInfoAttribute,
-    ('link', 'info'): LinkInfoAttribute,
-    ('node', 'position'): NodePositionAttribute,
-    ('link', 'latency'): LinkLatencyAttribute,
-    # QoS
-    ('node', 'qos_position'): NodePositionQoSAttribute,
-}
-
-
-if __name__ == '__main__':
-    AttributeClass = ATTRIBUTES_DICT[('node', 'resource')]
-    test_node_resource_attr = NodeResourceAttribute(name='cpu')
-    print(test_node_resource_attr)

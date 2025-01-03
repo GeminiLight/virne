@@ -13,7 +13,7 @@ from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
 from networkx.classes.filters import no_filter
 
 from virne.utils import write_setting
-from .attribute import Attribute
+from .attribute import create_attr_from_dict
 
 
 class Network(nx.Graph):
@@ -65,8 +65,8 @@ class Network(nx.Graph):
 
     def create_attrs_from_setting(self):
         """Create node and link attribute dictionaries from their respective settings."""
-        self.node_attrs = {n_attr_dict['name']: Attribute.from_dict(n_attr_dict) for n_attr_dict in self.graph['node_attrs_setting']}
-        self.link_attrs = {e_attr_dict['name']: Attribute.from_dict(e_attr_dict) for e_attr_dict in self.graph['link_attrs_setting']}
+        self.node_attrs = {n_attr_dict['name']: create_attr_from_dict(n_attr_dict) for n_attr_dict in self.graph['node_attrs_setting']}
+        self.link_attrs = {e_attr_dict['name']: create_attr_from_dict(e_attr_dict) for e_attr_dict in self.graph['link_attrs_setting']}
 
     def check_attrs_existence(self):
         """Check if all defined attributes exist in the graph."""
@@ -433,9 +433,16 @@ class Network(nx.Graph):
         else:
             return TypeError
 
-    # def __repr__(self):
-    #     info = [f"{key}={self._size_repr(item)}" for key, item in self]
-    #     return f"{self.__class__.__name__}({', '.join(info)})"
+    def __repr__(self):
+        net_info = {
+            'num_nodes': self.num_nodes,
+            'num_links': self.num_links,
+            'num_node_features': self.num_node_features,
+            'num_link_features': self.num_link_features,
+            'node_attrs': list(self.node_attrs.keys()),
+            'link_attrs': list(self.link_attrs.keys())
+        }
+        return f"{self.__class__.__name__}({', '.join(net_info)})"
 
     def __setitem__(self, key: str, value):
         """Sets the attribute key to value."""
@@ -462,6 +469,7 @@ class Network(nx.Graph):
         gml_net = nx.read_gml(fpath, label=label)
         if not all(isinstance(node, int) for node in gml_net.nodes):
             gml_net = nx.convert_node_labels_to_integers(gml_net)
+        # import pdb; pdb.set_trace()
         net = cls(incoming_graph_data=gml_net)
         net.check_attrs_existence()
         return net
