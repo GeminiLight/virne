@@ -1,13 +1,13 @@
 API
 ===
 
-.. autosummary::
-   :recursive:
-   :toctree: generated
+.. .. autosummary::
+..    :recursive:
+..    :toctree: generated
 
-   virne.base
-   virne.data
-   virne.solver
+..    virne.base
+..    virne.data
+..    virne.solver
 
    .. Controller
    .. Counter
