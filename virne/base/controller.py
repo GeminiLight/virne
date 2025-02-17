@@ -1289,6 +1289,7 @@ class Controller:
                 shortest_path = self.find_bfs_shortest_path(v_net, p_net, v_link, source, target, weight=None)
                 shortest_paths = [] if shortest_path is None else [shortest_path]
             elif method == 'available_shortest':
+                import pdb; pdb.set_trace()
                 temp_p_net = self.create_available_network(v_net, p_net, v_link)
                 shortest_paths = [nx.dijkstra_path(temp_p_net, source, target, weight=weight)]
             elif method == 'available_k_shortest':
@@ -1304,10 +1305,9 @@ class Controller:
 
     def create_available_network(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, v_link_pair):
         def available_link(n1, n2):
-            p_link = p_net.links[(n1, n2)]
-            result, info = self.check_link_level_constraints(v_net, p_net, v_link, p_link)
+            p_link_pair = (n1, n2)
+            result, info = self.check_link_level_constraints(v_net, p_net, v_link_pair, p_link_pair)
             return result
-        v_link = v_net.links[v_link_pair]
         sub_graph = nx.subgraph_view(p_net, filter_edge=available_link)
         return sub_graph
 
