@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Virne: A Simulator for NV-RA
+Virne: A Simulator for NFV-RA
 ===================================
 
 .. note::
@@ -14,7 +14,7 @@ Virne: A Simulator for NV-RA
   contact me via email: wtfly2018@gmail.com.
 
 
-**Virne** is a simulator designed to address **resource allocation problems in network virtualization**. This category of problems is often referred to by various names, including:
+**Virne** is a simulator designed to address **resource allocation problems in network function virtualization**. This category of problems is often referred to by various names, including:
 
 - **Virtual Network Embedding (VNE)**
 - **Virtual Network Function Placement (VNF Placement)**

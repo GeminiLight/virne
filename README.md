@@ -12,7 +12,7 @@
 
 --------------------------------------------------------------------------------
 
-**Virne** is a simulator designed to address **resource allocation problems in network virtualization**. This category of problems is often referred to by various names, including:
+**Virne** is a simulator designed to address **resource allocation problems in network function virtualization**. This category of problems is often referred to by various names, including:
 
 - **Virtual Network Embedding (VNE)**
 - **Virtual Network Function Placement (VNF Placement)**
@@ -50,7 +50,7 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
 **[TSC, 2023] HRL-ACRA** ([paper](https://arxiv.org/pdf/2406.17334) & [code](https://github.com/GeminiLight/hrl-acra))
 
 ```bibtex
-@ARTICLE{tfwang-tsc-2023-hrl-acra,
+@ARTICLE{tsc-2023-hrl-acra,
   author={Wang, Tianfu and Shen, Li and Fan, Qilin and Xu, Tong and Liu, Tongliang and Xiong, Hui},
   journal={IEEE Transactions on Services Computing},
   title={Joint Admission Control and Resource Allocation of Virtual Network Embedding Via Hierarchical Deep Reinforcement Learning},
@@ -58,20 +58,18 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
   number={03},
   pages={1001--1015},
   year={2024},
-  doi={10.1109/TSC.2023.3326539}
 }
 ```
 
 **[ICC, 2021] DRL-SFCP** ([paper](https://ieeexplore.ieee.org/document/9500964) & [code](https://github.com/GeminiLight/drl-sfcp))
 
 ```bibtex
-@INPROCEEDINGS{tfwang-icc-2021-drl-sfcp,
+@INPROCEEDINGS{icc-2021-drl-sfcp,
   author={Wang, Tianfu and Fan, Qilin and Li, Xiuhua and Zhang, Xu and Xiong, Qingyu and Fu, Shu and Gao, Min},
   booktitle={ICC 2021 - IEEE International Conference on Communications}, 
   title={DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning}, 
   year={2021},
   pages={1-6},
-  doi={10.1109/ICC42927.2021.9500964}
 }
 ```
 

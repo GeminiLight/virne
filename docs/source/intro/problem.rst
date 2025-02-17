@@ -11,10 +11,10 @@ Formulation
 
 .. image:: ../_static/vne-example.png
    :width: 1000
-   :alt: An example of resource allocation problem in network virtualization (source: `IJCAI'24 - FlagVNE<https://arxiv.org/abs/2404.12633>`_)
+   :alt: An example of resource allocation problem in network function virtualization (source: `IJCAI'24 - FlagVNE<https://arxiv.org/abs/2404.12633>`_)
    :align: center
 
-**Figure**: An example of a resource allocation problem in network virtualization. It illustrates the mapping process of virtual network requests onto physical network resources. (Source: `IJCAI'24 - FlagVNE <https://arxiv.org/abs/2404.12633>`_)
+**Figure**: An example of a resource allocation problem in network function virtualization. It illustrates the mapping process of virtual network requests onto physical network resources. (Source: `IJCAI'24 - FlagVNE <https://arxiv.org/abs/2404.12633>`_)
 
 System Model
 ------------

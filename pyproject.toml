@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">= 3.8"
 authors = [{ name = "GeminiLight", email = "wtfly2018@gmail.com" }]
 license = { text = "Apache License, Version 2.0" }
-keywords = ["Network Virtualization", "Virtual Network Embedding", "Reinforcement Learning"]
+keywords = ["Network Function Virtualization", "Virtual Network Embedding", "Reinforcement Learning"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: Apache Software License",

@@ -1,10 +1,10 @@
 # Background
 
-Virtual Network Embedding (VNE) is the process of mapping virtual network requests onto the physical network. VNE is a crucial aspect of network virtualization, where a physical network is partitioned into multiple virtual networks. Each virtual network request has its own set of requirements, such as bandwidth, processing power, and latency. These requirements must be satisfied while minimizing the overall cost of embedding virtual networks on the physical network.
+Virtual Network Embedding (VNE) is the process of mapping virtual network requests onto the physical network. VNE is a crucial aspect of network function virtualization, where a physical network is partitioned into multiple virtual networks. Each virtual network request has its own set of requirements, such as bandwidth, processing power, and latency. These requirements must be satisfied while minimizing the overall cost of embedding virtual networks on the physical network.
 
 Background:
 
-The increasing demand for cloud computing and network virtualization has led to the need for efficient resource allocation and management techniques. VNE has emerged as a promising solution to address these challenges by allowing multiple virtual networks to coexist on a shared physical network.
+The increasing demand for cloud computing and network function virtualization has led to the need for efficient resource allocation and management techniques. VNE has emerged as a promising solution to address these challenges by allowing multiple virtual networks to coexist on a shared physical network.
 
 Formulation:
 
