@@ -10,16 +10,9 @@ import networkx as nx
 from virne.utils import path_to_links, generate_data_with_distribution
 
 
-"""
-To-do
-Energy: Node Energy = (pmnode - pbnode)*  (snode.cpu - snode.lastcpu) / snode.cpu + pbnode
-"""
-
-
-
-class Attribute:
+class BaseAttribute:
     """
-    Attribute class for network elements (nodes and links)
+    Base Attribute class for network elements (nodes and links)
 
     Args:
         name (str): the name of the attribute
@@ -66,9 +59,6 @@ class Attribute:
         elif self.owner == 'link':
             return net.links[id][self.name]
 
-    def check(self, *args, **kwargs):
-        return True
-
     def size(self, network):
         size = network.num_nodes if self.owner == 'node' else network.num_links
         return size
@@ -98,62 +88,6 @@ class Attribute:
         info = [f'{key}={str(item)}' for key, item in self.__dict__.items()]
         return f"{self.__class__.__name__}({', '.join(info)})"
 
-
-class InfoAttribute(Attribute):
-
-    def __init__(self, name, owner, *args, **kwargs):
-        super().__init__(name, owner, 'info', *args, **kwargs)
-
-
-
-class ResourceAttributeMethod:
-
-    def update(self, v, p, method='+', safe=True):
-        assert self.type in ['resource']
-        assert method in ['+', '-', 'add', 'sub']
-        if method in ['+', 'add']:
-            p[self.name] += v[self.name]
-        elif method in ['-', 'sub']:
-            if safe:
-                assert v[self.name] <= p[self.name], f'{self.name}: (v = {v[self.name]}) > (p = {p[self.name]})'
-            p[self.name] -= v[self.name]
-        else:
-            raise NotImplementedError
-        return True
-    
-    def _check_one_element(self, v, p, method='le'):
-        assert method in ['>=', '<=', 'ge', 'le', 'eq']
-        if method in ['>=', 'ge']:
-            return v[self.name] >= p[self.name], v[self.name] - p[self.name]
-        elif method in ['<=', 'le']:
-            return v[self.name] <= p[self.name], p[self.name] - v[self.name]
-        elif method in ['==', 'eq']:
-            return v[self.name] == p[self.name], abs(v[self.name] - p[self.name])
-        else:
-            raise NotImplementedError(f'Used method {method}')
-
-    def generate_data(self, network):
-        if self.generative:  # generative attribute
-            return self._generate_data_with_dist(network)
-        else:
-            raise NotImplementedError
-
-
-class ExtremaAttributeMethod:
-
-    def update(self, v, p, method='+', safe=True):
-        return True
-
-    def check(self, v_net, p_net, v_node_id, p_node_id, method='le'):
-        return True
-
-    def generate_data(self, network):
-        if self.owner == 'node':
-            originator_attribute = network.node_attrs[self.originator]
-        else:
-            originator_attribute = network.link_attrs[self.originator]
-        attribute_data = originator_attribute.get_data(network)
-        return attribute_data
 
 class NodeAttributeMethod:
 
@@ -198,3 +132,103 @@ class LinkAttributeMethod:
         elif aggr == 'min':
             aggregation_data = attr_sparse_matrix.min(axis=0)
         return aggregation_data
+
+
+class GraphAttributeMethod:
+
+    def set_data(self, network, attribute_data):
+        network.graph[self.name] = attribute_data
+
+    def get_data(self, network):
+        attribute_data = network.graph[self.name]
+        return attribute_data
+
+
+class InformationAttribute(BaseAttribute):
+
+    def __init__(self, name, owner, type, *args, **kwargs):
+        super().__init__(name, owner, type, *args, **kwargs)
+        self.is_constraint = False
+
+class ConstraintAttribute(BaseAttribute):
+    """
+    """
+    def __init__(self, name, owner, type, *args, **kwargs):
+        super().__init__(name, owner, type, *args, **kwargs)
+        self.is_constraint = True
+        self.constraint_restrictions = kwargs.get('restriction', 'hard')
+        assert self.constraint_restrictions in ['hard', 'soft']
+
+    def check_constraint_satisfiability(self, v, p, method='le'):
+        raise NotImplementedError(f'The attribute {self.name} has not implemented the check_constraint_satisfiability method')
+
+    def _calculate_satisfiability_values(self, v_value, p_value, method='le'):
+        assert method in ['>=', '<=', 'ge', 'le', 'eq']
+        """
+        Calculate the difference between the value of the attribute in the virtual network and the value of the attribute in the physical network
+
+        Offset = Requirement - Availability
+        Violation = Max(0, Offset)
+        
+        Args:
+            v_value (float): the value of the attribute in the virtual network
+            p_value (float): the value of the attribute in the physical network
+            method (str): the method to compare the values, options: '>=', '<=', '=='
+
+        Returns:
+            flag (bool): the comparison result
+            diff (float): the difference between the values
+        """
+        if method in ['>=', 'ge']:
+            flag, offset = v_value >= p_value, p_value - v_value
+            violation = max(0, p_value - v_value)
+        elif method in ['<=', 'le']:
+            flag, offset = v_value <= p_value, v_value - p_value
+            violation = max(0, v_value - p_value)
+        elif method in ['==', 'eq']:
+            flag, offset = v_value == p_value, abs(v_value - p_value)
+            violation = max(0, abs(v_value - p_value))
+        else:
+            raise NotImplementedError(f'Used method {method}')
+        if self.constraint_restrictions == 'hard':
+            return flag, offset
+        elif self.constraint_restrictions == 'soft':
+            return True, offset
+
+class ResourceAttributeMethod:
+
+    def update(self, v, p, method='+', safe=True):
+        assert self.type in ['resource']
+        assert method in ['+', '-', 'add', 'sub']
+        if method in ['+', 'add']:
+            p[self.name] += v[self.name]
+        elif method in ['-', 'sub']:
+            if safe:
+                assert v[self.name] <= p[self.name], f'{self.name}: (v = {v[self.name]}) > (p = {p[self.name]})'
+            p[self.name] -= v[self.name]
+        else:
+            raise NotImplementedError
+        return True
+
+    def generate_data(self, network):
+        if self.generative:  # generative attribute
+            return self._generate_data_with_dist(network)
+        else:
+            raise NotImplementedError
+
+
+class ExtremaAttributeMethod:
+
+    def update(self, v, p, method='+', safe=True):
+        return True
+
+    def check(self, v_net, p_net, v_node_id, p_node_id, method='le'):
+        return True
+
+    def generate_data(self, network):
+        if self.owner == 'node':
+            originator_attribute = network.node_attrs[self.originator]
+        else:
+            originator_attribute = network.link_attrs[self.originator]
+        attribute_data = originator_attribute.get_data(network)
+        return attribute_data

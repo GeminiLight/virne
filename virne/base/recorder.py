@@ -188,6 +188,7 @@ class Recorder:
                 cls.state['total_time_cost'] += solution['v_net_time_cost']
                 cls.state['long_term_r2c_ratio'] = cls.state['total_revenue'] / cls.state['total_cost'] if cls.state['total_cost'] else 0
                 cls.state['long_term_time_r2c_ratio'] = cls.state['total_time_revenue'] / cls.state['total_time_cost'] if cls.state['total_time_cost'] else 0
+                assert cls.state['long_term_time_r2c_ratio'] <= 1, f"long_term_time_r2c_ratio: {cls.state['long_term_time_r2c_ratio']} ({cls.state['total_time_revenue']} / {cls.state['total_time_cost']})"
                 v_net_id = solution['v_net_id']
                 for v_node_id, p_node_id in solution['node_slots'].items():
                     cls.p_net_nodes_for_v_net_dict[p_node_id].append(v_net_id)

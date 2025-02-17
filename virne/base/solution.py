@@ -38,10 +38,8 @@ class Solution(ClassDict):
         v_net_time_revenue: The total time revenue of the virtual network being mapped.
         v_net_time_rc_ratio: The time revenue-to-cost ratio of the virtual network being mapped.
         description: A string describing the solution.
-        v_net_violation: The total violation of the solution.
-        v_net_current_violation: The current violation of the solution.
-        v_net_place_violation: The total placement violation of the solution.
-        v_net_route_violation: The total routing violation of the solution.
+        v_net_total_hard_constraint_violation: The total violation of the solution.
+        v_net_single_step_constraint_offset: The current violation of the solution.
         place_result: A boolean indicating whether the placement of the virtual network has been successfully mapped.
         route_result: A boolean indicating whether the routing of the virtual network has been successfully mapped.
         early_rejection: A boolean indicating whether the virtual network has been rejected before the mapping process.
@@ -88,13 +86,26 @@ class Solution(ClassDict):
         self.v_net_time_revenue = 0
         self.v_net_time_rc_ratio = 0
         self.description = ''
-        self.v_net_violation = 0.
-        self.v_net_current_violation = 0.
-        self.v_net_place_violation = 0.
-        self.v_net_route_violation = 0.
-        self.v_net_budget = 0.
-        self.v_net_place_budget = 0.
-        self.v_net_route_budget = 0.
+        # Constraint Violations
+        self.v_net_total_hard_constraint_violation = 0.
+        self.v_net_single_step_constraint_offset = {
+            'node_level': {},
+            'link_level': {},
+            'path_level': {},
+        }
+        self.v_net_constraint_offsets = {
+            'node_level': {},
+            'link_level': {},
+            'path_level': {},
+        }
+        self.v_net_constraint_violations = {
+            'node_level': {},
+            'link_level': {},
+            'path_level': {},
+        }
+        self.v_net_single_step_violation_list = []
+        self.v_net_single_step_hard_constraint_offset = -float('inf')
+        self.v_net_max_single_step_hard_constraint_violation = -float('inf')
         self.place_result = True
         self.route_result = True
         self.early_rejection = False
@@ -108,16 +119,17 @@ class Solution(ClassDict):
         Returns:
             True if the solution is feasible, False otherwise.
         """
-        return self.result and self.v_net_violation <= 0
+        return self.result and self.v_net_total_hard_constraint_violation <= 0
 
     def display(self):
         """Pretty print the solution object's attributes using pprint module."""
         pprint.pprint(self.__dict__)
 
-    def update(self, new_dict):
-        for key, value in new_dict.items():
-            setattr(self, key, value)
 
     def __repr__(self):
         pprint.pprint(self.__dict__)
         return super().__repr__()
+
+    def update(self, new_dict):
+        for key, value in new_dict.items():
+            setattr(self, key, value)

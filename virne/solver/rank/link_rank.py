@@ -6,7 +6,7 @@
 from abc import abstractclassmethod
 import numpy as np
 
-from virne.data import Network
+from virne.data import BaseNetwork
 
 
 class LinkRank(object):
@@ -18,12 +18,12 @@ class LinkRank(object):
         return self.rank(network, sort=sort)
 
     @abstractclassmethod
-    def rank(self, network: Network, sort: bool = True) -> dict:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> dict:
         """
         Rank links in the network.
 
         Args:
-            network (Network): Network object.
+            network (BaseNetwork): BaseNetwork object.
             sort (bool, optional): Sort the ranking result. Defaults to True.
 
         Returns:
@@ -45,7 +45,7 @@ class OrderLinkRank(LinkRank):
     def __init__(self, **kwargs):
         super(OrderLinkRank, self).__init__(**kwargs)
 
-    def rank(self, network: Network, sort: bool = True) -> dict:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> dict:
         """Rank links with the default order occurring in the network."""
         link_rank_vector = [value for value in range(len(network.links))]
         return self.to_dict(link_rank_vector, network, sort=sort)
@@ -56,7 +56,7 @@ class FFDLinkRank(LinkRank):
     def __init__(self, **kwargs):
         super(OrderLinkRank, self).__init__(**kwargs)
 
-    def rank(self, network: Network, sort: bool = True) -> dict:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> dict:
         """Rank links with the first fit decreasing strategy."""
         links_data = network.get_link_attrs_data(network.get_attrs('link', 'resource'))
         link_rank_vector = np.array(links_data).sum(axis=0)

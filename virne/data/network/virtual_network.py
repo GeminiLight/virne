@@ -6,10 +6,10 @@
 from functools import cached_property
 import numpy as np
 
-from .network import Network
+from .base_network import BaseNetwork
 
 
-class VirtualNetwork(Network):
+class VirtualNetwork(BaseNetwork):
     """
     VirtualNetwork class is a subclass of Network class. It represents a virtual network.
 

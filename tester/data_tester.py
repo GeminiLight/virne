@@ -1,7 +1,7 @@
 import sys
 
 from .tester import Tester
-from virne.data import Network, PhysicalNetwork, VirtualNetworkRequestSimulator, Generator
+from virne.data import BaseNetwork, PhysicalNetwork, VirtualNetworkRequestSimulator, Generator
 from virne.data.attribute import *
 
 

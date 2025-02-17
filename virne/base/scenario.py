@@ -11,8 +11,9 @@ from .controller import Controller
 from .recorder import Recorder
 from .counter import Counter
 from .solution import Solution
-from virne.data.physical_network import PhysicalNetwork
+from virne.data.network import PhysicalNetwork
 from virne.data.virtual_network_request_simulator import VirtualNetworkRequestSimulator
+from virne.data.generator import Generator
 from virne.utils import get_p_net_dataset_dir_from_setting
 
 
@@ -92,6 +93,10 @@ class BasicScenario(Scenario):
             self.solver.epoch_id = epoch_id
 
             instance = self.env.reset()
+            if self.config.if_dynamic_v_nets:
+                self.env.v_net_simulator = Generator.generate_dynamic_v_nets_dataset_from_config(self.config, save=False)
+                print('\n', [v.num_nodes for v in self.env.v_net_simulator.v_nets])
+
 
             pbar = tqdm.tqdm(desc=f'Running with {self.config.solver_name} in epoch {epoch_id}', total=self.env.num_v_nets) if self.verbose <= 1 else None
 

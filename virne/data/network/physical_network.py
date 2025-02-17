@@ -10,11 +10,11 @@ import random
 import numpy as np
 import networkx as nx
 
-from .network import Network
-from .attribute import NodeInfoAttribute, LinkInfoAttribute
+from .base_network import BaseNetwork
+from ..attribute import NodeStatusAttribute, LinkStatusAttribute
 
 
-class PhysicalNetwork(Network):
+class PhysicalNetwork(BaseNetwork):
     """
     PhysicalNetwork class is a subclass of Network class. It represents a physical network.
 
@@ -97,17 +97,21 @@ class PhysicalNetwork(Network):
             file_path = setting['topology'].get('file_path')
             net = PhysicalNetwork(node_attrs_setting=node_attrs_setting, link_attrs_setting=link_attrs_setting, **setting)
             G = nx.read_gml(file_path, label='id')
+            if 'node_attrs_setting' in G.__dict__['graph']:
+                G.__dict__['graph'].pop('node_attrs_setting')
+            if 'link_attrs_setting' in G.__dict__['graph']:
+                G.__dict__['graph'].pop('link_attrs_setting')
             net.__dict__['graph'].update(G.__dict__['graph'])
             net.__dict__['_node'] = G.__dict__['_node']
             net.__dict__['_adj'] = G.__dict__['_adj']
             n_attr_names = net.nodes[list(net.nodes)[0]].keys()
             for n_attr_name in n_attr_names:
                 if n_attr_name not in net.node_attrs.keys():
-                    net.node_attrs[n_attr_name] = NodeInfoAttribute(n_attr_name)
+                    net.node_attrs[n_attr_name] = NodeStatusAttribute(n_attr_name)
             l_attr_names = net.links[list(net.links)[0]].keys()
             for l_attr_name in l_attr_names:
                 if l_attr_name not in net.link_attrs.keys():
-                    net.link_attrs[l_attr_name] = LinkInfoAttribute(l_attr_name)
+                    net.link_attrs[l_attr_name] = LinkStatusAttribute(l_attr_name)
             net.degree_benchmark = net.get_degree_benchmark()
             print(f'Loaded the topology from {file_path}')
         except Exception as e:
@@ -147,11 +151,11 @@ class PhysicalNetwork(Network):
         n_attr_names = net.nodes[list(net.nodes)[0]].keys()
         for n_attr_name in n_attr_names:
             if n_attr_name not in net.node_attrs.keys():
-                net.node_attrs[n_attr_name] = NodeInfoAttribute(n_attr_name)
+                net.node_attrs[n_attr_name] = NodeStatusAttribute(n_attr_name)
         l_attr_names = net.links[list(net.links)[0]].keys()
         for l_attr_name in l_attr_names:
             if l_attr_name not in net.link_attrs.keys():
-                net.link_attrs[l_attr_name] = LinkInfoAttribute(l_attr_name)
+                net.link_attrs[l_attr_name] = LinkStatusAttribute(l_attr_name)
         if seed is not None:
             random.seed(seed)
             np.random.seed(seed)

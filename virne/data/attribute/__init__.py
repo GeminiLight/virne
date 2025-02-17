@@ -1,21 +1,21 @@
 from .base_attribute import *
 from .node_attribute import *
 from .link_attribute import *
+from .graph_attribute import *
 
 
 ATTRIBUTES_DICT = {
-    # Resource
-    ('node', 'resource'): NodeResourceAttribute,
+    # Information
+    ('node', 'status'): NodeStatusAttribute,
+    ('link', 'status'): LinkStatusAttribute,
     ('node', 'extrema'): NodeExtremaAttribute,
-    ('link', 'resource'): LinkResourceAttribute,
     ('link', 'extrema'): LinkExtremaAttribute,
-    # Fixed
-    ('node', 'info'): NodeInfoAttribute,
-    ('link', 'info'): LinkInfoAttribute,
+    # Resource Constraints
+    ('node', 'resource'): NodeResourceAttribute,
+    ('link', 'resource'): LinkResourceAttribute,
+    # QoS Requirements
     ('node', 'position'): NodePositionAttribute,
     ('link', 'latency'): LinkLatencyAttribute,
-    # QoS
-    ('node', 'qos_position'): NodePositionQoSAttribute,
 }
 
 
@@ -27,6 +27,7 @@ def create_attr_from_dict(attrs_dict):
     assert (owner, type) in ATTRIBUTES_DICT.keys(), ValueError('Unsupproted attribute!')
     AttributeClass = ATTRIBUTES_DICT.get((owner, type))
     return AttributeClass(name, **dict_copy)
+
 
 def create_attrs_from_setting(attrs_setting):
     attrs = {}

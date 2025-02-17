@@ -3,7 +3,7 @@ import networkx as nx
 
 from functools import lru_cache
 
-from virne.data import Network, PhysicalNetwork, VirtualNetwork
+from virne.data import BaseNetwork, PhysicalNetwork, VirtualNetwork
 
 
 def calc_positional_embeddings(max_len, embedding_dim):
@@ -27,7 +27,7 @@ class ObservationHandler:
     p_node_status_dim = P_NODE_STATUS_DIM
     v_node_status_dim = V_NODE_STATUS_DIM
 
-    def get_node_order_obs(self, network: Network):
+    def get_node_order_obs(self, network: BaseNetwork):
         num_nodes = network.num_nodes
         node_order = np.arange(num_nodes, dtype=np.int32)
         return node_order
@@ -61,20 +61,20 @@ class ObservationHandler:
     def get_degree_benchmark(self, network):
         return max(list(dict(network.degree).values()))
 
-    def get_node_attr_benchmarks(self, network: Network, node_attr_types: list = ['resource', 'extrema']):
+    def get_node_attr_benchmarks(self, network: BaseNetwork, node_attr_types: list = ['resource', 'extrema']):
         n_attrs = network.get_node_attrs(node_attr_types)
         node_data = np.array(network.get_node_attrs_data(n_attrs), dtype=np.float32)
         node_attr_benchmarks = self._get_attr_benchmarks(node_attr_types, n_attrs, node_data)
         return node_attr_benchmarks
     
-    def get_link_attr_benchmarks(self, network: Network, link_attr_types=['resource', 'extrema']):
+    def get_link_attr_benchmarks(self, network: BaseNetwork, link_attr_types=['resource', 'extrema']):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_data = np.array(network.get_link_attrs_data(l_attrs), dtype=np.float32)
         link_data = np.concatenate([link_data, link_data], axis=1)
         link_attr_benchmarks = self._get_attr_benchmarks(link_attr_types, l_attrs, link_data)
         return link_attr_benchmarks
 
-    def get_link_sum_attr_benchmarks(self, network: Network, link_attr_types=['resource', 'extrema']):
+    def get_link_sum_attr_benchmarks(self, network: BaseNetwork, link_attr_types=['resource', 'extrema']):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_sum_attrs_data = np.array(network.get_aggregation_attrs_data(l_attrs, aggr='sum'), dtype=np.float32)
         link_sum_attr_benchmarks = self._get_attr_benchmarks(link_attr_types, l_attrs, link_sum_attrs_data)
@@ -86,7 +86,7 @@ class ObservationHandler:
             network_degree /= degree_benchmark
         return network_degree
 
-    def get_node_attrs_obs(self, network: Network, node_attr_types=['resource', 'extrema'], node_attr_benchmarks=None):
+    def get_node_attrs_obs(self, network: BaseNetwork, node_attr_types=['resource', 'extrema'], node_attr_benchmarks=None):
         n_attrs = network.get_node_attrs(node_attr_types)
         node_data = np.array(network.get_node_attrs_data(n_attrs), dtype=np.float32)
 
@@ -96,7 +96,7 @@ class ObservationHandler:
                 node_data[i] = node_data[i] / node_attr_benchmarks[attr_name]
         return node_data.T
 
-    def get_link_attrs_obs(self, network: Network, link_attr_types=['resource', 'extrema'], link_attr_benchmarks: dict = None):
+    def get_link_attrs_obs(self, network: BaseNetwork, link_attr_types=['resource', 'extrema'], link_attr_benchmarks: dict = None):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_data = np.array(network.get_link_attrs_data(l_attrs), dtype=np.float32)
         link_data = np.concatenate([link_data, link_data], axis=1)
@@ -107,10 +107,10 @@ class ObservationHandler:
                 link_data[i] = link_data[i] / link_attr_benchmarks[attr_name]
         return link_data.T
 
-    def get_link_sum_attrs_obs(self, network: Network, link_attr_types: list = ['resource', 'extrema'], link_sum_attr_benchmarks: dict = None):
+    def get_link_sum_attrs_obs(self, network: BaseNetwork, link_attr_types: list = ['resource', 'extrema'], link_sum_attr_benchmarks: dict = None):
         return self.get_link_aggr_attrs_obs(network, link_attr_types, aggr='sum', link_sum_attr_benchmarks=link_sum_attr_benchmarks)
 
-    def get_link_aggr_attrs_obs(self, network: Network, link_attr_types: list = ['resource', 'extrema'], aggr='sum', link_sum_attr_benchmarks: dict = None, link_attr_benchmarks: dict = None):
+    def get_link_aggr_attrs_obs(self, network: BaseNetwork, link_attr_types: list = ['resource', 'extrema'], aggr='sum', link_sum_attr_benchmarks: dict = None, link_attr_benchmarks: dict = None):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_aggr_attrs_data = np.array(network.get_aggregation_attrs_data(l_attrs, aggr=aggr), dtype=np.float32)
         if aggr=='sum' and link_sum_attr_benchmarks is not None:
@@ -138,7 +138,7 @@ class ObservationHandler:
         sub_graph = network.get_subgraph_view(filter_edge=available_link)
         return sub_graph
 
-    def get_link_index_obs(self, network: Network):
+    def get_link_index_obs(self, network: BaseNetwork):
         """Get the link index of network.
         
         Args:
@@ -149,7 +149,7 @@ class ObservationHandler:
         """
         return self.get_link_pair_obs(network).T
 
-    def get_link_pair_obs(self, network: Network):
+    def get_link_pair_obs(self, network: BaseNetwork):
         """Get the link index of network.
 
         Args:
@@ -162,12 +162,12 @@ class ObservationHandler:
         link_pairs = np.concatenate([link_pairs, link_pairs[:, [1,0]]], axis=0)
         return link_pairs
 
-    def get_selected_node_mask(self, network: Network, selected_nodes):
+    def get_selected_node_mask(self, network: BaseNetwork, selected_nodes):
         selected_node_mask = np.zeros(network.num_nodes, dtype=np.float32)
         selected_node_mask[selected_nodes] = 1.
         return np.array([selected_node_mask], dtype=np.float32, normalization=True)
 
-    def get_average_distance(self, network: Network, nodes_slots, normalization=True):
+    def get_average_distance(self, network: BaseNetwork, nodes_slots, normalization=True):
         # avg_dst
         if isinstance(nodes_slots, dict):
             selected_p_nodes = list(nodes_slots.values())

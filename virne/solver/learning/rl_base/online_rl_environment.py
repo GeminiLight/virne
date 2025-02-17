@@ -52,7 +52,7 @@ class PlaceStepRLEnv(OnlineRLEnvBase):
             assert p_node_id in list(self.p_net.nodes)
             # Try Deploy
             # Stage 1: Node Mapping
-            node_place_result, node_place_info = self.controller.place(self.v_net, self.p_net, self.curr_v_node_id, p_node_id, self.solution, check_feasibility=self.check_feasibility)
+            node_place_result, node_place_info = self.controller.place(self.v_net, self.p_net, self.curr_v_node_id, p_node_id, self.solution, if_allow_constraint_violation=self.if_allow_constraint_violation)
             # Case 1: Node Place Success / Uncompleted
             if node_place_result and len(self.placed_v_net_nodes) < self.v_net.num_nodes:
                 info = {**self.recorder.state, **self.solution.to_dict()}
@@ -70,7 +70,7 @@ class PlaceStepRLEnv(OnlineRLEnvBase):
                                                                     shortest_method=self.shortest_method, 
                                                                     k=self.k_shortest, 
                                                                     inplace=True, 
-                                                                    check_feasibility=self.check_feasibility)
+                                                                    if_allow_constraint_violation=self.if_allow_constraint_violation)
                 # Link Mapping Failure
                 if not link_mapping_result:
                     self.rollback_for_failure(reason='route')
@@ -122,7 +122,7 @@ class JointPRStepRLEnv(OnlineRLEnvBase):
                                                                             self.solution, 
                                                                             shortest_method=self.shortest_method, 
                                                                             k=self.k_shortest,
-                                                                            check_feasibility=self.check_feasibility)
+                                                                            if_allow_constraint_violation=self.if_allow_constraint_violation)
             # Step Failure
             if not place_and_route_result:
                 failure_reason = self.get_failure_reason(self.solution)
@@ -238,7 +238,7 @@ class NodeSlotsStepRLEnv(OnlineRLEnvBase):
                                                                 shortest_method=self.shortest_method, 
                                                                 k=self.k_shortest, 
                                                                 inplace=True,
-                                                                check_feasibility=self.check_feasibility)
+                                                                if_allow_constraint_violation=self.if_allow_constraint_violation)
             # Link Mapping Failure
             if not link_mapping_result:
                 self.rollback_for_failure(reason='route')

@@ -8,15 +8,15 @@ from typing import Union
 import numpy as np
 import networkx as nx
 
-from virne.data import Network
+from virne.data import BaseNetwork
 
 
-def rank_nodes(network: Network, method: str = 'order', **kwargs):
+def rank_nodes(network: BaseNetwork, method: str = 'order', **kwargs):
     """
     General method for ranking nodes in the network, and store the ranking result in the network object.
     
     Args:
-        network (Network): Network object.
+        network (BaseNetwork): BaseNetwork object.
         method (str, optional): Node ranking method. Defaults to 'order'.
         **kwargs: Keyword arguments for node ranking method.
     """
@@ -37,12 +37,12 @@ class NodeRank(object):
         super(NodeRank, self).__init__()
     
     @staticmethod
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """
         Rank nodes in the network.
 
         Args:
-            network (Network): Network object.
+            network (BaseNetwork): BaseNetwork object.
             sort (bool, optional): Sort the ranking result. Defaults to True.
 
         Returns:
@@ -56,12 +56,12 @@ class NodeRank(object):
 
 
     @staticmethod
-    def to_dict(network: Network, node_rank: list, sort: bool = True) -> dict:
+    def to_dict(network: BaseNetwork, node_rank: list, sort: bool = True) -> dict:
         """
         Convert node ranking result to dict.
 
         Args:
-            network (Network): Network object.
+            network (BaseNetwork): BaseNetwork object.
             node_rank (list): Node ranking result.
             sort (bool, optional): Sort the ranking result. Defaults to True.
 
@@ -84,7 +84,7 @@ class OrderNodeRank(NodeRank):
     def __init__(self, **kwargs):
         super(OrderNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the default order occurring in the network."""
         rank_values = 1 / len(network.nodes)
         node_ranking = {node_id: rank_values for node_id in range(len(network.nodes))}
@@ -98,7 +98,7 @@ class RandomNodeRank(NodeRank):
     def __init__(self, **kwargs):
         super(RandomNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the random strategy."""
         random_node = [n for n in network.nodes]
         np.random.shuffle(random_node)
@@ -112,7 +112,7 @@ class FFDNodeRank(NodeRank):
     def __init__(self, **kwargs):
         super(FFDNodeRank, self).__init__(**kwargs)
     
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the quantity of node resources."""
         nodes_data = network.get_node_attrs_data(network.get_node_attrs('resource'))
         node_rank = np.array(nodes_data).sum(axis=0)
@@ -130,7 +130,7 @@ class NRMNodeRank(NodeRank):
     def __init__(self, **kwargs):
         super(NRMNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the Network Resource Metric (NRM) of node."""
         free_nodes_data = network.get_node_attrs_data(network.get_node_attrs('resource'))
         free_nodes_data = np.array(free_nodes_data).sum(axis=0)
@@ -150,7 +150,7 @@ class DegreeWeightedResoureNodeRank(NodeRank):
     def __init__(self, **kwargs):
         super(DegreeWeightedResoureNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the Degree and Resource (DR) of node."""
         node_degree_dict = dict(network.degree())
         node_degrees = np.array([node_degree_dict[node_id] for node_id in network.nodes])
@@ -172,7 +172,7 @@ class GRCNodeRank(NodeRank):
         self.sigma = sigma
         self.d = d
 
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the Global Resource Capacity (GRC) metric of node."""
         def calc_grc_c(network):
             free_nodes_data = network.get_node_attrs_data(network.get_node_attrs(['resource']))
@@ -210,7 +210,7 @@ class RWNodeRank(NodeRank):
         self.p_J_u = p_J_u
         self.p_F_u = p_F_u
 
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the Random Walk (RW) metric of node."""
         def normalize_sparse(coo_matrix):
             data_rows = coo_matrix.row
@@ -258,7 +258,7 @@ class NPSNodeRank(NodeRank):
     def __init__(self, **kwargs):
         super(NPSNodeRank, self).__init__(**kwargs)
 
-    def rank(self, network: Network, sort: bool = True) -> Union[list, dict]:
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Union[list, dict]:
         """Rank nodes with the Node Proximity Sensing (NPS) metric of node."""
         free_nodes_data = network.get_node_attrs_data(network.get_node_attrs('resource'))
         free_nodes_data = np.array(free_nodes_data).sum(axis=0)

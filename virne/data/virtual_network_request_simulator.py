@@ -9,7 +9,7 @@ import random
 import numpy as np
 
 from virne.utils import read_setting, write_setting, generate_data_with_distribution
-from .virtual_network import VirtualNetwork
+from .network.virtual_network import VirtualNetwork
 
 
 class VirtualNetworkRequestSimulator(object):

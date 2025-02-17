@@ -30,8 +30,8 @@ class RLBaseEnv(gym.Env):
         self.link_attr_benchmarks = self.p_net.link_attr_benchmarks
         self.link_sum_attr_benchmarks = self.p_net.link_sum_attr_benchmarks
         self.reward_weight = kwargs.get('reward_weight', 0.1)
+        self.if_allow_constraint_violation = kwargs.get('if_allow_constraint_violation', False)
         # for revocable action
-        self.check_feasibility = kwargs.get('check_feasibility', True)
         self.extra_info_dict = {}
         self.revoked_actions_dict = defaultdict(list)
 

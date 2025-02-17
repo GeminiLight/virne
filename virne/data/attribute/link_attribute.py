@@ -2,22 +2,31 @@ import numpy as np
 import networkx as nx
 
 from virne.utils import path_to_links
-from .base_attribute import Attribute, InfoAttribute, LinkAttributeMethod, ResourceAttributeMethod, ExtremaAttributeMethod
+from .base_attribute import InformationAttribute, ConstraintAttribute, LinkAttributeMethod, ResourceAttributeMethod, ExtremaAttributeMethod
 
 
-class LinkInfoAttribute(InfoAttribute, LinkAttributeMethod):
+class LinkStatusAttribute(InformationAttribute, LinkAttributeMethod):
 
     def __init__(self, name, *args, **kwargs):
-        super().__init__(name, 'link', *args, **kwargs)
+        super().__init__(name, 'link', 'status', *args, **kwargs)
 
 
-class LinkResourceAttribute(Attribute, LinkAttributeMethod, ResourceAttributeMethod):
+class LinkExtremaAttribute(InformationAttribute, LinkAttributeMethod, ExtremaAttributeMethod):
+    
+    def __init__(self, name, *args, **kwargs):
+        super(LinkExtremaAttribute, self).__init__(name, 'link', 'extrema', *args, **kwargs)
+
+
+class LinkResourceAttribute(ConstraintAttribute, LinkAttributeMethod, ResourceAttributeMethod):
+
     def __init__(self, name, *args, **kwargs):
         super(LinkResourceAttribute, self).__init__(name, 'link', 'resource', *args, **kwargs)
+        self.constraint_restrictions = kwargs.get('constraint_restrictions', 'hard')
+        self.checking_level = kwargs.get('checking_level', 'link')
 
-    def check(self, v_link, p_link, method='le'):
-        result, value = super()._check_one_element(v_link, p_link, method)
-        return result, value
+    def check_constraint_satisfiability(self, v, p, method='le'):
+        v_value, p_value = v[self.name], p[self.name]
+        return self._calculate_satisfiability_values(v_value, p_value, method)
 
     def update_path(self, vl, p_net, path, method='+', safe=True):
         assert self.type in ['resource']
@@ -29,27 +38,18 @@ class LinkResourceAttribute(Attribute, LinkAttributeMethod, ResourceAttributeMet
         return True
 
 
-class LinkExtremaAttribute(Attribute, LinkAttributeMethod, ExtremaAttributeMethod):
-    def __init__(self, name, *args, **kwargs):
-        super(LinkExtremaAttribute, self).__init__(name, 'link', 'extrema', *args, **kwargs)
-
-    def update_path(self, vl, p_net, path, method='+', safe=True):
-        return True
-
-
-class LinkLatencyAttribute(Attribute, LinkAttributeMethod):
+class LinkLatencyAttribute(ConstraintAttribute, LinkAttributeMethod):
 
     def __init__(self, name='latency', *args, **kwargs):
         super(LinkLatencyAttribute, self).__init__(name, 'link', 'latency', *args, **kwargs)
-        if self.generative and self.distribution == 'position':
-            self.max = kwargs.get('max', 1.)  # the maximum value of the latency
-            self.min = kwargs.get('min', 0.)  # the minimum value of the latency
+        self.constraint_restrictions = kwargs.get('constraint_restrictions', 'hard')
+        self.checking_level = kwargs.get('checking_level', 'path')
 
-    def check(self, v_link, p_path, method='le'):
+    def check_constraint_satisfiability(self, v_link, p_path, method='ge'):
         assert method in ['>=', '<=', 'ge', 'le', 'eq']
-        p_cum_value = [p_link[self.name] for p_link in p_path]
+        p_cum_value = sum([p_link[self.name] for p_link in p_path])
         v_value = v_link[self.name]
-        return self._get_check_results(v_value, p_cum_value, method)
+        return self._calculate_satisfiability_values(v_value, p_cum_value, method)
 
     def generate_data(self, network):
         if self.generative and self.distribution == 'position':

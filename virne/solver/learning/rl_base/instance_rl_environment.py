@@ -141,7 +141,7 @@ class PlaceStepInstanceRLEnv(InstanceRLEnv):
                                                                     shortest_method=self.shortest_method, 
                                                                     k=self.k_shortest, 
                                                                     inplace=True,
-                                                                    check_feasibility=self.check_feasibility)
+                                                                    if_allow_constraint_violation=self.if_allow_constraint_violation)
                 # Link Mapping Failure
                 if not link_mapping_result:
                     self.solution['route_result'] = False
@@ -199,7 +199,7 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
                                                                                 self.solution, 
                                                                                 shortest_method=self.shortest_method, 
                                                                                 k=self.k_shortest,
-                                                                                check_feasibility=self.check_feasibility)
+                                                                                if_allow_constraint_violation=self.if_allow_constraint_violation)
             # Step Failure
             if not place_and_route_result:
                 if self.allow_revocable and self.solution['num_interactions'] <= self.v_net.num_nodes * 10:
@@ -320,7 +320,7 @@ class NodeSlotsStepInstanceRLEnv(InstanceRLEnv):
                 inplace=True, 
                 shortest_method=self.shortest_method, 
                 k_shortest=self.k_shortest,
-                check_feasibility=self.check_feasibility
+                if_allow_constraint_violation=self.if_allow_constraint_violation
             )
             self.counter.count_solution(self.v_net, self.solution)
             # Success

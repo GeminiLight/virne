@@ -13,10 +13,10 @@ from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
 from networkx.classes.filters import no_filter
 
 from virne.utils import write_setting
-from .attribute import create_attr_from_dict
+from ..attribute import create_attr_from_dict
 
 
-class Network(nx.Graph):
+class BaseNetwork(nx.Graph):
     """
     Network class inherited from networkx.Graph.
 
@@ -54,7 +54,7 @@ class Network(nx.Graph):
             link_attrs_setting (list): List of dictionaries containing link attribute settings. Default: [].
             **kwargs: Additional keyword arguments to set graph attributes.
         """
-        super(Network, self).__init__(incoming_graph_data)
+        super(BaseNetwork, self).__init__(incoming_graph_data)
         self.init_graph_attrs()
         # set graph attributes
         self.graph['node_attrs_setting'] += node_attrs_setting
@@ -158,7 +158,7 @@ class Network(nx.Graph):
         """Get the adjacency matrix of Network."""
         return nx.to_scipy_sparse_matrix(self, format='csr')
 
-    ### Get Attribute ###
+    ### Attributes ###
     def get_graph_attrs(self, names):
         """
         Get the attributes of the network.
@@ -216,6 +216,22 @@ class Network(nx.Graph):
             for l_attr in self.link_attrs.values():
                 selected_link_attrs.append(l_attr) if l_attr.name in names else None
         return selected_link_attrs
+
+    @lru_cache
+    def get_graph_constraint_attrs(self):
+        """Get the constrained graph attributes."""
+        # TODO: implement this method
+        raise NotImplementedError
+    
+    @lru_cache
+    def get_node_constraint_attrs(self):
+        """Get the constrained node attributes."""
+        return [n_attr for n_attr in self.node_attrs.values() if n_attr.is_constraint == 'constrained']
+
+    @lru_cache
+    def get_link_constraint_attrs(self):
+        """Get the constrained link attributes."""
+        return [l_attr for l_attr in self.link_attrs.values() if l_attr.is_constraint == 'constrained']
 
     @property
     def num_node_features(self) -> int:
@@ -437,12 +453,13 @@ class Network(nx.Graph):
         net_info = {
             'num_nodes': self.num_nodes,
             'num_links': self.num_links,
-            'num_node_features': self.num_node_features,
-            'num_link_features': self.num_link_features,
+            # 'num_node_features': self.num_node_features,
+            # 'num_link_features': self.num_link_features,
             'node_attrs': list(self.node_attrs.keys()),
             'link_attrs': list(self.link_attrs.keys())
         }
-        return f"{self.__class__.__name__}({', '.join(net_info)})"
+        net_info_strings = [f'{k}={v}' for k, v in net_info.items()]
+        return f"{self.__class__.__name__}({', '.join(net_info_strings)})"
 
     def __setitem__(self, key: str, value):
         """Sets the attribute key to value."""

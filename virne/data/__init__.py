@@ -1,16 +1,14 @@
-from .network import Network
-from .physical_network import PhysicalNetwork
-from .virtual_network import VirtualNetwork
+from .network import BaseNetwork, PhysicalNetwork, VirtualNetwork
 from .virtual_network_request_simulator import VirtualNetworkRequestSimulator
 from .generator import Generator
-from .attribute import Attribute
+from .attribute import BaseAttribute
 
 
 __all__ = [
-    'Network', 
+    'BaseNetwork', 
     'PhysicalNetwork', 
     'VirtualNetwork',
     'VirtualNetworkRequestSimulator',
     'Generator',
-    'Attribute'
+    'BaseAttribute'
 ]

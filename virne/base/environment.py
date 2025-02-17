@@ -357,7 +357,9 @@ class SolutionStepEnvironment(Environment):
         # Enter
         self.solution = solution
         # Check System Constraints
-        if self.solution['v_net_violation'] > 0: solution['result'] = False
+        if solution['result'] and self.solution['v_net_total_hard_constraint_violation'] > 0:
+            solution['result'] = False
+        # Admission Control
         if solution['result'] and self.solution['v_net_r2c_ratio'] < self.r2c_ratio_threshold and self.v_net.num_nodes > self.vn_size_threshold:
             solution['result'] = False
             solution['description'] = 'r2c_ratio < threshold'
