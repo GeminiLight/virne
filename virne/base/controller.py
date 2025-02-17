@@ -1289,7 +1289,6 @@ class Controller:
                 shortest_path = self.find_bfs_shortest_path(v_net, p_net, v_link, source, target, weight=None)
                 shortest_paths = [] if shortest_path is None else [shortest_path]
             elif method == 'available_shortest':
-                import pdb; pdb.set_trace()
                 temp_p_net = self.create_available_network(v_net, p_net, v_link)
                 shortest_paths = [nx.dijkstra_path(temp_p_net, source, target, weight=weight)]
             elif method == 'available_k_shortest':
