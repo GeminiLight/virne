@@ -9,7 +9,7 @@ Background
     #. Resource Allocation Problem in NFV
 
 Network Function Virtualization
-----------------------
+-------------------------------
 
 Network virtualization (NFV) emerges as a pioneering technology that facilitates dynamic management of Internet architecture.
 By decoupling the underlying infrastructure from its logical representation, NFV enables the dynamic allocation of network resources, enhancing flexibility, scalability, and efficiency.
