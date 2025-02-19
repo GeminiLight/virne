@@ -331,7 +331,8 @@ class Controller:
             v_node_id: int, 
             p_node_id: int, 
             solution: Solution,
-            if_allow_constraint_violation: bool = False
+            if_allow_constraint_violation: bool = False,
+            if_record_constraint_violation: bool = True
         ) -> Tuple[bool, dict]:
         """
         Attempt to place the virtual node `v_node_id` in the physical node `p_node_id`.
@@ -354,13 +355,26 @@ class Controller:
             check_result, check_info = self._safely_place(v_net, p_net, v_node_id, p_node_id, solution)
         else:
             check_result, check_info = self._unsafely_place(v_net, p_net, v_node_id, p_node_id, solution)
-        # Record the constraint violations
+
+        if if_record_constraint_violation:
+            # Record the constraint violations
+            self.record_place_constraint_violation(v_node_id, check_info, solution)
+        return check_result, check_info
+
+    def record_place_constraint_violation(self, v_node_id: int, check_info: dict, solution: Solution) -> None:
+        """
+        Record the constraint violations of the placement.
+
+        Args:
+            v_node_id (int): The ID of the virtual node.
+            check_info (dict): A dictionary containing the satisfiability information of the node-level constraints.
+            solution (Solution): The solution object to which the placement is to be added.
+        """
         solution['v_net_constraint_offsets']['node_level'][v_node_id] = check_info
         solution['v_net_constraint_violations']['node_level'][v_node_id] = {attr_name: max(offset_value, 0) for attr_name, offset_value in check_info.items()}
         hard_constraint_offsets = [offset_value for attr_name, offset_value in check_info.items() if attr_name in self.hard_constraint_attrs_names]
         max_violation_value = max(max(hard_constraint_offsets), 0)
         solution['v_net_total_hard_constraint_violation'] += max_violation_value
-        return check_result, check_info
 
     def _safely_place(
             self, 
@@ -430,7 +444,8 @@ class Controller:
             shortest_method: str = 'bfs_shortest',
             k: int = 1, 
             rank_path_func: Callable = None, 
-            if_allow_constraint_violation: bool = False
+            if_allow_constraint_violation: bool = False,
+            if_record_constraint_violation: bool = True
         ) -> Tuple[bool, dict]:
         """
         Attempt to route the virtual link `v_link` in the physical network path `pl_pair`.
@@ -466,6 +481,21 @@ class Controller:
             check_result, check_info = self._safely_route(v_net, p_net, v_link, pl_pair, solution, shortest_method, k, rank_path_func)
         else:
             check_result, check_info = self._unsafely_route(v_net, p_net, v_link, pl_pair, solution, shortest_method, k, rank_path_func)
+        
+        if if_record_constraint_violation:
+            # Record the constraint violations
+            self.record_route_constraint_violation(v_link, check_info, solution)
+        return check_result, check_info
+
+    def record_route_constraint_violation(self, v_link: tuple, check_info: dict, solution: Solution) -> None:
+        """
+        Record the constraint violations of the routing.
+
+        Args:
+            v_link (tuple): The ID of the virtual link.
+            check_info (dict): A dictionary containing the satisfiability information of the link-level constraints.
+            solution (Solution): The solution object to which the routing is to be added.
+        """
         # Pooling the results of the link-level constraints (max, min, sum, list)
         solution['v_net_constraint_violations']['link_level'][v_link] = {}
         solution['v_net_constraint_violations']['path_level'][v_link] = {}
@@ -498,7 +528,7 @@ class Controller:
         max_violation_value = max(hard_constraint_violation_value_list)
         solution['v_net_total_hard_constraint_violation'] += max_violation_value
         # print('v_net_total_hard_constraint_violation in route: ', solution['v_net_total_hard_constraint_violation'])
-        return check_result, check_info
+
 
     def _safely_route(
             self, 
@@ -523,7 +553,7 @@ class Controller:
         shortest_paths = rank_path_func(v_net, p_net, v_link, pl_pair, shortest_paths) if rank_path_func is not None else shortest_paths
         # Case A: No available shortest path
         if len(shortest_paths) == 0:
-            logging.warning(f"Find no available shortest path for virtual link {v_link} between physical nodes {pl_pair} in the virtual network {v_net.id}.")
+            # logging.warning(f"Find no available shortest path for virtual link {v_link} between physical nodes {pl_pair} in the virtual network {v_net.id}.")
             check_info = {'link_level': self.step_constraint_offset_placeholder['link_level'], 'path_level': self.step_constraint_offset_placeholder['path_level']}
             return False, check_info
         # Case B: exist shortest paths
@@ -565,7 +595,7 @@ class Controller:
         shortest_paths = self.find_shortest_paths(v_net, pruned_p_net, v_link, pl_pair, method=shortest_method, k=k)
         # Case A: No available shortest path
         if len(shortest_paths) == 0:
-            logging.warning(f"Find no available shortest path for virtual link {v_link} between physical nodes {pl_pair} in the virtual network {v_net.id}.")
+            # logging.warning(f"Find no available shortest path for virtual link {v_link} between physical nodes {pl_pair} in the virtual network {v_net.id}.")
             check_info = {'link_level': self.step_constraint_offset_placeholder['link_level'], 'path_level': self.step_constraint_offset_placeholder['path_level']}
             return False, check_info
         check_result_list = []
@@ -878,17 +908,21 @@ class Controller:
         sorted_p_nodes = copy.deepcopy(sorted_p_nodes)
         for v_node_id in sorted_v_nodes:
             for p_node_id in sorted_p_nodes:
-                place_result, place_info = self.place(v_net, p_net, v_node_id, p_node_id, solution)
+                place_result, place_info = self.place(v_net, p_net, v_node_id, p_node_id, solution, if_record_constraint_violation=False)
                 if place_result:
+                    # Step SUCCESS
+                    self.record_place_constraint_violation(v_node_id, place_info, solution)
                     if reusable == False: sorted_p_nodes.remove(p_node_id)
                     break
                 else:
                     if matching_mathod == 'l2s2':
                         # FAILURE
+                        self.record_place_constraint_violation(v_node_id, place_info, solution)
                         solution.update({'place_result': False, 'result': False})
                         return False
             if not place_result:
                 # FAILURE
+                self.record_place_constraint_violation(v_node_id, place_info, solution)
                 solution.update({'place_result': False, 'result': False})
                 return False
                 
