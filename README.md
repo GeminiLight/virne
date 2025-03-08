@@ -1,4 +1,11 @@
-<h1 align="center">Virne: A Benchmark of NFV-RA</h1>
+<div align="center">
+<img src="resource/figures/virne-logo-text.png" width="200px"
+     alt="Virne Logo"
+ /> 
+</div>
+<div align="center">
+<h2 align="center">A Simulator Benchmark of NFV-RA</h2>
+</div>
 
 <div align="center">
 <img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" /> <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
@@ -21,16 +28,13 @@
 
 The main goal of Virne is to provide a unified and flexible framework for solving these problems. Its main characteristics are as follows.
 
+- **Customizable Simulation**: Support various network topologies, network attributes, and QoS requirements.
 - **Rich Implementations**: Provide 20+ solvers, including exact, heuristic, meta-heuristic, and machine learning-based algorithms.
 - **Extensible Development**: Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
-- **Light-Weight**: Implement concisely with less necessary dependencies, and can be extended easily for specific algorithms.
         
 ![](resource/figures/workflow.jpg)
 
 > Virne is still under development. If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
-> 
-> - Completing the documentation
-> - Implementing more VNE algorithms
 
 ### Citations
 
@@ -91,11 +95,11 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
 
 ### Installation
 
-#### Install with pip
+<!-- #### Install with pip
 
 ```bash
 pip install virne
-```
+``` -->
 
 #### Install with script
 
