@@ -4,7 +4,7 @@
  /> 
 </div>
 <div align="center">
-<h2 align="center">A Simulator Benchmark of NFV-RA</h2>
+<h2 align="center">A Simulator & Benchmark for NFV-RA</h2>
 </div>
 
 <div align="center">
