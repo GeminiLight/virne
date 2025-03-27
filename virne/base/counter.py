@@ -52,7 +52,7 @@ class Counter(object):
             else:
                 for p_link in p_links:
                     one_cost = sum([solution['link_paths_info'][(v_link, p_link)][l_attr.name] for l_attr in self.link_resource_attrs])
-                v_net_link_cost += one_cost
+                    v_net_link_cost += one_cost
 
         solution['v_net_node_revenue'] = v_net_node_revenue / self.num_node_resource_attrs  # normalize
         solution['v_net_link_revenue'] = v_net_link_revenue
