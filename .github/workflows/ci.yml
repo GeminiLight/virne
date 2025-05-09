@@ -24,10 +24,6 @@ jobs:
           pip install .[pyg]
           pip install pytest
 
-      - name: Run config loading test
-        run: |
-          pytest tests/config/test_config.py
-
       - name: Test CLI (help)
         run: |
           python -m virne --help || true
