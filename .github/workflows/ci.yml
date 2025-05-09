@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[pyg]
+          pip install pytest
+
+      - name: Run config loading test
+        run: |
+          pytest tests/config/test_config.py
+
+      - name: Test CLI (help)
+        run: |
+          python -m virne --help || true
+
+      - name: Run all tests
+        run: |
+          pytest
