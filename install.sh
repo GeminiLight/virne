@@ -92,8 +92,7 @@ pip install --upgrade pip
 print_step "Installing basic dependencies..."
 pip install numpy pandas matplotlib networkx
 pip install pyyaml tqdm colorama hydra-core
-pip install ortools scikit-learn
-
+pip install ortools scikit-learn higher
 
 # Auto-detect CUDA if not specified
 if [[ -z "$cuda" ]]; then

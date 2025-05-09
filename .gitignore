@@ -14,6 +14,7 @@ outputs
 # build
 virne.egg-info
 dist
+build
 
 # save
 save
