@@ -1,0 +1,12 @@
+num_epochs: 1
+seed: null
+use_cuda: true
+cuda_id: 0
+distributed_training: false
+num_train_epochs: 100
+num_workers: 10
+batch_size: 128
+target_steps: 256
+repeat_times: 10
+save_interval: 10
+eval_interval: 10

@@ -1,0 +1,10 @@
+mask_actions: true
+maskable_policy: true
+use_negative_sample: true
+norm_advantage: true
+clip_grad: true
+eps_clip: 0.2
+max_grad_norm: 0.5
+norm_critic_loss: false
+use_baseline_solver: false
+weight_decay: 0.00001

@@ -1,0 +1,6 @@
+coef_critic_loss: 0.5
+coef_entropy_loss: 0.01
+coef_mask_loss: 0.01
+reward_weight: 0.1
+lr_penalty_params: 0.001
+lr_cost_critic: 0.001

@@ -95,50 +95,21 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
 
 ### Installation
 
-<!-- #### Install with pip
+1. Create a new conda environment
 
 ```bash
-pip install virne
-``` -->
-
-#### Install with script
-
-```bash
-# only cpu
-bash install.sh -c 0
-
-# use cuda (optional version: 10.2, 11.3)
-bash install.sh -c 11.3
+conda create -n virne python=3.12
+conda activate virne
 ```
 
-### Minimal Example
+2. Install with script
 
-```Python
-from virne.base import BasicScenario
-from virne import Config, REGISTRY, Generator, update_simulation_setting
+```bash
+# use cpu
+bash install.sh -c 0
 
-
-def run(config):
-    print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
-    # Load solver info: environment and solver class
-    solver_info = REGISTRY.get(config.solver_name)
-    Env, Solver = solver_info['env'], solver_info['solver']
-    print(f'Use {config.solver_name} Solver (Type = {solver_info["type"]})...\n')
-
-    scenario = BasicScenario.from_config(Env, Solver, config)
-    scenario.run()
-
-    print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")
-
-
-if __name__ == '__main__':
-    config = Config(
-        solver_name='nrm_rank',
-        # p_net_setting_path='customized_p_net_setting_file_path',
-        # v_sim_setting_path='customized_v_sim_setting_file_path',
-    )
-    Generator.generate_dataset(config, p_net=False, v_nets=False, save=False)
-    run(config)
+# use cuda (only support cuda=12.4 and torch=2.6.0)
+bash install.sh -c 12.4
 ```
 
 ## Supported Features

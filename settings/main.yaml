@@ -1,0 +1,22 @@
+defaults:
+  - experiment: experiment.yaml
+  - solver: solver.yaml
+  - training: training.yaml
+  - network: network.yaml
+  - rl: rl.yaml
+  - loss: loss.yaml
+  - tricks: tricks.yaml
+  - v_sim_setting: v_sim_setting.yaml
+  - p_net_setting: p_net_setting.yaml
+
+experiment:
+  name: default_experiment
+  seed: 42
+
+logging:
+  level: INFO
+  log_dir: logs
+
+# You can override these in the command line or in other config files
+# v_sim_setting: v_sim_setting.yaml
+# p_net_setting: p_net_setting.yaml
