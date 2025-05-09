@@ -24,6 +24,7 @@ class Config(ClassDict):
     ### Dataset ###
     p_net_setting_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings/p_net_setting.yaml')
     v_sim_setting_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings/v_sim_setting.yaml')
+    if_dynamic_v_nets: bool = False
 
     ### System ###
     time_window_size: int = 100
@@ -178,6 +179,7 @@ class Config(ClassDict):
             self.v_sim_setting_num_link_attrs = len(self.v_sim_setting['link_attrs_setting'])
             self.v_sim_setting_num_node_resource_attrs = len([1 for attr in self.v_sim_setting['node_attrs_setting'] if attr['type'] == 'resource'])
             self.v_sim_setting_num_link_resource_attrs = len([1 for attr in self.v_sim_setting['link_attrs_setting'] if attr['type'] == 'resource'])
+            self.if_dynamic_v_nets = self.v_sim_setting.get('dynamic', False)
             # self.v_sim_setting_aver_lifetime = self.v_sim_setting['aver_lifetime']
 
     def create_dirs(self):

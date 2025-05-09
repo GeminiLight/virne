@@ -1,4 +1,5 @@
 num_v_nets: 1000
+dynamic: True
 topology:
   random_prob: 0.5
   type: random
