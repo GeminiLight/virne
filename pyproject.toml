@@ -16,7 +16,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering :: Artificial Intelligence',
@@ -35,7 +34,6 @@ dependencies = [
     "scipy >= 1.9.0",
     "torch == 2.6.0",
     "tensorboard >= 2.8.0",
-    "torch_geometric >= 2.0.0",
     "higher >= 0.2.1",
     "networkx >= 2.6.0",
     "tqdm >= 4.62.0",
@@ -57,13 +55,23 @@ Documentation = "https://virne.readthedocs.io"
 lint = [
 ]
 # test = ['pytest', 'pytest-cov', 'pytest-xdist']
-# Extra PyG dependencies (installed by install.sh if needed)
-pyg = [
-    "pyg_lib",
-    "torch_scatter",
-    "torch_sparse",
-    "torch_cluster",
-    "torch_spline_conv",
+
+# PyG and related dependencies (choose one group depending on your hardware)
+pyg-cpu = [
+    "torch_geometric",
+    "pyg_lib @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+    "torch_scatter @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+    "torch_sparse @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+    "torch_cluster @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+    "torch_spline_conv @ https://data.pyg.org/whl/torch-2.6.0+cpu.html"
+]
+pyg-gpu = [
+    "torch_geometric",
+    "pyg_lib @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
+    "torch_scatter @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
+    "torch_sparse @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
+    "torch_cluster @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
+    "torch_spline_conv @ https://data.pyg.org/whl/torch-2.6.0+cu124.html"
 ]
 
 [tool.setuptools]
@@ -92,7 +100,7 @@ lines_after_imports = 2
 multi_line_output = 3
 
 [tool.mypy]
-python_version = 3.8
+python_version = "3.10"
 pretty = true
 show_error_codes = true
 show_error_context = true
@@ -116,7 +124,6 @@ convention = "google"
 
 [tool.doc8]
 max-line-length = 500
-
 
 [tool.ruff]
 # Sync with requires-python
