@@ -1,22 +1,37 @@
 defaults:
-  - experiment: experiment.yaml
-  - solver: solver.yaml
-  - training: training.yaml
-  - network: network.yaml
-  - rl: rl.yaml
-  - loss: loss.yaml
-  - tricks: tricks.yaml
-  - v_sim_setting: v_sim_setting.yaml
-  - p_net_setting: p_net_setting.yaml
+  - _self_
+  - training
+  - v_sim_setting/default
+  - p_net_setting/default
 
 experiment:
   name: default_experiment
   seed: 42
+  num_epochs: 1
+  time_window_size: 100
+  renew_v_net_simulator: false
+  summary_dir: save/
+  save_dir: save/
+  summary_file_name: global_summary.csv
+  if_save_records: true
+  if_temp_save_records: true
+  if_save_config: true
+
+solver:
+  solver_name: 'a3c_gcn_seq2seq'
+  sub_solver_name: null
+  pretrained_model_path: ''
+  pretrained_subsolver_model_path: ''
+  verbose: 1
+  reusable: false
+  node_ranking_method: order
+  link_ranking_method: order
+  matching_mathod: greedy
+  shortest_method: k_shortest
+  k_shortest: 10
+  allow_revocable: false
+  allow_rejection: false
 
 logging:
   level: INFO
   log_dir: logs
-
-# You can override these in the command line or in other config files
-# v_sim_setting: v_sim_setting.yaml
-# p_net_setting: p_net_setting.yaml

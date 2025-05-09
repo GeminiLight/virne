@@ -1,39 +1,38 @@
-# Package ######################################################################
-
 [build-system]
 requires = ["setuptools >= 60.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "virne"
-"version" = "0.5.0"
+version = "0.5.0"
 description = "A unified framework for virtual network embedding."
 readme = "README.md"
-requires-python = ">= 3.8"
-authors = [{ name = "GeminiLight", email = "wtfly2018@gmail.com" }]
+requires-python = ">= 3.10"
+authors = [{ name = "GeminiLight", email = "tianfuwang.cs@gmail.com" }]
 license = { text = "Apache License, Version 2.0" }
 keywords = ["Network Function Virtualization", "Virtual Network Embedding", "Reinforcement Learning"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    'Topic :: Software Development :: Libraries',
     'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Software Development :: Libraries :: Python Libraries',
+    'Topic :: Software Development :: Libraries :: Python Frameworks',
 ]
 dependencies = [
     "gym == 0.22.0",
     "numpy >= 1.20.0",
     "pyyaml >= 6.0",
     "seaborn >= 0.12.2",
-    "pandas >=  1.5.3",
+    "pandas >= 1.5.3",
     "matplotlib >= 3.7.1",
     "scipy >= 1.9.0",
-    "torch == 2.5.0",
+    "torch == 2.6.0",
     "tensorboard >= 2.8.0",
     "torch_geometric >= 2.0.0",
     "higher >= 0.2.1",
@@ -41,9 +40,8 @@ dependencies = [
     "tqdm >= 4.62.0",
     "ortools >= 9.1.9490",
     "scikit-learn >= 1.0.0",
-    # 'torch_sparse >= 0.6.0',
-    # 'torch_scatter >= 2.0.0',
-    # 'torch_cluster >= 1.6.0',
+    "colorama >= 0.4.0",
+    "hydra-core >= 1.0.0",
 ]
 
 dynamic = ["entry-points"]
@@ -58,6 +56,14 @@ Documentation = "https://virne.readthedocs.io"
 lint = [
 ]
 # test = ['pytest', 'pytest-cov', 'pytest-xdist']
+# Extra PyG dependencies (installed by install.sh if needed)
+pyg = [
+    "pyg_lib",
+    "torch_scatter",
+    "torch_sparse",
+    "torch_cluster",
+    "torch_spline_conv",
+]
 
 [tool.setuptools]
 include-package-data = true
@@ -116,7 +122,7 @@ max-line-length = 500
 target-version = "py38"
 line-length = 100
 show-source = true
-src = ["omnisafe", "tests", "examples"]
+src = ["virne", "tests", "examples"]
 select = [
     "E", "W",  # pycodestyle
     "F",       # pyflakes

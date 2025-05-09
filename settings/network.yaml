@@ -1,8 +1,0 @@
-embedding_dim: 128
-hidden_dim: 128
-num_layers: 1
-num_gnn_layers: 5
-dropout_prob: 0.0
-batch_norm: false
-l2reg_rate: 0.00025
-lr: 0.001

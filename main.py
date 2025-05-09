@@ -1,8 +1,10 @@
+import hydra
+from omegaconf import DictConfig, OmegaConf
 from virne.base import BasicScenario
 from virne import Config, REGISTRY, Generator, update_simulation_setting
 
 
-def run(config):
+def run(config) -> None:
     print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
     # Load solver info: environment and solver class
     solver_info = REGISTRY.get(config.solver_name)

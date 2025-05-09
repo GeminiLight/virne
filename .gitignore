@@ -1,6 +1,16 @@
 # .gitignore
 .vscode
 
+# cache
+*.log
+*.py[cod]
+**/__pycache__/
+**/.DS_Store
+**/.ipynb_checkpoints
+**/*.pytest_cache
+outputs
+
+
 # build
 virne.egg-info
 dist
@@ -17,11 +27,4 @@ exp_srl_vne_data
 docs/build/
 docs/source/_autosummary/
 docs/source/generated/
-
-# cache
-*.log
-*.py[cod]
-**/__pycache__/
-**/.DS_Store
-**/.ipynb_checkpoints
 
