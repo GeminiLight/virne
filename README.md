@@ -24,7 +24,10 @@
 - **Virtual Network Embedding (VNE)**
 - **Virtual Network Function Placement (VNF Placement)**
 - **Service Function Chain Deployment (SFC Deployment)**
-- **Network Slicing**
+- **Network Slicing** and so on.
+
+![](resource/figures/virne-architecture.png)
+
 
 The main goal of Virne is to provide a unified and flexible framework for solving these problems. Its main characteristics are as follows.
 
@@ -32,18 +35,16 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
 - **Rich Implementations**: Provide 20+ solvers, including exact, heuristic, meta-heuristic, and machine learning-based algorithms.
 - **Extensible Development**: Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
         
-![](resource/figures/workflow.jpg)
 
-> Virne is still under development. If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
-
-
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > :sparkles: We successfully upgrade Virne to **1.0.0** version!
 > Our benchmark papers and documentation on Virne will be available soon.
 > 
 > - Diverse simulations +++
 > - Flexible implementations +++
 > - Comprehensive evaluations +++
+>
+> If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
 
 ### Citations
