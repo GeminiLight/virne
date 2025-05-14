@@ -8,7 +8,9 @@ class MLPNet(nn.Module):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.num_layers = num_layers
-        if embedding_dims is not None: 
+        if isinstance(embedding_dims, int):
+            embedding_dims = [embedding_dims] * (num_layers-1)
+        elif isinstance(embedding_dims, list): 
             assert len(embedding_dims) == num_layers - 1, 'len(embedding_dims) should equal to num_layers-1'
         else:
             embedding_dims = [self.input_dim * 2] * (num_layers-1)

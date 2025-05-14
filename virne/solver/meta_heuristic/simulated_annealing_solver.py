@@ -8,18 +8,15 @@ import random
 import threading
 import numpy as np
 
-from virne.base.environment import SolutionStepEnvironment
-from virne.data import VirtualNetwork, PhysicalNetwork
-from virne.base import Controller, Recorder, Counter, Solution
-from virne.solver import registry
-from virne.solver.meta_heuristic.meta_heuristic_solver import Individual, MetaHeuristicSolver
+from virne.core.environment import SolutionStepEnvironment
+from virne.network import VirtualNetwork, PhysicalNetwork
+from virne.core import Controller, Recorder, Counter, Solution, Logger
+from virne.solver.meta_heuristic.base_meta_heuristic_solver import Individual, BaseMetaHeuristicSolver
+from virne.solver.base_solver import Solver, SolverRegistry
 
 
-@registry.register(
-    solver_name='sa', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='meta_heuristic')
-class SimulatedAnnealingSolver(MetaHeuristicSolver):
+@SolverRegistry.register(solver_name='sa_meta', solver_type='meta_heuristic')
+class SimulatedAnnealingSolver(BaseMetaHeuristicSolver):
     """
     Simulated Annealing Algorithm (SA) for VNE
 
@@ -33,13 +30,13 @@ class SimulatedAnnealingSolver(MetaHeuristicSolver):
         initial_temperature: initial temperature
         attenuation_factor: attenuation factor
     """
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
-        super(SimulatedAnnealingSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
+        super(SimulatedAnnealingSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         """
         """
         # super parameters
-        self.num_individuals: int = 10 
-        self.max_iteration: int = 20 
+        self.num_individuals: int = 8
+        self.max_iteration: int = 12 
         self.max_attempt_times: int = 1
         self.initial_temperature: float = 2.
         self.attenuation_factor: float = 0.95
@@ -68,7 +65,12 @@ class SimulatedAnnealingSolver(MetaHeuristicSolver):
         for individual in self.individuals:
             node_slots = self.generate_initial_node_slots(v_net, p_net, select_method='random')
             individual.update_solution(node_slots=node_slots)
-            self.controller.deploy_with_node_slots(v_net, p_net, node_slots, individual.solution, inplace=False)
+            self.controller.deploy_with_node_slots(v_net, 
+                                                    p_net, node_slots, 
+                                                    individual.solution, 
+                                                    inplace=False,
+                                                    shortest_method=self.shortest_method,
+                                                    k_shortest=self.k_shortest)
             self.counter.count_solution(v_net, individual.solution)
             individual.update_best_solution()
         # initialize global best experience
@@ -79,9 +81,9 @@ class SimulatedAnnealingSolver(MetaHeuristicSolver):
         for i in range(self.max_attempt_times):
             changed_v_node_id = random.randint(0, individual.v_net.num_nodes-1)
             current_p_node = individual.solution['node_slots'][changed_v_node_id]
-            p_candicate = self.select_p_candicate(changed_v_node_id, individual.selected_p_nodes, p_node_weights=None, method='random')
-            if p_candicate != -1 and p_candicate != current_p_node:
-                individual.update_solution(node_slots={changed_v_node_id: p_candicate})
+            p_candidate = self.select_p_candidate(changed_v_node_id, individual.selected_p_nodes, p_node_weights=None, method='random')
+            if p_candidate != -1 and p_candidate != current_p_node:
+                individual.update_solution(node_slots={changed_v_node_id: p_candidate})
                 self.controller.deploy_with_node_slots(individual.v_net, individual.p_net, individual.solution['node_slots'], individual.solution, inplace=False)
                 self.counter.count_solution(individual.v_net, individual.solution)
                 break

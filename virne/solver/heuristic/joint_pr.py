@@ -5,17 +5,16 @@
 
 from copy import Error
 import random
-from abc import abstractclassmethod
 
-from virne.base import Solution
-from ..solver import Solver
+from virne.core import Solution
+from virne.solver.base_solver import Solver, SolverRegistry
 from ..rank.node_rank import FFDNodeRank
 
 
-class JointPRSolver(Solver):
+class BaseJointPRSolver(Solver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(JointPRSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(BaseJointPRSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
 
     def solve(self, instance):
         v_net, p_net = v_net, p_net  = instance['v_net'], instance['p_net']
@@ -39,35 +38,37 @@ class JointPRSolver(Solver):
         solution['result'] = True
         return solution
 
-    @abstractclassmethod
     def select_p_net_node(self, p_net, candidate_p_net_nodes):
         return NotImplementedError
 
 
-class RandomJointPRSolver(JointPRSolver):
+@SolverRegistry.register(solver_name='random_joint_pr', solver_type='heuristic')
+class RandomJointPRSolver(BaseJointPRSolver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(RandomJointPRSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(RandomJointPRSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
 
     def select_p_net_node(self, p_net, candidate_p_net_nodes):
         assert len(candidate_p_net_nodes) > 0
         return random.choice(candidate_p_net_nodes)
 
 
-class OrderJointPRSolver(JointPRSolver):
+@SolverRegistry.register(solver_name='order_joint_pr', solver_type='heuristic')
+class OrderJointPRSolver(BaseJointPRSolver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(OrderJointPRSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(OrderJointPRSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
 
     def select_p_net_node(self, p_net, candidate_p_net_nodes):
         assert len(candidate_p_net_nodes) > 0
         return candidate_p_net_nodes[0]
     
 
-class FFDJointPRSolver(JointPRSolver):
+@SolverRegistry.register(solver_name='ffd_joint_pr', solver_type='heuristic')
+class FFDJointPRSolver(BaseJointPRSolver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(FFDJointPRSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(FFDJointPRSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         self.node_rank = FFDNodeRank()
 
     def select_p_net_node(self, p_net, candidate_p_net_nodes):

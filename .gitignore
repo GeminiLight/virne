@@ -1,5 +1,6 @@
 # .gitignore
 .vscode
+.hydra
 
 # cache
 *.log
@@ -9,10 +10,10 @@
 **/.ipynb_checkpoints
 **/*.pytest_cache
 outputs
-
+results
 
 # build
-virne.egg-info
+virne.egg-info/
 dist
 build
 
@@ -21,11 +22,12 @@ save
 running_log
 old_save
 pretrained
+exp_data
 exp_flag_vne_data
 exp_srl_vne_data
+benchmark
 
 # docs
 docs/build/
 docs/source/_autosummary/
 docs/source/generated/
-

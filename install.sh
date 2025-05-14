@@ -91,8 +91,8 @@ pip install --upgrade pip
 
 print_step "Installing basic dependencies..."
 pip install numpy pandas matplotlib networkx
-pip install pyyaml tqdm colorama hydra-core
-pip install ortools scikit-learn higher
+pip install pyyaml tqdm colorama hydra-core colorlog wandb
+pip install ortools scikit-learn
 
 # Auto-detect CUDA if not specified
 if [[ -z "$cuda" ]]; then
@@ -118,16 +118,16 @@ fi
 # always exit here
 
 print_step "Installing PyTorch..."
+pip install tensorboard higher
 if [[ "${cuda}" == "cpu" ]]; then
     echo "Installing PyTorch (CPU version)..."
-    pip install torch==2.6.0  --index-url https://download.pytorch.org/whl/cpu
+    pip install torch==2.6.0  --index-url https://download.pytorch.org/whl/cpu --force-reinstall
 else
     echo "Installing PyTorch with CUDA ${cuda}..."
-    pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+    pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
 fi
 
 print_step "Installing additional packages..."
-pip install tensorboard 
 pip install torch_geometric
 pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.6.0+cu124.html
 pip install gym==0.22.0

@@ -1,0 +1,2 @@
+from .hopfield_network import HopfieldNetworkSolver
+from .gae_clustering import GaeClusteringSolver

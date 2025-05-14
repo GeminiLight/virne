@@ -3,11 +3,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_scatter import scatter
-from torch_geometric.nn import GCNConv, GATConv, PNAConv, NNConv, SAGEConv, global_add_pool, global_max_pool, global_mean_pool
+from torch_geometric.nn import MessagePassing, GCNConv, GATConv, PNAConv, NNConv, SAGEConv, global_add_pool, global_max_pool, global_mean_pool
 from torch_geometric.data import Data, Batch
 from torch_geometric.utils import to_dense_batch
 
 from .graph_conv import EdgeFusionGATConv
+
+
+def get_gnn_class(gnn_type):
+    if gnn_type == 'gcn':
+        return GCNConvNet
+    elif gnn_type == 'gat':
+        return GATConvNet
+    elif gnn_type == 'edge_fusion_gat':
+        return EdgeFusionGATConvNet
+    elif gnn_type == 'deep_edge_gat':
+        return DeepEdgeFeatureGAT
+    else:
+        raise NotImplementedError(f'GNN type {gnn_type} is not supported.')
 
 
 def to_sparse_batch(node_dense_embeddings, mask):
@@ -15,6 +28,7 @@ def to_sparse_batch(node_dense_embeddings, mask):
     mask = mask.unsqueeze(-1).expand_as(node_dense_embeddings)
     node_sparse_embeddings  = torch.masked_select(node_dense_embeddings, mask).reshape(-1, embedding_dim)
     return node_sparse_embeddings
+
 
 class DenseToSparse(torch.nn.Module):
     """Convert from adj to edge_list while allowing gradients
@@ -66,7 +80,7 @@ class GraphConvNet(nn.Module):
             self.add_module('norm_{}'.format(layer_id), norm)
             self.add_module('dout_{}'.format(layer_id), dout)
 
-        self._init_parameters()
+        # self._init_parameters()
 
     def get_conv(self, input_dim, output_dim, edge_dim=None, aggr='add', bias=True, **kwargs):
         return NotImplementedError

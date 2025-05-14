@@ -8,12 +8,12 @@ import random
 import threading
 import numpy as np
 import multiprocessing as mp
-from virne.base.environment import SolutionStepEnvironment
-from virne.solver import registry
+from virne.core.environment import SolutionStepEnvironment
 
-from virne.solver.meta_heuristic.meta_heuristic_solver import Individual, MetaHeuristicSolver
-from virne.data import VirtualNetwork, PhysicalNetwork
-from virne.base import Controller, Recorder, Counter, Solution
+from virne.solver.meta_heuristic.base_meta_heuristic_solver import Individual, BaseMetaHeuristicSolver
+from virne.network import VirtualNetwork, PhysicalNetwork
+from virne.core import Controller, Recorder, Counter, Solution, Logger
+from virne.solver.base_solver import Solver, SolverRegistry
 
 
 class Particle(Individual):
@@ -34,11 +34,8 @@ class Particle(Individual):
         return list(self.best_solution.node_slots.values())
 
 
-@registry.register(
-    solver_name='pso', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='meta_heuristic')
-class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
+@SolverRegistry.register(solver_name='pso_meta', solver_type='meta_heuristic')
+class ParticleSwarmOptimizationSolver(BaseMetaHeuristicSolver):
     """
     Particle Swarm Optimization (PSO) Solver for VNE
 
@@ -54,8 +51,9 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
         num_particles: number of num_particles
         max_iteration: max iteration
     """
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
-        super(ParticleSwarmOptimizationSolver, self).__init__(controller, recorder, counter, **kwargs)
+
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
+        super(ParticleSwarmOptimizationSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         """
         0 < p_i < p_c < p_s < 1
         p_i + p_c + p_s = 1
@@ -64,8 +62,8 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
         self.p_i = 0.1  # inertia weight
         self.p_c = 0.2  # cognition weight
         self.p_s = 0.7  # social weight
-        self.num_particles = 10  # number of num_particles
-        self.max_iteration = 20  # max iteration
+        self.num_particles = 8  # number of num_particles
+        self.max_iteration = 12  # max iteration
         # discrete operations
         # sub for positions: Similar to Hamming distance
         # add for positions: Select a location based on probability
@@ -80,20 +78,13 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
         for id in range(self.max_iteration):
             # result = mp_pool.map(self.evolve, self.particles)
             particle_runners = []
-            particle_queues = []
             for particle in self.particles:
-                particle_queue = mp.Queue()
-                particle_queues.append(particle_queue)
-                particle_runners.append(mp.Process(target=self.evolve, args=(particle, particle_queue)))
+                particle_runners.append(mp.Process(target=self.evolve, args=(particle, )))
                 # particle_runners.append(ParticleRunner(v_net, p_net, self, self.particles[i]))
             for particle_runner in particle_runners:
                 particle_runner.start()
-            new_particles = []
-            for particle_queue in particle_queues:
-                new_particles.append(particle_queue.get())
             for particle_runner in particle_runners:
                 particle_runner.join()
-            self.particles = new_particles
 
             self.update_best_individual(self.particles)
 
@@ -118,14 +109,14 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
         # initialize global best experience
         self.update_best_individual(self.particles)
 
-    def evolve(self, particle, queue):
+    def evolve(self, particle):
         particle.velocity = self.add(
                                     self.p_i, particle.velocity, 
                                     self.p_c, self.sub(particle.best_position, particle.position), 
                                     self.p_s, self.sub(self.best_individual.best_position, particle.position))
         for v_node_id in range(particle.v_net.num_nodes):
             if particle.velocity[v_node_id] == 0:
-                node_position = self.select_p_candicate(v_node_id, particle.selected_p_nodes)
+                node_position = self.select_p_candidate(v_node_id, particle.selected_p_nodes)
                 if node_position == -1:
                     continue
                 particle.update_position({v_node_id: node_position})
@@ -138,5 +129,4 @@ class ParticleSwarmOptimizationSolver(MetaHeuristicSolver):
                                                 k_shortest=self.k_shortest)
         self.counter.count_solution(particle.v_net, particle.solution)
         particle.update_best_solution()
-        queue.put(particle)
         

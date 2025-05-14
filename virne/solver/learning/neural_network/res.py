@@ -1,3 +1,4 @@
+from itertools import chain
 import torch.nn as nn
 import torch.nn.functional as F
 

@@ -3,7 +3,7 @@ import networkx as nx
 
 from functools import lru_cache
 
-from virne.data import BaseNetwork, PhysicalNetwork, VirtualNetwork
+from virne.network import BaseNetwork, PhysicalNetwork, VirtualNetwork
 
 
 def calc_positional_embeddings(max_len, embedding_dim):
@@ -18,6 +18,7 @@ MAX_NUM_V_NODES = 100
 POSITIONAL_EMBEDDING_DIM = 8
 P_NODE_STATUS_DIM = 2
 V_NODE_STATUS_DIM = 2
+V_NET_STATUS_DIM = 3
 POSITIONAL_EMBEDDINGS = calc_positional_embeddings(MAX_NUM_V_NODES, POSITIONAL_EMBEDDING_DIM)
 
 
@@ -61,20 +62,20 @@ class ObservationHandler:
     def get_degree_benchmark(self, network):
         return max(list(dict(network.degree).values()))
 
-    def get_node_attr_benchmarks(self, network: BaseNetwork, node_attr_types: list = ['resource', 'extrema']):
+    def get_node_attr_benchmarks(self, network: BaseNetwork, node_attr_types: list = ['resource']):
         n_attrs = network.get_node_attrs(node_attr_types)
         node_data = np.array(network.get_node_attrs_data(n_attrs), dtype=np.float32)
         node_attr_benchmarks = self._get_attr_benchmarks(node_attr_types, n_attrs, node_data)
         return node_attr_benchmarks
     
-    def get_link_attr_benchmarks(self, network: BaseNetwork, link_attr_types=['resource', 'extrema']):
+    def get_link_attr_benchmarks(self, network: BaseNetwork, link_attr_types=['resource']):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_data = np.array(network.get_link_attrs_data(l_attrs), dtype=np.float32)
         link_data = np.concatenate([link_data, link_data], axis=1)
         link_attr_benchmarks = self._get_attr_benchmarks(link_attr_types, l_attrs, link_data)
         return link_attr_benchmarks
 
-    def get_link_sum_attr_benchmarks(self, network: BaseNetwork, link_attr_types=['resource', 'extrema']):
+    def get_link_sum_attr_benchmarks(self, network: BaseNetwork, link_attr_types=['resource']):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_sum_attrs_data = np.array(network.get_aggregation_attrs_data(l_attrs, aggr='sum'), dtype=np.float32)
         link_sum_attr_benchmarks = self._get_attr_benchmarks(link_attr_types, l_attrs, link_sum_attrs_data)
@@ -86,7 +87,21 @@ class ObservationHandler:
             network_degree /= degree_benchmark
         return network_degree
 
-    def get_node_attrs_obs(self, network: BaseNetwork, node_attr_types=['resource', 'extrema'], node_attr_benchmarks=None):
+    def get_node_topological_metrics(self, network: BaseNetwork, degree=True, closeness=True, eigenvector=True, betweenness=True):
+        # degree=True, closeness=True, eigenvector=True, betweenness=True
+        # network.calculate_topological_metrics(degree=degree, closeness=closeness, eigenvector=eigenvector, betweenness=betweenness)
+        node_topological_metrics = []
+        if degree: node_topological_metrics.append(network.node_degree_centrality)
+        if closeness: node_topological_metrics.append(network.node_closeness_centrality)
+        if eigenvector: node_topological_metrics.append(network.node_eigenvector_centrality)
+        if betweenness: node_topological_metrics.append(network.node_betweenness_centrality)
+        if len(node_topological_metrics) == 0:
+            node_topological_metrics = np.zeros((network.num_nodes, 0), dtype=np.float32)
+        else:
+            node_topological_metrics = np.concatenate(node_topological_metrics, axis=1)
+        return node_topological_metrics
+
+    def get_node_attrs_obs(self, network: BaseNetwork, node_attr_types=['resource'], node_attr_benchmarks=None):
         n_attrs = network.get_node_attrs(node_attr_types)
         node_data = np.array(network.get_node_attrs_data(n_attrs), dtype=np.float32)
 
@@ -96,7 +111,7 @@ class ObservationHandler:
                 node_data[i] = node_data[i] / node_attr_benchmarks[attr_name]
         return node_data.T
 
-    def get_link_attrs_obs(self, network: BaseNetwork, link_attr_types=['resource', 'extrema'], link_attr_benchmarks: dict = None):
+    def get_link_attrs_obs(self, network: BaseNetwork, link_attr_types=['resource'], link_attr_benchmarks: dict = None):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_data = np.array(network.get_link_attrs_data(l_attrs), dtype=np.float32)
         link_data = np.concatenate([link_data, link_data], axis=1)
@@ -107,17 +122,17 @@ class ObservationHandler:
                 link_data[i] = link_data[i] / link_attr_benchmarks[attr_name]
         return link_data.T
 
-    def get_link_sum_attrs_obs(self, network: BaseNetwork, link_attr_types: list = ['resource', 'extrema'], link_sum_attr_benchmarks: dict = None):
+    def get_link_sum_attrs_obs(self, network: BaseNetwork, link_attr_types: list = ['resource'], link_sum_attr_benchmarks: dict = None):
         return self.get_link_aggr_attrs_obs(network, link_attr_types, aggr='sum', link_sum_attr_benchmarks=link_sum_attr_benchmarks)
 
-    def get_link_aggr_attrs_obs(self, network: BaseNetwork, link_attr_types: list = ['resource', 'extrema'], aggr='sum', link_sum_attr_benchmarks: dict = None, link_attr_benchmarks: dict = None):
+    def get_link_aggr_attrs_obs(self, network: BaseNetwork, link_attr_types: list = ['resource'], aggr='sum', link_sum_attr_benchmarks: dict = None, link_attr_benchmarks: dict = None):
         l_attrs = network.get_link_attrs(link_attr_types)
         link_aggr_attrs_data = np.array(network.get_aggregation_attrs_data(l_attrs, aggr=aggr), dtype=np.float32)
         if aggr=='sum' and link_sum_attr_benchmarks is not None:
             for i, l_attr in enumerate(l_attrs):
                 attr_name = l_attr.originator if l_attr.type == 'extrema' else l_attr.name
                 link_aggr_attrs_data[i] = link_aggr_attrs_data[i] / link_sum_attr_benchmarks[attr_name]
-        elif aggr in ['mean', 'max', 'max'] and link_attr_benchmarks is not None:
+        elif aggr in ['mean', 'max', 'min'] and link_attr_benchmarks is not None:
             for i, l_attr in enumerate(l_attrs):
                 attr_name = l_attr.originator if l_attr.type == 'extrema' else l_attr.name
                 link_aggr_attrs_data[i] = link_aggr_attrs_data[i] / link_attr_benchmarks[attr_name]
@@ -217,99 +232,96 @@ class ObservationHandler:
                 avg_distance = (avg_distance - np.min(avg_distance)) / (np.max(avg_distance) - np.min(avg_distance))
         return np.array([avg_distance], dtype=np.float32).T
 
-    def get_v2p_node_link_demand(self, p_net, v_net, node_slots, v_node_id, link_attr_benchmarks=None):
-        link_resource_attrs = v_net.get_link_attrs(['resource'])
-        v2p_node_link_demands = np.zeros((p_net.num_nodes, len(link_resource_attrs)), dtype=np.float32)
+    def get_v2p_node_link_demand(self, p_net, v_net, node_slots, v_node_id, link_attr_types=['resource'], link_attr_benchmarks=None):
+        v2p_node_link_demands = np.zeros((p_net.num_nodes, len(link_attr_types)), dtype=np.float32)
         for v_node_id, p_node_id in node_slots.items():
             if v_node_id in v_net.adj[v_node_id]:
                 v_link = (v_node_id, v_node_id)
-                for l_attr_id, l_attr in enumerate(link_resource_attrs):
+                for l_attr_id, l_attr in enumerate(link_attr_types):
                     v2p_node_link_demands[p_node_id, l_attr_id] = v_net.links[v_link][l_attr.name]
                     if link_attr_benchmarks is not None:
                         v2p_node_link_demands[p_node_id, l_attr_id] /= link_attr_benchmarks[l_attr.name]
         return v2p_node_link_demands
 
-    def get_v_node_link_demands(self, v_net, v_node_id, link_attr_benchmarks=None):
-        l_attrs = v_net.get_link_attrs('resource')
+
+    def get_v_node_status(self, v_net, v_node_id, p_net_num_nodes):
+        """Get the embedding status of virtual network.
+
+        Args:
+            v_net: The virtual network.
+            node_slots: The placement of virtual nodes.
+            p_net_num_nodes: The number of physical nodes.
+            v_node_id: The current virtual node id.
+
+        Returns:
+            v_net_status: The embedding status of virtual network with a shape of [3, ].
+        """
+        norm_all_nodes = v_net.num_nodes / p_net_num_nodes
+        norm_unplaced = (v_net.num_nodes - (v_node_id + 1)) / v_net.num_nodes
+        norm_curr_vid = v_node_id + 1 / p_net_num_nodes
+        return np.array([norm_unplaced, norm_all_nodes, norm_curr_vid], dtype=np.float32)
+
+    def get_v_node_demand(self, v_net, v_node_id, node_attr_types=['resource'], node_attr_benchmarks=None):
+        """Get the demand of each virtual node.
+
+        Args:
+            v_net: The virtual network.
+            v_node_id: The current virtual node id.
+            node_attr_types: The specified types of node attributes.
+            node_attr_benchmarks: The benchmarks of node attributes.
+
+        Returns:
+            norm_node_demand: The normalized demand of each virtual node with a shape of [num_node_attrs, ].
+        """
+        node_demand = []
+        for n_attr in v_net.get_node_attrs(node_attr_types):
+            one_v_node_demand = v_net.nodes[v_node_id][n_attr.name]
+            if node_attr_benchmarks is not None:
+                one_v_node_demand /= node_attr_benchmarks[n_attr.name]
+            node_demand.append(one_v_node_demand)
+        norm_node_demand = np.array(node_demand, dtype=np.float32)
+        return norm_node_demand
+
+    def get_v_node_link_demands(self, v_net, v_node_id, link_attr_types=['resource'], link_attr_benchmarks=None):
         link_demands = []
-        for l_attr in l_attrs:
+        for l_attr in link_attr_types:
             link_demand = [v_net.links[(n, v_node_id)][l_attr.name] for n in v_net.adj[v_node_id]]
             link_demands.append(link_demand)
         link_demands = np.array(link_demands, dtype=np.float32)
         if link_attr_benchmarks is not None:
-            for i, l_attr in enumerate(l_attrs):
+            for i, l_attr in enumerate(link_attr_types):
                 attr_name = l_attr.name
                 link_demands[i] = link_demands[i] / link_attr_benchmarks[attr_name]
             return link_demands
         return link_demands
 
-    def get_v_node_min_link_demend(self, v_net, v_node_id, link_attr_benchmarks=None):
-        """
-        Returns: 
-            [{attr_name: min_attr_demand}]
-        """
-        link_resourcl_attrs = v_net.get_link_attrs('resource')
-        v_link_demands = dict(v_net.adj[v_node_id]).values()
-        v_node_min_link_demend = {}
-        for l_attr_id, l_attr in enumerate(link_resourcl_attrs):
-            v_link_attr_demain_list = [v_link_demand.get(l_attr.name, 0.) for v_link_demand in v_link_demands]
-            v_node_min_link_demend[l_attr.name] = min(v_link_attr_demain_list)
-            if link_attr_benchmarks is not None:
-                v_node_min_link_demend[l_attr.name] /= link_attr_benchmarks[l_attr.name]
-        return v_node_min_link_demend
-
-    def get_v_node_max_link_demend(self, v_net, v_node_id: int, link_attr_benchmarks=None):
-        """
-        Returns: 
-            [{attr_name: max_attr_demand}]
-        """
-        link_resourcl_attrs = v_net.get_link_attrs('resource')
-        v_link_demands = dict(v_net.adj[v_node_id]).values()
-        v_node_max_link_demend = {}
-        for l_attr_id, l_attr in enumerate(link_resourcl_attrs):
-            v_link_attr_demain_list = [v_link_demand.get(l_attr.name, 0.) for v_link_demand in v_link_demands]
-            v_node_max_link_demend[l_attr.name] = max(v_link_attr_demain_list)
-            if link_attr_benchmarks is not None:
-                v_node_max_link_demend[l_attr.name] /= link_attr_benchmarks[l_attr.name]
-        return v_node_max_link_demend
-
-    def get_v_node_features(self, v_net, v_node_id, node_attr_benchmarks=None, link_attr_benchmarks=None):
-        if v_node_id >= v_net.num_nodes:
-            v_node_id = 0
-            return self.get_v_node_features(v_net, v_node_id)
-        norm_unplaced = (v_net.num_nodes - (v_node_id + 1)) / v_net.num_nodes
-        norm_all_nodes = v_net.num_nodes / self.p_net.num_nodes
-        norm_curr_vid = (v_node_id + 1) / self.p_net.num_nodes
-        node_demand = []
-        for n_attr in v_net.get_node_attrs('resource'):
-            one_v_node_demand = v_net.nodes[v_node_id][n_attr.name]
-            one_v_node_demand /= node_attr_benchmarks[n_attr.name] if node_attr_benchmarks is not None else None
-            node_demand.append(one_v_node_demand)
-        norm_node_demand = np.array(node_demand, dtype=np.float32)
-
-        max_link_demand = []
-        min_link_demand = []
-        mean_link_demand = []
-        num_neighbors = len(v_net.adj[v_node_id]) / v_net.num_nodes
-        for l_attr in v_net.get_link_attrs('resource'):
+    def get_v_node_aggr_link_demands(self, v_net, v_node_id, aggr='sum', link_attr_types=['resource'], link_attr_benchmarks=None):
+        link_attrs = v_net.get_link_attrs(link_attr_types)
+        link_demands = []
+        for l_attr in link_attrs:
             link_demand = [v_net.links[(n, v_node_id)][l_attr.name] for n in v_net.adj[v_node_id]]
-            if link_attr_benchmarks is not None:
-                max_link_demand.append(max(link_demand) / link_attr_benchmarks[l_attr.name])
-                mean_link_demand.append((sum(link_demand) / len(link_demand)) / link_attr_benchmarks[l_attr.name])
-                min_link_demand.append(min(link_demand) / link_attr_benchmarks[l_attr.name])
-            else:
-                max_link_demand.append(max(link_demand))
-                mean_link_demand.append((sum(link_demand) / len(link_demand)))
-                min_link_demand.append(min(link_demand))
-        v_net_obs = np.concatenate([norm_node_demand, max_link_demand, mean_link_demand, [num_neighbors, norm_unplaced, norm_all_nodes, norm_curr_vid]], axis=0)
-        return v_net_obs
+            if aggr == 'sum':
+                link_demand = sum(link_demand)
+            elif aggr == 'mean':
+                link_demand = sum(link_demand) / len(link_demand)
+            elif aggr == 'max':
+                link_demand = max(link_demand)
+            elif aggr == 'min':
+                link_demand = min(link_demand)
+            link_demands.append(link_demand)
+        link_demands = np.array(link_demands, dtype=np.float32)
+        if link_attr_benchmarks is not None:
+            for i, l_attr in enumerate(link_attrs):
+                attr_name = l_attr.name
+                link_demands[i] = link_demands[i] / link_attr_benchmarks[attr_name]
+            return link_demands
+        return link_demands
 
-    def get_meta_obs(self, p_net, v_net, node_slots, link_data):
+    def get_meta_obs(self, p_net, v_net, node_slots, link_data, link_attr_types=['resource']):   
         link_consumptions = np.zeros_like(link_data)
         meta_edge_index = [[], []]
         meta_edge_attr = []
         placed_v_net_nodes = list(node_slots.keys())
-        link_resource_attrs = v_net.get_link_attrs(['resource'])
         for v_link in v_net.links:
             if v_link[0] in placed_v_net_nodes and v_link[1] in placed_v_net_nodes:
                 p_node_a, p_node_b = node_slots[v_link[0]], node_slots[v_link[1]]
@@ -317,28 +329,31 @@ class ObservationHandler:
                     p_pair = (p_node_a, p_node_b) if p_node_a <= p_node_b else (p_node_b, p_node_a)
                     link_id_1 = list(p_net.links).index(p_pair)
                     link_id_2 = link_id_1 + p_net.num_links
-                    for l_attr_id, l_attr in enumerate(link_resource_attrs):
+                    for l_attr_id, l_attr in enumerate(link_attr_types):
                         link_consumptions[link_id_1, l_attr_id] = v_net.links[v_link][l_attr.name]
                         link_consumptions[link_id_2, l_attr_id] = v_net.links[v_link][l_attr.name]
                 else:
                     meta_edge_index[0] += [p_node_a, p_node_b]
                     meta_edge_index[1] += [p_node_b, p_node_a]
-                    meta_resource_info = [0 for l_attr_id, l_attr in enumerate(link_resource_attrs)]
-                    meta_demand_info = [v_net.edges[v_link][l_attr.name] for l_attr_id, l_attr in enumerate(link_resource_attrs)]
+                    meta_resource_info = [0 for l_attr_id, l_attr in enumerate(link_attr_types)]
+                    meta_demand_info = [v_net.edges[v_link][l_attr.name] for l_attr_id, l_attr in enumerate(link_attr_types)]
                     meta_edge_attr.append(meta_resource_info + meta_demand_info)
                     meta_edge_attr.append(meta_resource_info + meta_demand_info)
         return meta_edge_index, meta_edge_attr, link_consumptions
 
-    def get_p_nodes_status(self, p_net, v_net, node_slots, v_node_id):
+    def get_p_net_nodes_status(self, p_net, v_net, node_slots, v_node_id=None):
         """Get the node status of each physical nodes, including selection flags and neighbor flags.
         
         Returns:
-            p_nodes_status: with shape [num_p_nodes, 2]
+            p_nodes_status: with shape [num_p_nodes, status_dim]
         """
-        p_nodes_status = np.zeros((p_net.num_nodes, 2), dtype=np.float32)
+        status_dim = 1 if v_node_id is None else 2
+        p_nodes_status = np.zeros((p_net.num_nodes, status_dim), dtype=np.float32)
         # set the selection flags of selected p nodes to 1
         selected_p_nodes = list(node_slots.values())
         p_nodes_status[selected_p_nodes, 0] = 1.
+        if v_node_id is None:
+            return p_nodes_status
         # set the neighbor flags of corresponding p neighbors to 1
         placed_v_nodes = list(node_slots.keys())
         placed_p_neighbors = []
@@ -348,24 +363,47 @@ class ObservationHandler:
         p_nodes_status[placed_p_neighbors, 1] = 1.
         return p_nodes_status
 
+    def get_v_node_neighbor_flags(self, v_net, node_slots, v_node_id):
+        """Get the neighbor flags of each virtual nodes, including placement flags and decision flags.
+        
+        Returns:
+            v_nodes_status: with shape [num_v_nodes, status_dim]
+        """
+        v_node_neighbor_flags = np.zeros((v_net.num_nodes, v_net.num_nodes), dtype=np.float32)
+        placed_v_nodes = list(node_slots.keys())
+        # set the neighbor flags of corresponding v neighbors to 1
+        for v_neighbor in list(v_net.adj[v_node_id].keys()):
+            if v_neighbor in placed_v_nodes:
+                v_node_neighbor_flags[v_neighbor, v_neighbor] = 1.
+        return v_node_neighbor_flags
 
-
-    def get_v_nodes_status(self, v_net, node_slots, v_node_id, consist_decision=True):
+    def get_v_net_nodes_status(self, v_net, node_slots, v_node_id=None, consist_decision=True, neighbor_flags=False):
         """Get the node status of each virtual nodes, including placement flags and decision flags.
         
         Returns:
-            v_nodes_status: with shape [num_v_nodes, 2]
+            v_nodes_status: with shape [num_v_nodes, status_dim]
         """
-        v_nodes_status = np.zeros((v_net.num_nodes, 2), dtype=np.float32)
+        status_dim = 1 if v_node_id is None else 2
+        v_nodes_status = np.zeros((v_net.num_nodes, status_dim), dtype=np.float32)
         placed_v_nodes = list(node_slots.keys())
         # set the placement flags of placed v nodes to 1
         v_nodes_status[placed_v_nodes, 0] = 1.
+        if v_node_id is None:
+            return v_nodes_status
         # set the decision flag of the current decided v node to 1
         if v_node_id < v_net.num_nodes:
             if consist_decision:
                 v_nodes_status[v_node_id, 1] = 1.
             else:
                 v_nodes_status[v_node_id, 1] = -1.
+        if neighbor_flags:
+            # set the neighbor flags of corresponding v neighbors to 1
+            v_node_neighbor_flags = np.zeros((v_net.num_nodes, 1), dtype=np.float32)
+            for v_neighbor in list(v_net.adj[v_node_id].keys()):
+                if v_neighbor in placed_v_nodes:
+                    v_node_neighbor_flags[v_neighbor] = 1.
+            # concat 
+            v_nodes_status = np.concatenate([v_nodes_status, v_node_neighbor_flags], axis=1)
         return v_nodes_status
 
     def get_v_node_positions(self, v_net_rank_nodes):

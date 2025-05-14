@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "virne"
-version = "0.5.0"
-description = "A unified framework for virtual network embedding."
+version = "1.0.0"
+description = "A comprehensive simulator and benchmark for Resource Allocation in Network Function Virtualization (NFV-RA)."
 readme = "README.md"
 requires-python = ">= 3.10"
 authors = [{ name = "GeminiLight", email = "tianfuwang.cs@gmail.com" }]
@@ -27,12 +27,13 @@ classifiers = [
 dependencies = [
     "gym == 0.22.0",
     "numpy >= 1.20.0",
-    "pyyaml >= 6.0",
     "pandas >= 1.5.3",
     "matplotlib >= 3.7.1",
     "scipy >= 1.9.0",
+    "pyyaml >= 6.0",
     "torch == 2.6.0",
     "tensorboard >= 2.8.0",
+    "wandb >= 0.12.0",
     "higher >= 0.2.1",
     "networkx >= 2.6.0",
     "tqdm >= 4.62.0",
@@ -40,6 +41,15 @@ dependencies = [
     "scikit-learn >= 1.0.0",
     "colorama >= 0.4.0",
     "hydra-core >= 1.0.0",
+    "colorlog >= 6.0.0",
+    "ortools >= 9.1.9490",
+    "scikit-learn >= 1.0.0",
+    "torch_geometric",
+    "pyg_lib @ https://data.pyg.org/whl/torch-2.6.0+cpu/pyg_lib-0.4.0+pt26cpu-cp310-cp310-linux_x86_64.whl",
+    "torch_scatter @ https://data.pyg.org/whl/torch-2.6.0+cpu/torch_scatter-2.1.2+pt26cpu-cp310-cp310-linux_x86_64.whl",
+    "torch_sparse @ https://data.pyg.org/whl/torch-2.6.0+cpu/torch_sparse-0.6.18+pt26cpu-cp310-cp310-linux_x86_64.whl",
+    "torch_cluster @ https://data.pyg.org/whl/torch-2.6.0+cpu/torch_cluster-1.6.3+pt26cpu-cp310-cp310-linux_x86_64.whl",
+    "torch_spline_conv @ https://data.pyg.org/whl/torch-2.6.0+cpu/torch_spline_conv-1.2.2+pt26cpu-cp310-cp310-linux_x86_64.whl"
 ]
 
 dynamic = ["entry-points"]
@@ -56,21 +66,21 @@ lint = [
 # test = ['pytest', 'pytest-cov', 'pytest-xdist']
 
 # PyG and related dependencies (choose one group depending on your hardware)
-pyg-cpu = [
-    "torch_geometric",
-    "pyg_lib @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
-    "torch_scatter @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
-    "torch_sparse @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
-    "torch_cluster @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
-    "torch_spline_conv @ https://data.pyg.org/whl/torch-2.6.0+cpu.html"
-]
+# pyg-cpu = [
+#     "torch_geometric",
+#     "pyg_lib @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+#     "torch_scatter @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+#     "torch_sparse @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+#     "torch_cluster @ https://data.pyg.org/whl/torch-2.6.0+cpu.html",
+#     "torch_spline_conv @ https://data.pyg.org/whl/torch-2.6.0+cpu.html"
+# ]
 pyg-gpu = [
     "torch_geometric",
-    "pyg_lib @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
-    "torch_scatter @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
-    "torch_sparse @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
-    "torch_cluster @ https://data.pyg.org/whl/torch-2.6.0+cu124.html",
-    "torch_spline_conv @ https://data.pyg.org/whl/torch-2.6.0+cu124.html"
+    "pyg_lib @ https://data.pyg.org/whl/torch-2.6.0+cu124/pyg_lib-0.4.0+pt26cu124-cp310-cp310-linux_x86_64.whl",
+    "torch_scatter @ https://data.pyg.org/whl/torch-2.6.0+cu124/torch_scatter-2.1.2+pt26cu124-cp310-cp310-linux_x86_64.whl",
+    "torch_sparse @ https://data.pyg.org/whl/torch-2.6.0+cu124/torch_sparse-0.6.18+pt26cu124-cp310-cp310-linux_x86_64.whl",
+    "torch_cluster @ https://data.pyg.org/whl/torch-2.6.0+cu124/torch_cluster-1.6.3+pt26cu124-cp310-cp310-linux_x86_64.whl",
+    "torch_spline_conv @ https://data.pyg.org/whl/torch-2.6.0+cu124/torch_spline_conv-1.2.2+pt26cu124-cp310-cp310-linux_x86_64.whl"
 ]
 
 [tool.setuptools]

@@ -5,16 +5,12 @@
 
 from ortools.linear_solver import pywraplp
 
-from virne.base import Solution
-from virne.base.environment import SolutionStepEnvironment
-from virne.solver import registry
-from ..solver import Solver
+from virne.core import Solution
+from virne.core.environment import SolutionStepEnvironment
+from virne.solver.base_solver import Solver, SolverRegistry
 
 
-@registry.register(
-    solver_name='d_rounding', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='exact')
+@SolverRegistry.register(solver_name='d_round', solver_type='rounding')
 class DeterministicRoundingSolver(Solver):
     """
     An approximation solver based on deterministic rounding algorithm.
@@ -22,8 +18,8 @@ class DeterministicRoundingSolver(Solver):
     References:
         - Mosharaf Chowdhury et al. "ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping". In TON, 2012.
     """
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(DeterministicRoundingSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(DeterministicRoundingSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         # node mapping
         self.matching_mathod = kwargs.get('matching_mathod', 'greedy')
         # link mapping
@@ -35,25 +31,25 @@ class DeterministicRoundingSolver(Solver):
 
     def solve(self, instance):
         v_net, p_net  = instance['v_net'], instance['p_net']
-        candicates_dict = self.controller.construct_candidates_dict(v_net, p_net)
-        v_p_value_dict = self.solver_with_or_tools(v_net, p_net, candicates_dict)
+        candidates_dict = self.controller.construct_candidates_dict(v_net, p_net)
+        v_p_value_dict = self.solver_with_or_tools(v_net, p_net, candidates_dict)
         if v_p_value_dict is not None:
-            solution = self.deploy_with_v_p_value_dict(v_net, p_net, v_p_value_dict, candicates_dict)
+            solution = self.deploy_with_v_p_value_dict(v_net, p_net, v_p_value_dict, candidates_dict)
         else:
             solution = Solution(v_net)
         return solution
 
-    def deploy_with_v_p_value_dict(self, v_net, p_net, v_p_value_dict, candicates_dict):
+    def deploy_with_v_p_value_dict(self, v_net, p_net, v_p_value_dict, candidates_dict):
         solution = Solution(v_net)
         for v_node_id in list(v_net.nodes):
             selected_p_net_nodes = list(solution['node_slots'].values())
-            v_p_candicate_prob_dict = {p_node_id: v_p_value_dict[v_node_id][p_node_id] for p_node_id in list(p_net.nodes)
-                            if p_node_id in candicates_dict[v_node_id] and p_node_id not in selected_p_net_nodes}
-            if len(v_p_candicate_prob_dict) == 0:
+            v_p_candidate_prob_dict = {p_node_id: v_p_value_dict[v_node_id][p_node_id] for p_node_id in list(p_net.nodes)
+                            if p_node_id in candidates_dict[v_node_id] and p_node_id not in selected_p_net_nodes}
+            if len(v_p_candidate_prob_dict) == 0:
                 # Failure
                 solution['place_result'] = False
                 return solution
-            p_node_id = self.select_p_net_node(v_p_candicate_prob_dict)
+            p_node_id = self.select_p_net_node(v_p_candidate_prob_dict)
             place_and_route_result, place_and_route_info = self.controller.place_and_route(v_net, p_net, v_node_id, p_node_id, solution, 
                                                 shortest_method=self.shortest_method, k=self.k_shortest)
             if not place_and_route_result:
@@ -64,11 +60,11 @@ class DeterministicRoundingSolver(Solver):
         solution['result'] = True
         return solution
 
-    def select_p_net_node(self, v_p_candicate_prob_dict):
-        selected_p_node_id = max(v_p_candicate_prob_dict, key=lambda key: v_p_candicate_prob_dict[key])
+    def select_p_net_node(self, v_p_candidate_prob_dict):
+        selected_p_node_id = max(v_p_candidate_prob_dict, key=lambda key: v_p_candidate_prob_dict[key])
         return selected_p_node_id
 
-    def construct_resource_dict(self, v_net, p_net, n_attr_name_list, e_attr_name_list, candicates_dict):
+    def construct_resource_dict(self, v_net, p_net, n_attr_name_list, e_attr_name_list, candidates_dict):
 
         def get_node_type(n_id):
             return 'p' if n_id < num_p_nodes else 'v'
@@ -93,11 +89,11 @@ class DeterministicRoundingSolver(Solver):
                 return 0
             else:
                 if u > v:
-                    candicates = candicates_dict[u-num_p_nodes]
-                    return self.META_BW if v in candicates else 0
+                    candidates = candidates_dict[u-num_p_nodes]
+                    return self.META_BW if v in candidates else 0
                 else:
-                    candicates = candicates_dict[v-num_p_nodes]
-                    return self.META_BW if u in candicates else 0
+                    candidates = candidates_dict[v-num_p_nodes]
+                    return self.META_BW if u in candidates else 0
         
         num_p_nodes = p_net.number_of_nodes()
         num_v_nodes = v_net.number_of_nodes()
@@ -119,7 +115,7 @@ class DeterministicRoundingSolver(Solver):
         return node_resource_dict, edge_resource_dict
 
 
-    def solve_with_mip(self, v_net, p_net, candicates_dict):
+    def solve_with_mip(self, v_net, p_net, candidates_dict):
 
         num_p_nodes = p_net.number_of_nodes()
         num_v_nodes = v_net.number_of_nodes()
@@ -133,7 +129,7 @@ class DeterministicRoundingSolver(Solver):
         n_attr_name_list = ['cpu']
         e_attr_name_list = ['bw']
         # {m: [p for p in p_node_list] for m in m_node_list}
-        node_resource_dict, edge_resource_dict = self.construct_resource_dict(v_net, p_net, n_attr_name_list, e_attr_name_list, candicates_dict)
+        node_resource_dict, edge_resource_dict = self.construct_resource_dict(v_net, p_net, n_attr_name_list, e_attr_name_list, candidates_dict)
         assert len(e_attr_name_list) == 1
 
         solver = pywraplp.Solver.CreateSolver('Glop')
@@ -197,7 +193,7 @@ class DeterministicRoundingSolver(Solver):
 
         # Meta constraint
         for m in m_node_list:
-            solver.Add(sum(x[(m,w)] for w in candicates_dict[m-num_p_nodes]) == 1)
+            solver.Add(sum(x[(m,w)] for w in candidates_dict[m-num_p_nodes]) == 1)
 
         for w in p_node_list:
             solver.Add(sum(x[(m,w)] for m in m_node_list) <= 1)
@@ -221,7 +217,7 @@ class DeterministicRoundingSolver(Solver):
             for m in m_node_list:
                 v_p_value_dict[m-num_p_nodes] = []
                 for p in p_node_list:
-                    if p not in candicates_dict[m-num_p_nodes]:
+                    if p not in candidates_dict[m-num_p_nodes]:
                         v_p_value_dict[m-num_p_nodes].append(0.)
                     else:
                         v_p_value_dict[m-num_p_nodes].append(x[(m,p)].solution_value() * (sum(f[(m, p, i)].solution_value() for i in v_net.links)) + sum(f[(p, m, i)].solution_value() for i in v_net.links))

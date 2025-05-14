@@ -36,6 +36,16 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
 
 > Virne is still under development. If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
+
+> [!IMPORTANT]  
+> :sparkles: We successfully upgrade Virne to **1.0.0** version!
+> Our benchmark papers and documentation on Virne will be available soon.
+> 
+> - Diverse simulations +++
+> - Flexible implementations +++
+> - Comprehensive evaluations +++
+
+
 ### Citations
 
 :sparkles: If you find Virne helpful to your research, please feel free to cite our related papers:heart:

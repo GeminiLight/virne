@@ -1,10 +1,9 @@
 import itertools
-from .solver import Solver
+from .base_solver import Solver, SolverRegistry
 from .exact import *
 from .heuristic import *
 from .meta_heuristic import *
 from .learning import *
-from .registry import REGISTRY, register, get
 
 from . import exact, heuristic, meta_heuristic, learning
 
@@ -17,9 +16,8 @@ SOLVERS = {
 }
 SOLVERS['all'] = tuple(itertools.chain.from_iterable(SOLVERS.values()))
 
-__all__ = list(SOLVERS['all']) + [
+__all__ = [
+    *SOLVERS['all'],
     'Solver',
-    'REGISTRY',
-    'register',
-    'get',
+    'SolverRegistry',
 ]

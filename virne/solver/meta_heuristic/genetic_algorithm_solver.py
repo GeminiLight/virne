@@ -8,14 +8,15 @@ import copy
 import random
 import threading
 import numpy as np
-from virne.base.environment import SolutionStepEnvironment
 
-from virne.solver import registry
+from virne.core.environment import SolutionStepEnvironment
+from virne.network import VirtualNetwork, PhysicalNetwork
+from virne.core import Controller, Recorder, Counter, Solution, Logger
+from virne.solver.base_solver import Solver, SolverRegistry
 
-from .meta_heuristic_solver import Individual, MetaHeuristicSolver
+
+from .base_meta_heuristic_solver import Individual, BaseMetaHeuristicSolver
 from ..rank.node_rank import rank_nodes
-from virne.data import VirtualNetwork, PhysicalNetwork
-from virne.base import Controller, Recorder, Counter, Solution
 
 
 class Chromosome(Individual):
@@ -26,11 +27,8 @@ class Chromosome(Individual):
         super(Chromosome, self).__init__(id, v_net, p_net)
 
 
-@registry.register(
-    solver_name='ga', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='meta_heuristic')
-class GeneticAlgorithmSolver(MetaHeuristicSolver):
+@SolverRegistry.register(solver_name='ga_meta', solver_type='meta_heuristic')
+class GeneticAlgorithmSolver(BaseMetaHeuristicSolver):
     """
     Genetic Algorithm (GA) Solver for VNE
 
@@ -45,15 +43,12 @@ class GeneticAlgorithmSolver(MetaHeuristicSolver):
         prob_mutation: mutation probablity
         duplication_method: duplication method
     """
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
-        super(GeneticAlgorithmSolver, self).__init__(controller, recorder, counter, **kwargs)
-        # basic methods
-        self.shortest_method = 'k_shortest'
-        self.k_shortest = 10
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
+        super(GeneticAlgorithmSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         # super parameters
         self.num_environments = 1
-        self.num_chromosomes = 10   # number of chromosomes
-        self.max_iteration = 20    # max iteration
+        self.num_chromosomes = 8   # number of chromosomes
+        self.max_iteration = 12    # max iteration
         self.prob_crossover = 0.8  # crossover probablity
         self.duplication_method = 'roulette_wheel'
         assert self.num_chromosomes != 0 and self.num_chromosomes % 2 == 0
@@ -163,12 +158,12 @@ class GeneticAlgorithmSolver(MetaHeuristicSolver):
         for individual in self.next_generation:
             for v_node_id in individual.v_net.ranked_nodes:
                 if random.random() < self.prob_mutation:
-                    p_candicate = self.select_p_candicate(v_node_id, 
+                    p_candidate = self.select_p_candidate(v_node_id, 
                                                             individual.selected_p_nodes, 
                                                             p_node_weights=individual.p_net.node_ranking_values)
-                    if p_candicate == -1:
+                    if p_candidate == -1:
                         continue
-                    individual.update_solution(node_slots={v_node_id: p_candicate})
+                    individual.update_solution(node_slots={v_node_id: p_candidate})
         self.chromosomes = self.next_generation
         return self.chromosomes
 
@@ -186,12 +181,12 @@ class GeneticAlgorithmSolver(MetaHeuristicSolver):
             p_node_id = new_solution['node_slots'][v_node_id]
             # duplication p_net node
             if p_node_id in fixed_p_node_id:
-                p_candicate = self.select_p_candicate(v_node_id, 
+                p_candidate = self.select_p_candidate(v_node_id, 
                                                         list(new_solution['node_slots'].values()), 
                                                         p_node_weights=individual.p_net.node_ranking_values)
-                if p_candicate == -1:
+                if p_candidate == -1:
                     return False
-                new_solution['node_slots'][v_node_id] = p_candicate
+                new_solution['node_slots'][v_node_id] = p_candidate
             else:
                 continue
         individual.solution = new_solution

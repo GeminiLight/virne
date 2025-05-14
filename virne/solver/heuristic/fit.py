@@ -6,19 +6,19 @@
 import numpy as np
 import networkx as nx
 
-from ..solver import Solver
+from virne.solver.base_solver import Solver, SolverRegistry
 
 
 class FitSolver(Solver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super().__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super().__init__(controller, recorder, counter, logger, config, **kwargs)
 
 
 class FirstFitSolver(FitSolver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(FirstFitSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(FirstFitSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
 
     def solve(self, instance):
         v_net, p_net  = instance['v_net'], instance['p_net']
@@ -37,8 +37,8 @@ class FirstFitSolver(FitSolver):
 
 class RandomFitSolver(Solver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(RandomFitSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(RandomFitSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
 
     def select_action(self, env, v_node_id=None):
         if v_node_id is None:
@@ -56,8 +56,8 @@ class RandomFitSolver(Solver):
 
 class NearestFitSolver(Solver):
 
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(NearestFitSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(NearestFitSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
 
     def select_action(self, env, v_node_id=None):
         if v_node_id is None:

@@ -8,16 +8,12 @@ from ortools.linear_solver import pywraplp
 
 import pprint
 
-from virne.base import Solution
-from virne.base.environment import SolutionStepEnvironment
-from virne.solver import registry
-from ..solver import Solver
+from virne.core import Solution
+from virne.core.environment import SolutionStepEnvironment
+from virne.solver.base_solver import Solver, SolverRegistry
 
 
-@registry.register(
-    solver_name='mip', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='exact')
+@SolverRegistry.register(solver_name='mip', solver_type='exact')
 class MipSolver(Solver):
     """
     An exact solver based on Mixed Integer Programming (MIP) with OR-Tools.
@@ -25,8 +21,8 @@ class MipSolver(Solver):
     References:
         - Mosharaf Chowdhury et al. "ViNEYard: Virtual Network Embedding Algorithms With Coordinated Node and Link Mapping". In TON, 2012.
     """
-    def __init__(self, controller, recorder, counter, **kwargs):
-        super(MipSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        super(MipSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         # node mapping
         self.matching_mathod = kwargs.get('matching_mathod', 'greedy')
         # link mapping
@@ -48,7 +44,7 @@ class MipSolver(Solver):
         return self.solution
 
 
-    def construct_resource_dict(self, v_net, p_net, n_attr_name_list, e_attr_name_list, candicates_dict):
+    def construct_resource_dict(self, v_net, p_net, n_attr_name_list, e_attr_name_list, candidates_dict):
 
         def get_node_type(n_id):
             return 'p' if n_id < num_p_nodes else 'v'
@@ -73,11 +69,11 @@ class MipSolver(Solver):
                 return 0
             else:
                 if u > v:
-                    candicates = candicates_dict[u-num_p_nodes]
-                    return self.META_BW if v in candicates else 0
+                    candidates = candidates_dict[u-num_p_nodes]
+                    return self.META_BW if v in candidates else 0
                 else:
-                    candicates = candicates_dict[v-num_p_nodes]
-                    return self.META_BW if u in candicates else 0
+                    candidates = candidates_dict[v-num_p_nodes]
+                    return self.META_BW if u in candidates else 0
         
         num_p_nodes = p_net.number_of_nodes()
         num_v_nodes = v_net.number_of_nodes()
@@ -112,9 +108,9 @@ class MipSolver(Solver):
 
         n_attr_name_list = ['cpu']
         e_attr_name_list = ['bw']
-        candicates_dict = self.controller.construct_candidates_dict(v_net, p_net)
+        candidates_dict = self.controller.construct_candidates_dict(v_net, p_net)
         # {m: [p for p in p_node_list] for m in m_node_list}
-        node_resource_dict, edge_resource_dict = self.construct_resource_dict(v_net, p_net, n_attr_name_list, e_attr_name_list, candicates_dict)
+        node_resource_dict, edge_resource_dict = self.construct_resource_dict(v_net, p_net, n_attr_name_list, e_attr_name_list, candidates_dict)
         assert len(e_attr_name_list) == 1
 
         model = cp_model.CpModel()
@@ -174,7 +170,7 @@ class MipSolver(Solver):
 
         # Meta constraint
         for m in m_node_list:
-            model.Add(sum(x[(m,w)] for w in candicates_dict[m-num_p_nodes]) == 1)
+            model.Add(sum(x[(m,w)] for w in candidates_dict[m-num_p_nodes]) == 1)
 
         for w in p_node_list:
             model.Add(sum(x[(m,w)] for m in m_node_list) <= 1)
@@ -237,9 +233,9 @@ class MipSolver(Solver):
 
         n_attr_name_list = ['cpu']
         e_attr_name_list = ['bw']
-        candicates_dict = self.controller.construct_candidates_dict(v_net, p_net)
+        candidates_dict = self.controller.construct_candidates_dict(v_net, p_net)
         # {m: [p for p in p_node_list] for m in m_node_list}
-        node_resource_dict, edge_resource_dict = self.construct_resource_dict(v_net, p_net, n_attr_name_list, e_attr_name_list, candicates_dict)
+        node_resource_dict, edge_resource_dict = self.construct_resource_dict(v_net, p_net, n_attr_name_list, e_attr_name_list, candidates_dict)
         assert len(e_attr_name_list) == 1
 
         solver = pywraplp.Solver.CreateSolver('SCIP')
@@ -298,7 +294,7 @@ class MipSolver(Solver):
 
         # Meta constraint
         for m in m_node_list:
-            solver.Add(sum(x[(m,w)] for w in candicates_dict[m-num_p_nodes]) == 1)
+            solver.Add(sum(x[(m,w)] for w in candidates_dict[m-num_p_nodes]) == 1)
 
         for w in p_node_list:
             solver.Add(sum(x[(m,w)] for m in m_node_list) <= 1)

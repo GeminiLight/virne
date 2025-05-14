@@ -4,36 +4,39 @@
 
 
 import networkx as nx
-from abc import abstractclassmethod
 
-from virne.base import Controller, Recorder, Counter, Solution
-from virne.base.environment import SolutionStepEnvironment
+from virne.core import Controller, Recorder, Counter, Solution, Logger
+from virne.solver.base_solver import Solver, SolverRegistry
 
-from ..solver import Solver
+from ..base_solver import Solver
 from ..rank.node_rank import RWNodeRank, OrderNodeRank, RandomNodeRank
-from virne.solver import registry
 
 
 class BfsSolver(Solver):
     
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
-        super(BfsSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs) -> None:
+        super(BfsSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
+        self.max_visit = kwargs.get('max_visit', 50)
+        self.max_depth = kwargs.get('max_depth', 5)
+        # ranking strategy
+        self.reusable = kwargs.get('reusable', False)
+        # node mapping
+        self.matching_mathod = kwargs.get('matching_mathod', 'greedy')
+        # link mapping
+        self.shortest_method = kwargs.get('shortest_method', 'bfs_shortest')
+        self.k_shortest = kwargs.get('k_shortest', 10)
 
-    @abstractclassmethod
     def solve(self, instance: dict) -> Solution:
         raise NotImplementedError
 
 
-@registry.register(
-    solver_name='order_rank_bfs', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='heuristic')
+@SolverRegistry.register(solver_name='order_rank_bfs', solver_type='heuristic')
 class OrderRankBfsSolver(BfsSolver):
     """
     A BFS-based Node Rank solver that ranks nodes by their order in the graph.
     """
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
-        super(OrderRankBfsSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs) -> None:
+        super(OrderRankBfsSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         self.node_rank = OrderNodeRank()
 
     def solve(self, instance: dict) -> Solution:
@@ -49,16 +52,13 @@ class OrderRankBfsSolver(BfsSolver):
         return solution
 
 
-@registry.register(
-    solver_name='random_rank_bfs', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='heuristic')
+@SolverRegistry.register(solver_name='random_rank_bfs', solver_type='heuristic')
 class RandomRankBfsSolver(BfsSolver):
     """
     A BFS-based Node Rank solver that ranks nodes randomly.
     """
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
-        super(RandomRankBfsSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs) -> None:
+        super(RandomRankBfsSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         self.node_rank = RandomNodeRank()
 
     def solve(self, instance: dict) -> Solution:
@@ -71,14 +71,14 @@ class RandomRankBfsSolver(BfsSolver):
         sorted_p_nodes = list(p_net_rank)
 
         p_net_init_node = sorted_p_nodes[0]
-        solution = self.controller.bfs_deploy(v_net, p_net, sorted_v_nodes, p_net_init_node)
+        solution = self.controller.bfs_deploy(v_net, p_net, sorted_v_nodes, p_net_init_node, 
+                                              self.max_visit, self.max_depth,
+                                              shortest_method=self.shortest_method,
+                                              k=self.k_shortest)
         return solution
 
 
-@registry.register(
-    solver_name='rw_rank_bfs', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='heuristic')
+@SolverRegistry.register(solver_name='rw_rank_bfs', solver_type='heuristic')
 class RandomWalkRankBfsSolver(BfsSolver):
     """
     A BFS-based Node Rank solver that ranks nodes with random walk algorithm.
@@ -86,8 +86,8 @@ class RandomWalkRankBfsSolver(BfsSolver):
     References:
         - Cheng et al. "Virtual Network Embedding Through Topology-Aware Node Ranking". In SIGCOMM, 2011.
     """
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs) -> None:
-        super(RandomWalkRankBfsSolver, self).__init__(controller, recorder, counter, **kwargs)
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs) -> None:
+        super(RandomWalkRankBfsSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         self.node_rank = RWNodeRank()
 
     def solve(self, instance: dict) -> Solution:
@@ -105,5 +105,8 @@ class RandomWalkRankBfsSolver(BfsSolver):
         sorted_v_nodes = [n['node'] for n in sorted_v_net_node]
         sorted_p_nodes = [n for n in p_net_nodes_rank]
         p_net_init_node = sorted_p_nodes[0]
-        solution = self.controller.bfs_deploy(v_net, p_net, sorted_v_nodes, p_net_init_node)
+        solution = self.controller.bfs_deploy(v_net, p_net, sorted_v_nodes, p_net_init_node, 
+                                              self.max_visit, self.max_depth,
+                                              shortest_method=self.shortest_method,
+                                              k=self.k_shortest)
         return solution

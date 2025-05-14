@@ -8,11 +8,11 @@ import threading
 import numpy as np
 from threading import Thread
 
-from virne.base.environment import SolutionStepEnvironment
-from virne.solver import registry
-from .meta_heuristic_solver import Individual, MetaHeuristicSolver
-from virne.data import VirtualNetwork, PhysicalNetwork
-from virne.base import Controller, Recorder, Counter, Solution
+from virne.core.environment import SolutionStepEnvironment
+from .base_meta_heuristic_solver import Individual, BaseMetaHeuristicSolver
+from virne.network import VirtualNetwork, PhysicalNetwork
+from virne.core import Controller, Recorder, Counter, Solution, Logger
+from virne.solver.base_solver import Solver, SolverRegistry
 
 """
 [CEC, 2017]
@@ -30,11 +30,8 @@ class Ant(Individual):
         super(Ant, self).__init__(id, v_net, p_net)
 
 
-@registry.register(
-    solver_name='aco', 
-    env_cls=SolutionStepEnvironment,
-    solver_type='meta_heuristic')
-class AntColonyOptimizationSolver(MetaHeuristicSolver):
+@SolverRegistry.register(solver_name='aco_meta', solver_type='meta_heuristic')
+class AntColonyOptimizationSolver(BaseMetaHeuristicSolver):
     """
     Ant Colony Optimization (ACO) for VNE
 
@@ -53,18 +50,18 @@ class AntColonyOptimizationSolver(MetaHeuristicSolver):
         enhence_pheromone: enhance pheromone method, ['best', 'all', 'both']
         node_ranking_method: node ranking method, ['rw', 'dp']
     """
-    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, **kwargs):
-        super(AntColonyOptimizationSolver, self).__init__('aco_vne', controller, recorder, counter, **kwargs)
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
+        super(AntColonyOptimizationSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         # super parameters
-        self.num_ants = 10
-        self.max_iteration = 20
+        self.num_ants = 8
+        self.max_iteration = 12
         self.hop_range = 2  # hop-range within local search area
         self.alpha = 1.0    # control the influence of the amount of pheromone when making a choice in _pick_path()
         self.beta = 2.0     # control the influence of the distance to the next node in _pick_path()
         self.coeff_pheromone_evaporation = 0.5   # pheromone evaporation coefficient
         self.coeff_pheromone_enhancement = 1.  # enhance pheromone coefficient
         self.enhence_pheromone = 'best'
-        self.node_ranking_method = 'rw'
+        # self.node_ranking_method = 'rw'
 
     def meta_run(self, v_net: VirtualNetwork, p_net: PhysicalNetwork):
         self.heuristic_info = self.calc_heuristic_info(p_net)
@@ -145,13 +142,13 @@ class AntColonyOptimizationSolver(MetaHeuristicSolver):
                 self.pheromone_trail[v_node_id][p_node_id] = self.pheromone_trail[v_node_id][p_node_id] * self.coeff_pheromone_evaporation \
                                              + temp_pheromone_trail[v_node_id][p_node_id]
 
-    def select_p_candicate(self, v_node_id, selected_p_nodes):
-        p_candicates = self.get_p_condicates(v_node_id, selected_p_nodes)
-        if not p_candicates:
+    def select_p_candidate(self, v_node_id, selected_p_nodes):
+        p_candidates = self.get_p_condicates(v_node_id, selected_p_nodes)
+        if not p_candidates:
             return -1
         else:
             select_probs = {}
-            for p_node_id in p_candicates:
+            for p_node_id in p_candidates:
                 weighted_pheromone = pow(self.pheromone_trail[v_node_id][p_node_id], self.alpha)
                 weighted_heuristic = pow(self.heuristic_info[v_node_id][p_node_id], self.beta)
                 select_probs[p_node_id] = weighted_pheromone * weighted_heuristic
@@ -162,7 +159,7 @@ class AntColonyOptimizationSolver(MetaHeuristicSolver):
 
     def evolve(self, ant):
         for v_node_id in ant.v_net.ranked_nodes:
-            p_node_id = self.select_p_candicate(v_node_id, ant.selected_p_nodes)
+            p_node_id = self.select_p_candidate(v_node_id, ant.selected_p_nodes)
             if p_node_id != -1:
                 result, info = self.controller.place_and_route(ant.v_net, ant.p_net, v_node_id, p_node_id, ant.solution, shortest_method='bfs_shortest', k=1)
             else:

@@ -1,15 +1,13 @@
 from .bfs_trials import RandomRankBfsSolver, RandomWalkRankBfsSolver, OrderRankBfsSolver
-from .node_rank import NodeRankSolver, GRCRankSolver, FFDRankSolver,RandomRankSolver, PLRankSolver, \
+from .node_rank import BaseNodeRankSolver, GRCRankSolver, FFDRankSolver,RandomRankSolver, PLRankSolver, \
                         OrderRankSolver, RandomWalkRankSolver, NRMRankSolver
-
-from virne.base.environment import *
 
 
 __all__ = [
     'OrderRankBfsSolver',
     'RandomWalkRankBfsSolver',
     'RandomRankBfsSolver',
-    'NodeRankSolver', 
+    'BaseNodeRankSolver', 
     'GRCRankSolver', 
     'FFDRankSolver',
     'PLRankSolver',

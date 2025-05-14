@@ -1,15 +1,18 @@
 import torch
 import numpy as np
+import networkx as nx
 from torch_geometric.data import Data, Batch
+from torch_geometric.utils import sort_edge_index
 from sklearn.preprocessing import StandardScaler, Normalizer
 
-from virne.data import *
+from virne.network import *
 
 # A constant tensor used to mask values
 NEG_TENSER = torch.tensor(-1e8).float()
+ZERO_TENSER = torch.tensor(0.).float()
 
 
-def get_pyg_data(x, edge_index, edge_attr=None):
+def get_pyg_data(x, edge_index, edge_attr=None, sort_index=False):
     """
     Convert node and edge information into Pytorch Geometric format.
 
@@ -21,9 +24,14 @@ def get_pyg_data(x, edge_index, edge_attr=None):
     Returns:
         PyTorch Geometric Data object: Data object containing node and edge information in Pytorch Geometric format.
     """
-    x = torch.tensor(x)
+    x = torch.tensor(x, dtype=torch.float32)
     edge_index = torch.tensor(edge_index).long()
-    edge_attr = torch.tensor(edge_attr) if edge_attr is not None else None
+    edge_attr = torch.tensor(edge_attr, dtype=torch.float32) if edge_attr is not None else None
+    if sort_index:
+        if edge_attr is not None:
+            edge_index, edge_attr = sort_edge_index(edge_index, edge_attr)
+        else:
+            edge_index = sort_edge_index(edge_index)
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
     return data
 
@@ -159,6 +167,32 @@ def apply_mask_to_logit(logit, mask=None):
     masked_logit = torch.where(mask, logit, mask_value_tensor)
     return masked_logit
 
+def apply_mask_to_prob(prob, mask=None):
+    """
+    Apply a mask to a given logits tensor.
+
+    Args:
+        logit (tensor): input logits tensor
+        mask (tensor, optional): input mask tensor. Defaults to None.
+
+    Returns:
+        masked_logit (tensor): the masked logits tensor
+    """
+    if mask is None:
+        return prob
+    # mask = torch.IntTensor(mask).to(logit.device).expand_as(logit)
+    # masked_logit = logit + mask.log()
+    if not isinstance(mask, torch.Tensor):
+        mask = torch.BoolTensor(mask)
+    
+    # flag = ~torch.any(mask, dim=1, keepdim=True).repeat(1, mask.shape[-1])
+    # mask = torch.where(flag, True, mask)
+    
+    mask = mask.bool().to(prob.device).reshape(prob.size())
+    mask_value_tensor = ZERO_TENSER.type_as(prob).to(prob.device)
+    masked_logit = torch.where(mask, prob, mask_value_tensor)
+    return masked_logit
+
 def get_observations_sample(obs_batch, indices, device='cpu'):
     """
     Get a sample from an input observation batch given the indices.
@@ -258,3 +292,84 @@ def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, 
     new_count = tot_count
 
     return new_mean, new_var, new_count
+
+def sort_edge_index(
+    edge_index,
+    edge_attr=None,
+    num_nodes=None,
+    sort_by_row=True
+):
+    """
+    Row-wise sorts 'edge_index' using NumPy.
+
+    Args:
+        edge_index (np.ndarray): The edge indices.
+        edge_attr (np.ndarray or List[np.ndarray], optional): Edge weights
+            or multi-dimensional edge features.
+            If given as a list, will re-shuffle and remove duplicates for all
+            its entries. (default: None)
+        num_nodes (int, optional): The number of nodes, i.e.,
+            'max_val + 1' of 'edge_index'. (default: None)
+        sort_by_row (bool, optional): If set to False, will sort
+            'edge_index' column-wise/by destination node.
+            (default: True)
+
+    Returns:
+        np.ndarray if 'edge_attr' is not passed, else
+        (np.ndarray, Optional[np.ndarray] or List[np.ndarray])
+    """
+
+    if num_nodes is None:
+        num_nodes = np.max(edge_index) + 1
+
+    idx = edge_index[1 - int(sort_by_row)] * num_nodes
+    idx += edge_index[int(sort_by_row)]
+
+    perm = np.argsort(idx)
+
+    edge_index_sorted = edge_index[:, perm]
+
+    if edge_attr is None:
+        return edge_index_sorted, None
+    elif isinstance(edge_attr, np.ndarray):
+        return edge_index_sorted, edge_attr[perm]
+    elif isinstance(edge_attr, (list, tuple)):
+        return edge_index_sorted, [e[perm] for e in edge_attr]
+
+    return edge_index_sorted
+
+
+def get_all_possible_link_pairs(G):
+    rows, cols = np.triu_indices(G.number_of_nodes(), k=1)
+    all_possible_link_pairs = np.array([rows, cols]).T
+    return all_possible_link_pairs
+
+def get_unexistent_link_pairs(G, existent_link_pairs=None):
+    if existent_link_pairs is None:
+        existent_link_pairs = np.array(list(G.edges()))
+    all_possible_link_pairs = get_all_possible_link_pairs(G)
+    unexistent_link_pairs = set(map(tuple, all_possible_link_pairs)) - set(map(tuple, existent_link_pairs))
+    unexistent_link_pairs = np.array(list(unexistent_link_pairs))
+    return unexistent_link_pairs
+
+def get_useless_link_pairs(G, min_bw_resource=0):
+    network_bw_adj_array = nx.adjacency_matrix(G, weight='bw').toarray()
+    useless_link_indices = np.where(network_bw_adj_array < min_bw_resource)
+    useless_link_pairs = np.array([useless_link_indices[0], useless_link_indices[1]]).T
+    useless_link_pairs = [x for x in useless_link_pairs if x[0] <= x[1]]
+    useless_link_pairs = np.array(useless_link_pairs)
+    return useless_link_pairs
+
+def get_random_unexistent_links(unexistent_link_pairs, num_added_links):
+    num_unexistent_links = len(unexistent_link_pairs)
+    num_added_links = min(num_added_links, num_unexistent_links)
+    if num_added_links == 0:
+        return np.array([[], []]).T
+
+    if num_unexistent_links < num_added_links:
+        raise Warning(f'Number of unexistent links {num_unexistent_links} is less than number of links {num_added_links}')
+        # raise Exception(f'Number of unexistent links {num_unexistent_links} is less than number of links {unexistent_link_pairs}')
+    newly_edge_pairs = np.random.permutation(unexistent_link_pairs)
+    num_added_links = min(num_added_links, len(newly_edge_pairs))
+    newly_edge_pairs = newly_edge_pairs[:num_added_links]
+    return newly_edge_pairs

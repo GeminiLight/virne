@@ -238,3 +238,72 @@ class SinkhornNetwork(nn.Module):
                 ret_log_s.squeeze_(0)
 
             return torch.exp(ret_log_s)
+
+
+import torch
+from torch.nn.parameter import Parameter
+from torch.nn.modules.module import Module
+from torch.autograd import Variable
+import torch.nn.functional as F
+import numpy as np
+
+
+def logsumexp(inputs, dim=None, keepdim=False):
+    """Numerically stable logsumexp.
+
+    Args:
+        inputs: A Variable with any shape.
+        dim: An integer.
+        keepdim: A boolean.
+
+    Returns:
+        Equivalent of log(sum(exp(inputs), dim=dim, keepdim=keepdim)).
+    """
+    # For a 1-D array x (any array along a single dimension),
+    # log sum exp(x) = s + log sum exp(x - s)
+    # with s = max(x) being a common choice.
+    if dim is None:
+        inputs = inputs.view(-1)
+        dim = 0
+    s, _ = torch.max(inputs, dim=dim, keepdim=True)
+    outputs = s + (inputs - s).exp().sum(dim=dim, keepdim=True).log()
+    if not keepdim:
+        outputs = outputs.squeeze(dim)
+    return outputs
+
+
+class Sinkhorn(Module):
+    """
+    SinkhornNorm layer from https://openreview.net/forum?id=Byt3oJ-0W
+    
+    If L is too large or tau is too small, gradients will disappear 
+    and cause the network to NaN out!
+    """    
+    def __init__(self, sinkhorn_iters=5, tau=0.01):
+        super(Sinkhorn, self).__init__()
+        self.tau = tau
+        self.sinkhorn_iters = sinkhorn_iters
+
+    def row_norm(self, x):
+        """Unstable implementation"""
+        #y = torch.matmul(torch.matmul(x, self.ones), torch.t(self.ones))
+        #return torch.div(x, y)
+        """Stable, log-scale implementation"""
+        return x - logsumexp(x, dim=2, keepdim=True)
+
+    def col_norm(self, x):
+        """Unstable implementation"""
+        #y = torch.matmul(torch.matmul(self.ones, torch.t(self.ones)), x)
+        #return torch.div(x, y)
+        """Stable, log-scale implementation"""
+        return x - logsumexp(x, dim=1, keepdim=True)
+
+    def forward(self, x, eps=1e-6):
+        """ 
+            x: [batch_size, N, N]
+        """
+        x = x / self.tau
+        for _ in range(self.sinkhorn_iters):
+            x = self.row_norm(x)
+            x = self.col_norm(x)
+        return torch.exp(x) + eps

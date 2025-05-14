@@ -21,7 +21,7 @@ def clean_save_dir(dir):
     """
     Clean the useless directories in the save directory.
     """
-    sub_dirs = ['model', 'records', 'log']
+    sub_dirs = ['models', 'records', 'logs']
     algo_dir_list = [os.path.join(dir, algo_name) for algo_name in os.listdir(dir) if os.path.isdir(os.path.join(dir, algo_name))]
     for algo_dir in algo_dir_list:
         for run_id in os.listdir(algo_dir):
