@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 import logging
 from unittest.mock import PropertyMock, patch
-from virne.data.network.virtual_network import VirtualNetwork
+from virne.network.virtual_network import VirtualNetwork
 
 
 @pytest.fixture
