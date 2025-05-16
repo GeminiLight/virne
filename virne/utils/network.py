@@ -82,3 +82,24 @@ def flatten_recurrent_dict(recurrent_dict):
             raise ValueError('Unsupported types')
         else:
             pass
+
+def flatten_dict_list_for_gml(dicts):
+    """
+    Converts a list of dictionaries into a format safe for NetworkX GML:
+    - Each dict must have str keys and str/int/float values
+    - Returns list of cleaned dicts suitable for GML repeated keys
+    """
+    clean_list = []
+    for d in dicts:
+        flat = {str(k): str(v) for k, v in d.items()}
+        clean_list.append(flat)
+    return clean_list
+
+def sanitize_attr_setting(attrs):
+    """ Cast string values read in from GML file to ints """
+    for entry in attrs:
+        if "low" in entry:
+            entry["low"] = int(entry["low"])
+        if "high" in entry:
+            entry["high"] = int(entry["high"])
+    return attrs

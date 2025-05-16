@@ -13,7 +13,7 @@ from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
 from networkx.classes.filters import no_filter
 from omegaconf import DictConfig
 
-from virne.utils import write_setting
+from virne.utils import write_setting, flatten_dict_list_for_gml
 from virne.network.attribute import create_attr_from_dict, BaseAttribute, NodeAttribute
 
 
@@ -541,8 +541,32 @@ class BaseNetwork(nx.Graph):
         """
         return copy.deepcopy(self)
 
-    def to_gml(self, fpath):
-        nx.write_gml(self, fpath)
+    def _prepare_gml_graph(self) -> nx.Graph:
+        """
+        Return a GML-safe copy of the graph with structured metadata.
+        uses GML's native repeated-key support.
+        """
+        gml_safe_graph = nx.Graph()
+        gml_safe_graph.add_nodes_from(self.nodes(data=True))
+        gml_safe_graph.add_edges_from(self.edges(data=True))
+
+        # Flatten and store structured attributes safely
+        gml_safe_graph.graph["node_attrs_setting"] = flatten_dict_list_for_gml(
+            self.graph.get("node_attrs_setting", [])
+        )
+        gml_safe_graph.graph["link_attrs_setting"] = flatten_dict_list_for_gml(
+            self.graph.get("link_attrs_setting", [])
+        )
+
+        # Flatten other dict keys (topology, output)
+        for key in ["topology", "output"]:
+            d = self.graph.get(key, {})
+            if isinstance(d, dict):
+                for subk, subv in d.items():
+                    gml_safe_graph.graph[f"{key}_{subk}"] = str(subv)
+        
+        return gml_safe_graph
+
 
     @classmethod
     def from_gml(cls, fpath, label='id'):

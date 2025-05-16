@@ -6,10 +6,12 @@
 import os
 import copy
 import random
+import networkx as nx
 from typing import Optional
 import numpy as np
+from omegaconf import OmegaConf 
 
-from virne.utils import read_setting, write_setting, generate_data_with_distribution
+from virne.utils import read_setting, write_setting, generate_data_with_distribution,sanitize_attr_setting
 from virne.network.virtual_network import VirtualNetwork
 
 
@@ -37,7 +39,8 @@ class VirtualNetworkRequestSimulator(object):
         save_dataset: Save the simulated virtual network requests to a directory.
         load_dataset: Load the simulated virtual network requests from a directory.
     """
-
+    _cached_vnets_load = None
+        
     def __init__(self, v_sim_setting: dict, **kwargs):
         super(VirtualNetworkRequestSimulator, self).__init__()
         self.v_sim_setting = copy.deepcopy(v_sim_setting)
@@ -138,52 +141,83 @@ class VirtualNetworkRequestSimulator(object):
     def save_dataset(self, save_dir):
         """Save the dataset to a directory"""
         if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
+            os.makedirs(save_dir, exist_ok=True)
         v_nets_dir = os.path.join(save_dir, 'v_nets')
         if not os.path.exists(v_nets_dir):
             os.makedirs(v_nets_dir)
         # save v_nets
         for i, v_net in enumerate(self.v_nets):
-            v_net_id = getattr(v_net, 'id', i)
-            v_net.to_gml(os.path.join(v_nets_dir, f'v_net-{v_net_id:05d}.gml'))
-        # save events
-        write_setting(self.events, os.path.join(save_dir, self.v_sim_setting['events_file_name']), mode='w+')
-        self.save_setting(os.path.join(save_dir, self.v_sim_setting['setting_file_name']))
+            v_net_id = getattr(v_net, 'id', i) 
+            v_net.to_gml(os.path.join(v_nets_dir, f'v_net-{v_net_id:05d}.gml'))  
 
+    
     @staticmethod
-    def load_dataset(dataset_dir):
-        """Load the dataset from a directory"""
-        # load setting
-        if not os.path.exists(dataset_dir):
-            raise ValueError(f'Find no dataset in {dataset_dir}.\nPlease firstly generating it.')
-        v_sim_setting = None
-        try:
-            setting_fpath = os.path.join(dataset_dir, 'v_sim_setting.yaml')
-            v_sim_setting = read_setting(setting_fpath)
-        except Exception:
-            try:
-                setting_fpath = os.path.join(dataset_dir, 'v_sim_setting.json')
-                v_sim_setting = read_setting(setting_fpath)
-            except Exception as e:
-                raise ValueError(f"Could not read v_sim_setting from {dataset_dir}: {e}")
-        if not isinstance(v_sim_setting, dict):
-            raise ValueError(f"Loaded v_sim_setting is not a dict: {v_sim_setting}")
-        v_net_simulator = VirtualNetworkRequestSimulator.from_setting(v_sim_setting)
-        # load v_nets
-        v_net_fnames_list = os.listdir(os.path.join(dataset_dir, 'v_nets'))
-        v_net_fnames_list.sort()
+    def load_dataset(dataset_dir, v_sim_setting):
+        """
+        Load the dataset from a directory. Reconstructs the simulator by reading
+        each VirtualNetwork from GML and extracting metadata from the graph.
+        Only read files once, subsequent loads use cached copy
+        """ 
+        if VirtualNetworkRequestSimulator._cached_vnets_load is not None:
+            return copy.deepcopy(VirtualNetworkRequestSimulator._cached_vnets_load)
+
+        v_net_simulator = VirtualNetworkRequestSimulator.__new__(VirtualNetworkRequestSimulator)
+        v_net_simulator.v_sim_setting = copy.deepcopy(v_sim_setting)
+
+        # Allow adding new keys to structured OmegaConf
+        OmegaConf.set_struct(v_net_simulator.v_sim_setting, False)
+
+        v_net_simulator.v_nets = []
+        v_net_simulator.events = []
+
+        v_net_dir = os.path.join(dataset_dir, 'v_nets')
+        v_net_fnames_list = sorted(os.listdir(v_net_dir))
+
         for v_net_fname in v_net_fnames_list:
-            import pdb; pdb.set_trace()
-            v_net = VirtualNetwork.from_gml(os.path.join(dataset_dir, 'v_nets', v_net_fname))
+            v_net = VirtualNetwork.from_gml(os.path.join(v_net_dir, v_net_fname))
+
+            # Restore important attributes from .graph
+            object.__setattr__(v_net, 'id', int(v_net.graph.get('id')))
+            object.__setattr__(v_net, 'arrival_time', float(v_net.graph.get('arrival_time', 0.0)))
+            object.__setattr__(v_net, 'lifetime', float(v_net.graph.get('lifetime', 50.0)))
+            object.__setattr__(v_net, 'num_nodes', int(v_net.graph.get('num_nodes', v_net.number_of_nodes())))
+            object.__setattr__(v_net, 'type', v_net.graph.get('type', 'unknown'))
+
+            if 'max_latency' in v_net.graph:
+                object.__setattr__(v_net, 'max_latency', float(v_net.graph['max_latency']))
+
             v_net_simulator.v_nets.append(v_net)
-        # load events
-        try:
-            events = read_setting(os.path.join(dataset_dir, v_sim_setting['events_file_name']))
-        except Exception:
-            events = []
-        v_net_simulator.events = events
-        v_net_simulator.construct_v2event_dict()
-        return v_net_simulator
+
+        # Derive values from the VNets
+        v_net_simulator.num_v_nets = len(v_net_simulator.v_nets)
+        arrival_times = [v.arrival_time for v in v_net_simulator.v_nets]
+        lifetimes = [v.lifetime for v in v_net_simulator.v_nets]
+
+        arrival_intervals = np.diff([0.0] + arrival_times)
+        arrival_rate_lam = float(1.0 / np.mean(arrival_intervals)) if len(arrival_intervals) > 0 else 0.1
+        lifetime_avg = float(np.mean(lifetimes))
+
+        v_net_simulator.aver_arrival_rate = arrival_rate_lam
+        v_net_simulator.aver_lifetime = lifetime_avg
+
+        # Update only the necessary keys
+        v_net_simulator.v_sim_setting["num_v_nets"] = v_net_simulator.num_v_nets
+        v_net_simulator.v_sim_setting["arrival_rate"]["lam"] = arrival_rate_lam
+        v_net_simulator.v_sim_setting["lifetime"]["scale"] = lifetime_avg
+
+        v_net_simulator.v_sim_setting["node_attrs_setting"] = sanitize_attr_setting(
+            v_net_simulator.v_nets[0].graph.get("node_attrs_setting", [])
+        )
+        v_net_simulator.v_sim_setting["link_attrs_setting"] = sanitize_attr_setting(
+            v_net_simulator.v_nets[0].graph.get("link_attrs_setting", [])
+        )
+        
+        v_net_simulator.renew_events()
+         
+        VirtualNetworkRequestSimulator._cached_vnets_load = copy.deepcopy(v_net_simulator)
+        return copy.deepcopy(v_net_simulator)
+
+
 
     def save_setting(self, fpath):
         """Save the setting to a file"""

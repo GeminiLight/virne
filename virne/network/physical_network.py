@@ -219,6 +219,10 @@ class PhysicalNetwork(BaseNetwork):
     #         np.random.seed(seed)
     #     return net_instance
 
+    def to_gml(self, fpath):
+        gml_graph = self._prepare_gml_graph()
+        nx.write_gml(gml_graph, fpath)
+        
     def save_dataset(self, dataset_dir: str) -> None:
         """
         Saves the current physical network (topology and attributes) to a GML file.
@@ -269,7 +273,7 @@ class PhysicalNetwork(BaseNetwork):
             p_net.link_attr_benchmarks = p_net.get_link_attr_benchmarks()
             p_net.link_sum_attr_benchmarks = p_net.get_link_sum_attr_benchmarks()
             
-        print(f"Physical network dataset loaded from: {file_path}")
+        #print(f"Physical network dataset loaded from: {file_path}")
         return p_net
 
 # Example usage (optional, for testing or demonstration)

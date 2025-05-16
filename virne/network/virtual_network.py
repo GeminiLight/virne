@@ -6,6 +6,7 @@
 from functools import cached_property
 import numpy as np
 from typing import Any, List, Optional
+import networkx as nx
 
 from virne.network.base_network import BaseNetwork
 from virne.network.attribute import BaseAttribute
@@ -39,6 +40,17 @@ class VirtualNetwork(BaseNetwork):
         """Generates a virtual network topology."""
         super().generate_topology(num_nodes, type=type, **kwargs)
 
+    def to_gml(self, fpath):
+        gml_graph = self._prepare_gml_graph()
+
+        # vnet specfic metadata: only if defined
+        for key in ['id', 'arrival_time', 'lifetime', 'num_nodes', 'type']:
+            val = getattr(self, key, None)
+            if val is not None:
+                gml_graph.graph[key] = val
+
+        nx.write_gml(gml_graph, fpath)
+        
     @property
     def total_node_resource_demand(self) -> float:
         """Calculates the total resource demand of all nodes in the virtual network."""

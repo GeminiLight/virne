@@ -93,9 +93,10 @@ class BaseEnvironment:
             self.logger.info(f'Temp save record in {self.recorder.temp_save_path}\n')
 
         self.v_nets_dataset_dir = get_v_nets_dataset_dir_from_setting(self.v_net_simulator.v_sim_setting)
-        if os.path.exists(self.v_nets_dataset_dir) and seed is not None:
-            self.v_net_simulator = self.v_net_simulator.load_dataset(self.v_nets_dataset_dir)
-            self.logger.critical(f'Virtual networks: Load them from {self.v_nets_dataset_dir}')
+        v_net_dir= os.path.join( self.config.experiment.save_root_dir, self.v_nets_dataset_dir )
+        if os.path.exists(v_net_dir) and seed is not None and self.config.experiment.if_load_vnet:
+            self.v_net_simulator = self.v_net_simulator.load_dataset(v_net_dir, self.v_net_simulator.v_sim_setting)
+            self.logger.critical(f'Virtual networks: Load them from {v_net_dir}')
         else: 
             self.v_net_simulator.renew(v_nets=True, events=True, seed=seed)
             self.logger.critical(f'Virtual networks: Generate them with seed {seed}')

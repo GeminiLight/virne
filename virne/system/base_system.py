@@ -74,21 +74,36 @@ class BaseSystem:
             system = OnlineSystem(env, solver, logger, counter, controller, recorder, config)
         # if config.verbose >= 2: print(config)
         system.logger.info(f'Config: {pprint.pformat(OmegaConf.to_container(config, resolve=True))}')
+        cls.save_system( config,system)
+        return system
+
+    @classmethod
+    def save_system(cls, config, system ):
         if config.experiment.if_save_config:
             config_path = os.path.join(get_run_id_dir(config), 'config.yaml')
             with open(config_path, 'w') as f:
                 OmegaConf.save(config, f)
                 system.logger.info(f'Config saved to {config_path}')
-        return system
-
+        if config.experiment.if_save_pnet: 
+            p_net_dataset_dir = os.path.join(config.experiment.save_root_dir,config.simulation.p_net_dataset_dir)
+            system.env.p_net.save_dataset(p_net_dataset_dir)
+            system.logger.info(f'save p_net dataset to {p_net_dataset_dir}') 
+                
+    @classmethod
+    def optionally_save_vnets(cls, config, system ):
+        if config.experiment.if_save_vnet:  
+            v_net_dataset_dir = os.path.join(config.experiment.save_root_dir,config.simulation.v_nets_dataset_dir)
+            system.env.v_net_simulator.save_dataset(v_net_dataset_dir)
+            system.logger.info(f'save v_net dataset to {v_net_dataset_dir}')  
+            
     @classmethod
     def load_dataset(cls, logger, config):
         # Create p_net and v_net simulator
-        p_net_dataset_dir = config.simulation.p_net_dataset_dir
+        p_net_dataset_dir = os.path.join(config.experiment.save_root_dir,config.simulation.p_net_dataset_dir)
         logger.info(f'Dataset Dir of Physical Network: {p_net_dataset_dir}')
-        if os.path.exists(p_net_dataset_dir):
+        if os.path.exists(p_net_dataset_dir) and config.experiment.if_load_pnet:
             p_net = PhysicalNetwork.load_dataset(p_net_dataset_dir)
-            logger.critical(f'Physical Network: Load it from {p_net_dataset_dir}')
+            logger.critical(f'Physical Network: Loaded from {p_net_dataset_dir}')
             with open_dict(config):
                 config.p_net_setting.topology.num_nodes = p_net.num_nodes
                 if 'simulation' in config:
@@ -149,13 +164,17 @@ class OnlineSystem(BaseSystem):
 
     def run(self):
         self.ready()
-
+        vnets_saved = False
         for epoch_id in range(self.config.experiment.num_simulations):
             self.logger.info(f'\nEpoch {epoch_id}')
             self.env.epoch_id = epoch_id
             self.solver.epoch_id = epoch_id
 
             instance = self.env.reset(self.config.experiment.seed)
+            if not vnets_saved:
+                super().optionally_save_vnets(self.config, self) 
+                vnets_saved=True
+                
             self.get_process_bar(epoch_id)
 
             while True:
@@ -180,6 +199,7 @@ class ChangeableSystem(BaseSystem):
 
     def run(self):
         self.ready()
+        vnets_saved = False
 
         for epoch_id in range(self.config.experiment.num_simulations):
             self.logger.info(f'\nEpoch {epoch_id}')
@@ -189,6 +209,9 @@ class ChangeableSystem(BaseSystem):
             print('!!!set seed', self.config.experiment.seed)
             instance = self.env.reset(self.config.experiment.seed)
             self.env.v_net_simulator = Generator.generate_changeable_v_nets_dataset_from_config(self.config, save=False)
+            if not vnets_saved:
+                super().optionally_save_vnets(self.config, self) 
+                vnets_saved=True
             print('\n', [v.num_nodes for v in self.env.v_net_simulator.v_nets])
 
             self.get_process_bar(epoch_id)
