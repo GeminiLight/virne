@@ -19,7 +19,11 @@ experiment:
   run_id: auto  # if auto: hostname-datatime
   num_simulations: 1
   save_root_dir: virne/
-  if_save_config: true
+  if_save_config: true 
+  if_save_pnet: false
+  if_save_vnet: false 
+  if_load_pnet: false
+  if_load_vnet: false 
 
 # For Network System
 system:
