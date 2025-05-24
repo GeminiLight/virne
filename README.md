@@ -1,19 +1,20 @@
 <div align="center">
-<img src="resource/figures/virne-logo-text.png" width="200px"
+<img src="resources/figures/virne-logo-text.png" width="200px"
      alt="Virne Logo"
  /> 
 </div>
 <div align="center">
-<h2 align="center">A Simulator & Benchmark for NFV-RA</h2>
+<h2 align="center">A Comprehensive Simulator & Benchmark for NFV-RA</h2>
 </div>
 
 <div align="center">
-<img src="https://img.shields.io/badge/version-0.5.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" /> <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
+<img src="https://img.shields.io/badge/version-1.0.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" /> <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
 </div>
 
 <p align="center">
-  <a href="https://virne.readthedocs.io">Documentation</a> |
-  <a href="https://github.com/GeminiLight/virne?tab=readme-ov-file#citations">Citations</a> | 
+  <a href="resources/pdfs/virne_benchmark_paper.pdf">✨ Benchmark Paper</a> &nbsp;&nbsp;•&nbsp;&nbsp;
+  <a href="https://virne.readthedocs.io">Documentation</a> &nbsp;&nbsp;•&nbsp;&nbsp;
+  <a href="https://github.com/GeminiLight/virne?tab=readme-ov-file#citations">Citations</a> &nbsp;&nbsp;•&nbsp;&nbsp;
   <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a>
 </p>
 
@@ -26,7 +27,7 @@
 - **Service Function Chain Deployment (SFC Deployment)**
 - **Network Slicing** and so on.
 
-![](resource/figures/virne-architecture.png)
+![](resources/figures/virne-architecture.png)
 
 
 The main goal of Virne is to provide a unified and flexible framework for solving these problems. Its main characteristics are as follows.
