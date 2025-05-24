@@ -11,8 +11,6 @@ Learning-based Solver
     PgMlpSolver
     PgCnnSolver
     PgCnn2Solver
-    PgSeq2SeqSolver
-    A3CGcnSeq2SeqSolver
 
 
 Unsupervised Learning-based Solver

@@ -8,63 +8,21 @@ Installation
     Please ensure that the version of gym is **0.22.0**.
 
 
-Install with pip
-----------------
+Create a new conda environment
+------------------------------
 
 .. code-block:: bash
 
-    pip install virne
-
+    conda create -n virne python=3.10
+    conda activate virne
 
 Install with script
 -------------------
 
 .. code-block:: bash
 
-    # only cpu
+    # use cpu
     bash install.sh -c 0
 
-    # use cuda (e.g. cuda 11.3)
-    bash install.sh -c 11.3
-
-
-Selective installation
-----------------------
-
-
-Necessary
-~~~~~~~~~
-
-.. code-block:: bash
-    
-    pip install numpy pandas matplotlib networkx pyyaml tqdm ortools colorama
-
-
-Expansion
-~~~~~~~~~
-
-- Deep Learning
-
-.. code-block:: bash
-
-    # use cuda
-    conda install pytorch cudatoolkit=11.3 -c pytorch
-    pip install tensorboard
-
-    # only cpu
-    conda install pytorch -c pytorch
-    pip install tensorboard
-
-
-- Reinfocement Learning
-
-.. code-block:: bash
-
-    pip install gym=0.22.0
-
-
-- Graph Neural Network
-
-.. code-block:: bash
-
-    conda install pyg -c pyg -c conda-forge
+    # use cuda (only support cuda=12.4 and torch=2.6.0)
+    bash install.sh -c 12.4

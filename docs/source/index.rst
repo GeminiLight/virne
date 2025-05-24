@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Virne: An NFV-RA Simulator & Benchmark
-=====================================
+======================================
 
 **Virne** is a simulator and benchmark designed to address **resource allocation (RA) problems in network function virtualization (NFV)**, with a highlight on supporting **reinforcement learning (RL)**-based algorithms.
 
@@ -22,8 +22,8 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
       :class-header: sd-bg-info sd-text-white sd-font-weight-bold
       :class-card: sd-outline-info sd-rounded-1
 
-      1️⃣ Highly Customizable Simulations
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Highly Customizable Simulations
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
       Simulate diverse network environments (e.g., cloud, edge, 5G) with user-defined topologies, resources, and service requirements.
 
    .. grid-item-card::
@@ -31,8 +31,8 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
       :class-header: sd-bg-success sd-text-white sd-font-weight-bold
       :class-card: sd-outline-success sd-rounded-1
 
-      2️⃣ Extensive Algorithm Suite
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Extensive Algorithm Library
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
       Implements 30+ NFV-RA algorithms (exact, heuristics, meta-heuristics, RL-based) in a modular, extensible architecture.
 
    .. grid-item-card::
@@ -40,8 +40,8 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
       :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
       :class-card: sd-outline-primary sd-rounded-1
 
-      3️⃣ Reinforcement Learning Support
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Reinforcement Learning Support
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
       Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
 
    .. grid-item-card::
@@ -49,12 +49,12 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
       :class-header: sd-bg-warning sd-text-white sd-font-weight-bold
       :class-card: sd-outline-warning sd-rounded-1
 
-      4️⃣ In-depth Evaluation Aspects
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      In-depth Evaluation Aspects
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
       Enables insightful analysis beyond effectiveness, covering practicality perspectives such as solvability, generalization, and scalability.
 
 
-.. image:: _static/virne-architecture.jpg
+.. image:: _static/virne-architecture.png
   :width: 1000
   :alt: Overall Architecture of Virne
 
