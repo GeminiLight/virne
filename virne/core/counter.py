@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from omegaconf import OmegaConf, DictConfig
 from virne.network import BaseNetwork, VirtualNetwork
-from virne.network.attribute import create_attrs_from_setting
+from virne.network.attribute import create_node_attrs_from_setting, create_link_attrs_from_setting
 from .solution import Solution
 
 
@@ -22,12 +22,13 @@ class Counter(object):
         # self.revenue_start_price_weight = kwargs.get('revenue_start_price_weight', 1.)
         # node_attrs_setting = config.get('v_sim', {}).get('node_attrs_setting', [])
         # link_attrs_setting = config.get('v_sim', {}).get('link_attrs_setting', [])
-        self.all_node_attrs = list(create_attrs_from_setting(node_attrs_setting).values())
-        self.all_link_attrs = list(create_attrs_from_setting(link_attrs_setting).values())
+        self.all_node_attrs = list(create_node_attrs_from_setting(node_attrs_setting).values())
+        self.all_link_attrs = list(create_link_attrs_from_setting(link_attrs_setting).values())
         self.node_resource_attrs = [n_attr for n_attr in self.all_node_attrs if n_attr.type == 'resource']
         self.link_resource_attrs = [l_attr for l_attr in self.all_link_attrs if l_attr.type == 'resource']
         self.num_node_resource_attrs = len(self.node_resource_attrs)
         self.num_link_resource_attrs = len(self.link_resource_attrs)
+        self.config = config
 
     def count_partial_solution(self, v_net: VirtualNetwork, solution: Solution) -> dict:
         """

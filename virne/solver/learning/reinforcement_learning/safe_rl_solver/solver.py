@@ -3,13 +3,12 @@
 # ==============================================================================
 
 
-import numpy as np
-from gym import spaces
 from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
-
-import torch
+import os
 import numpy as np
+import torch
+import torch.nn as nn
 from omegaconf import open_dict
 
 from virne.network import PhysicalNetwork, VirtualNetwork
@@ -22,44 +21,30 @@ from virne.solver.learning.rl_core.rl_solver import PGSolver, A2CSolver, PPOSolv
 from virne.solver.learning.rl_core.instance_agent import InstanceAgent
 from virne.solver.learning.rl_core.tensor_convertor import TensorConvertor
 from virne.solver.learning.rl_core.policy_builder import PolicyBuilder, OptimizerBuilder
-from virne.solver.learning.rl_core.feature_constructor import FeatureConstructorRegistry, PNetVNodeFeatureConstructor
-from virne.solver.learning.rl_core.reward_calculator import RewardCalculatorRegistry, GradualIntermediateRewardCalculator, VanillaRewardCalculator
 from virne.solver.learning.reinforcement_learning.solver_maker import make_solver_class
 
-
-
-import os
-import torch
-import numpy as np
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions import Categorical
-from torch_geometric.data import Data, Batch
 
 from .net import ActorCritic
 from virne.solver.learning.rl_core import RLSolver, PPOSolver, A2CSolver, InstanceAgent, A3CSolver, NeuralLagrangianPPOSolver, SafeInstanceAgent
 from virne.solver.base_solver import SolverRegistry
 
 
-obs_as_tensor = TensorConvertor.obs_as_tensor_for_bi_gnn
-# make_policy = PolicyBuilder.build_bi_gcn_policy
+
+
+
+
+obs_as_tensor = TensorConvertor.obs_as_tensor_for_dual_gnn
+# make_policy = PolicyBuilder.build_dual_gcn_policy
 
 class BiGnnInstanceEnv(JointPRStepInstanceRLEnv):
     """
     RL environment for BiGNN-based solvers.
     """
     def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(BiGnnInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_net'
             config.rl.reward_calculator.name = 'vanilla'
-        self.feature_constructor = FeatureConstructorRegistry.get(config.rl.feature_constructor.name)(
-            self.node_attr_benchmarks or {},
-            self.link_attr_benchmarks or {},
-            self.link_sum_attr_benchmarks or {},
-            self.config
-        )
-        self.reward_calculator = RewardCalculatorRegistry.get(config.rl.reward_calculator.name)(self.config)
+        super(BiGnnInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
 

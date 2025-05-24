@@ -259,7 +259,7 @@ class TensorConvertor:
         return {**pv_nodes_obs, **tensor_general_obs}
 
     @staticmethod
-    def obs_as_tensor_for_bi_gnn(obs, device):
+    def obs_as_tensor_for_dual_gnn(obs, device):
         tensor_p_net_obs = TensorConvertor.p_net_obs_as_tensor(obs, device)
         tensor_v_net_obs = TensorConvertor.v_net_obs_as_tensor(obs, device)
         tensor_general_obs = TensorConvertor.general_obs_as_tensor(obs, device)

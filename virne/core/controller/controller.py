@@ -382,7 +382,7 @@ class Controller:
         Returns:
             Solution: The solution of mapping virtual network to physical network.
         """
-        solution = Solution(v_net)
+        solution = Solution.from_v_net(v_net)
 
         max_visit_at_every_depth = int(np.power(max_visit, 1 / max_depth))
         
@@ -479,7 +479,7 @@ class Controller:
             solution.update({'place_result': False, 'result': False})
             return
         # node mapping
-        node_mapping_result = self.node_mapping(v_net, p_net, list(node_slots.keys()), list(node_slots.values()), solution, 
+        node_mapping_result = self.node_mapper.node_mapping(v_net, p_net, list(node_slots.keys()), list(node_slots.values()), solution, 
                                                             reusable=False, inplace=True, matching_mathod='l2s2')
         if not node_mapping_result:
             solution.update({'place_result': False, 'result': False})
@@ -518,7 +518,7 @@ class Controller:
             solution.update({'place_result': False, 'result': False})
             return
         # node mapping
-        node_mapping_result = self.node_mapping(v_net, p_net, 
+        node_mapping_result = self.node_mapper.node_mapping(v_net, p_net, 
                                                 list(node_slots.keys()), 
                                                 list(node_slots.values()), 
                                                 solution,
@@ -558,7 +558,7 @@ class Controller:
             bool: True if the undo process is successful.
         """
         self.release(v_net, p_net, solution)
-        solution.reset()
+        solution = Solution.from_v_net(v_net)
         return True
 
     def find_candidate_nodes(

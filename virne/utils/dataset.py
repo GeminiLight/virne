@@ -4,8 +4,32 @@
 
 
 import os
+import random
 import numpy as np
+import torch
+from typing import Optional, Dict, Union
+from omegaconf import DictConfig, OmegaConf
 
+
+
+def set_seed(seed: Optional[int] = None):
+    """
+    Set the random seed for reproducibility.
+    
+    Args:
+        seed (int): The seed value.
+    """
+    if seed is None:
+        return
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
 def generate_data_with_distribution(size: int, distribution: str, dtype: str, **kwargs):
     """
@@ -58,12 +82,11 @@ def generate_file_name(config, epoch_id=0, extra_items=[], **kwargs):
     file_name = file_name_1 + file_name_3 + '.csv'
     return file_name
 
-def get_p_net_dataset_dir_from_setting(p_net_setting):
+def get_p_net_dataset_dir_from_setting(p_net_setting, seed: Optional[int] = None):
     """Get the directory of the dataset of physical networks from the setting of the physical network simulation."""
     p_net_dataset_dir = p_net_setting['output']['save_dir']
     n_attrs = [n_attr['name'] for n_attr in p_net_setting['node_attrs_setting']]
     e_attrs = [l_attr['name'] for l_attr in p_net_setting['link_attrs_setting']]
-
     if 'file_path' in p_net_setting['topology'] and p_net_setting['topology']['file_path'] not in ['', None, 'None'] and os.path.exists(p_net_setting['topology']['file_path']):
         p_net_name = f"{os.path.basename(p_net_setting['topology']['file_path']).split('.')[0]}"
     else:
@@ -71,12 +94,12 @@ def get_p_net_dataset_dir_from_setting(p_net_setting):
     node_attrs_str = '-'.join([f'{n_attr_setting["name"]}_{get_parameters_string(get_distribution_parameters(n_attr_setting))}' for n_attr_setting in p_net_setting['node_attrs_setting']])
     link_attrs_str = '-'.join([f'{e_attr_setting["name"]}_{get_parameters_string(get_distribution_parameters(e_attr_setting))}' for e_attr_setting in p_net_setting['link_attrs_setting']])
     p_net_dataset_middir = p_net_name + '-' + node_attrs_str + '-' + link_attrs_str
-                        # f"{n_attrs}-[{p_net_setting['node_attrs_setting'][0]['low']}-{p_net_setting['node_attrs_setting'][0]['high']}]-" + \
-                        # f"{e_attrs}-[{p_net_setting['link_attrs_setting'][0]['low']}-{p_net_setting['link_attrs_setting'][0]['high']}]"        
+    if seed is not None:
+        p_net_dataset_middir += f'-seed_{seed}'
     p_net_dataset_dir = os.path.join(p_net_dataset_dir, p_net_dataset_middir)
     return p_net_dataset_dir
 
-def get_v_nets_dataset_dir_from_setting(v_sim_setting):
+def get_v_nets_dataset_dir_from_setting(v_sim_setting, seed: Optional[int] = None):
     """Get the directory of the dataset of virtual networks from the setting of the virtual network simulation."""
     v_nets_dataset_dir = v_sim_setting['output']['save_dir']
     # n_attrs = [n_attr['name'] for n_attr in v_sim_setting['node_attrs_setting']]
@@ -87,10 +110,10 @@ def get_v_nets_dataset_dir_from_setting(v_sim_setting):
     v_nets_dataset_middir = f"{v_sim_setting['num_v_nets']}-[{v_sim_setting['v_net_size']['low']}-{v_sim_setting['v_net_size']['high']}]-" + \
                         f"{v_sim_setting['topology']['type']}-{get_parameters_string(get_distribution_parameters(v_sim_setting['lifetime']))}-{v_sim_setting['arrival_rate']['lam']}-" + \
                         node_attrs_str + '-' + link_attrs_str
-                        # f"{n_attrs}-[{v_sim_setting['node_attrs_setting'][0]['low']}-{v_sim_setting['node_attrs_setting'][0]['high']}]-" + \
-                        # f"{e_attrs}-[{v_sim_setting['link_attrs_setting'][0]['low']}-{v_sim_setting['link_attrs_setting'][0]['high']}]"
-    v_net_dataset_dir = os.path.join(v_nets_dataset_dir, v_nets_dataset_middir)
-    return v_net_dataset_dir
+    if seed is not None:
+        v_nets_dataset_middir += f'-seed_{seed}'
+    v_nets_dataset_dir = os.path.join(v_nets_dataset_dir, v_nets_dataset_middir)
+    return v_nets_dataset_dir
 
 def get_distribution_parameters(distribution_dict):
     """Get the parameters of the distribution."""

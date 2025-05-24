@@ -18,7 +18,6 @@ import torch.nn.functional as F
 import torch.multiprocessing as mp
 from torch.multiprocessing import Process, Pool
 from torch.distributions import Categorical
-from torch.utils.tensorboard import SummaryWriter
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from abc import abstractmethod
 
@@ -121,7 +120,7 @@ class RLSolver(Solver):
 
     @abstractmethod
     def preprocess_obs(self, obs):
-        return NotImplementedError
+        raise NotImplementedError
 
     def solve_with_baseline(self, instance, baseline='grc'):
         if self.baseline_solver is None:
@@ -276,7 +275,7 @@ class RLSolver(Solver):
             'optimizer': self.optimizer.state_dict(),
             # 'lr_scheduler_state_dict': self.lr_scheduler.state_dict()
         }, checkpoint_fname)
-        print(f'Save model to {checkpoint_fname}\n') if self.verbose >= 0 else None
+        self.logger.critical(f'Save model to {checkpoint_fname}\n')
 
     def load_model(self, checkpoint_path):
         print('Attempting to load the pretrained model')
@@ -287,9 +286,9 @@ class RLSolver(Solver):
             else:
                 self.policy.load_state_dict(checkpoint['policy'])
                 self.optimizer.load_state_dict(checkpoint['optimizer'])
-            self.logger.critical(f'Parameter Initialization: Loaded pretrained model from {checkpoint_path}') if self.verbose >= 0 else None
+            self.logger.critical(f'Parameter Initialization: Loaded pretrained model from {checkpoint_path}')
         except Exception as e:
-            self.logger.critical(f'Parameter Initialization: Load pretrained failed from {checkpoint_path}\nInitilized with random parameters') if self.verbose >= 0 else None
+            self.logger.critical(f'Parameter Initialization: Load pretrained failed from {checkpoint_path}\n{e}\nInitilized with random parameters')
 
     def train(self):
         """Set the mode to train"""
@@ -539,9 +538,6 @@ class PPOSolver(RLSolver):
 
             self.update_time += 1
 
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()
@@ -622,9 +618,6 @@ class ARPPOSolver(RLSolver):
 
             self.update_time += 1
 
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         self.buffer.clear()
 
@@ -710,9 +703,6 @@ class DDPGSolver(RLSolver):
 
             self.update_time += 1
 
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()

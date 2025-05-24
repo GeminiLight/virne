@@ -2,20 +2,36 @@ import numpy as np
 import networkx as nx
 from typing import Any, Dict, List, Optional, Union, Tuple, TYPE_CHECKING
 
-from .base_attribute import NodeAttribute
-from .attribute_method import ResourceAttributeMethod, ExtremaAttributeMethod, InformationAttributeMethod, ConstraintAttributeMethod
+from virne.network.attribute.base_attribute import BaseAttribute, _get_config_value
+from virne.network.attribute.attribute_method import ResourceAttributeMethod, ExtremaAttributeMethod, InformationAttributeMethod, ConstraintAttributeMethod
 if TYPE_CHECKING:
-    from ..network import BaseNetwork
+    from virne.network.base_network import BaseNetwork
 
 
-
-def _get_config_value(config: Union[dict, Any], key: str, default: Any = None) -> Any:
+class NodeAttribute(BaseAttribute):
     """
-    Safely get a value from a config dict or OmegaConf object.
+    Concrete node attribute class with set/get methods for node-level attributes.
+    Inherit and extend for custom node attribute logic.
     """
-    if hasattr(config, 'get'):
-        return config.get(key, default)
-    return getattr(config, key, default) if hasattr(config, key) else default
+    def get(self, net: Any, id: Any) -> Any:
+        name = getattr(self, 'name', None)
+        if name is None:
+            raise AttributeError("NodeAttribute requires 'name' attribute in the main class.")
+        return net.nodes[id][name]
+
+    def set_data(self, network: 'BaseNetwork', attribute_data: Union[dict, list, np.ndarray]) -> None:
+        name = getattr(self, 'name', None)
+        if name is None:
+            raise AttributeError("NodeAttribute requires 'name' attribute in the main class.")
+        if not isinstance(attribute_data, dict):
+            attribute_data = {n: attribute_data[i] for i, n in enumerate(network.nodes)}
+        nx.set_node_attributes(network, attribute_data, name)
+
+    def get_data(self, network: 'BaseNetwork') -> List[Any]:
+        name = getattr(self, 'name', None)
+        if name is None:
+            raise AttributeError("NodeAttribute requires 'name' attribute in the main class.")
+        return list(nx.get_node_attributes(network, name).values())
 
 
 class NodeStatusAttribute(InformationAttributeMethod, NodeAttribute):

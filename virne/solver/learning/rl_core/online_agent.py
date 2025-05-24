@@ -24,7 +24,7 @@ class OnlineAgent(object):
         for epoch_id in range(num_epochs):
             obs = env.reset()
             success_count = 0
-            for i in range(env.num_v_nets):
+            for i in range(env.v_net_simulator.num_v_nets):
                 tensor_obs = self.preprocess_obs(obs, self.device)
                 action, action_logprob = self.select_action(tensor_obs, sample=True)
                 value = self.estimate_value(tensor_obs)
@@ -41,7 +41,7 @@ class OnlineAgent(object):
                         # self.buffer.rewards = ((np.array(self.buffer.rewards) - self.running_stats.mean) / (np.sqrt(self.running_stats.var + 1e-9))).tolist()
                     self.buffer.compute_returns_and_advantages(last_value, gamma=self.config.rl.gamma, gae_lambda=self.gae_lambda, method=self.compute_return_method)
                     loss = self.update()
-            print(f'\nepoch {epoch_id:4d}, success_count {success_count:5d}, r2c {info["long_term_r2c_ratio"]:1.4f}, {self.running_stats.mean}-{np.sqrt(self.running_stats.var)}') if self.verbose > 0 else None
+            print(f'\nepoch {epoch_id:4d}, success_count {success_count:5d}, r2c {info["long_term_r2c_ratio"]:1.4f}, {self.running_stats.mean}-{np.sqrt(self.running_stats.var)}')
             if self.rank == 0:
                 if (epoch_id + 1) != num_epochs and (epoch_id + 1) % self.config.training.eval_interval == 0:
                     self.validate(env)
@@ -49,10 +49,10 @@ class OnlineAgent(object):
                     self.save_model(f'model-{epoch_id}.pkl')
 
     def validate(self, env, checkpoint_path=None):
-        print(f"\n{'-' * 20}  Validate  {'-' * 20}\n") if self.verbose >= 0 else None
+        self.logger.info(f"\n{'-' * 20}  Validate  {'-' * 20}\n")
         if checkpoint_path is not None: self.load_model(checkpoint_path)
 
-        pbar = tqdm.tqdm(desc=f'Validate', total=env.num_v_nets) if self.verbose <= 1 else None
+        pbar = tqdm.tqdm(desc=f'Validate', total=env.v_net_simulator.num_v_nets)
         
         instance = env.reset(0)
         while True:
@@ -72,4 +72,4 @@ class OnlineAgent(object):
             instance = next_instance
 
         if pbar is not None: pbar.close()
-        print(f"\n{'-' * 20}     Done    {'-' * 20}\n") if self.verbose >= 0 else None
+        self.logger.info(f"\n{'-' * 20}     Done    {'-' * 20}\n")

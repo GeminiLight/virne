@@ -20,10 +20,10 @@ experiment:
   num_simulations: 1
   save_root_dir: virne/
   if_save_config: true 
-  if_save_pnet: false
-  if_save_vnet: false 
-  if_load_pnet: false
-  if_load_vnet: false 
+  if_save_p_net: false
+  if_save_v_nets: false 
+  if_load_p_net: false
+  if_load_v_nets: false 
 
 # For Network System
 system:
@@ -35,7 +35,7 @@ system:
 
 # For VNE Solver
 solver:
-  solver_name: 'ppo_gcn_mlp+'
+  solver_name: 'ppo_dual_gat+'
 
   matching_mathod: greedy
   shortest_method: k_shortest

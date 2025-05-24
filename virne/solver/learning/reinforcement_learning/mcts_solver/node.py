@@ -38,7 +38,7 @@ class State:
         Success: reward = revenue - cost
         Failure: reward = -inf
         """
-        solution = Solution(self.v_net)
+        solution = Solution.from_v_net(self.v_net)
         for i in range(self.v_net.num_nodes):
             solution['node_slots'].update({i: self.selected_p_net_nodes[i]})
         link_result = self.controller.link_mapper.link_mapping(self.v_net, self.p_net, solution=solution,

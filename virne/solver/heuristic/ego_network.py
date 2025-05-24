@@ -22,7 +22,7 @@ class EgoNetworkSolver(Solver):
 
     def solve(self, instance):
         v_net, p_net  = instance['v_net'], instance['p_net']
-        self.solution = Solution(v_net)
+        self.solution = Solution.from_v_net(v_net)
         mapping_result = self.mapping(v_net, p_net)
         self.solution['result'] = True if mapping_result else False
         return self.solution

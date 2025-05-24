@@ -10,7 +10,7 @@ from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 import torch
 import numpy as np
-from omegaconf import open_dict
+from omegaconf import DictConfig, open_dict
 
 from virne.network import PhysicalNetwork, VirtualNetwork
 from virne.core import Controller, Recorder, Counter, Solution, Logger
@@ -33,36 +33,23 @@ class GnnMlpInstanceEnv(JointPRStepInstanceRLEnv):
     """
     RL environment for GNN-MLP-based solvers.
     """
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(GnnMlpInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
-        self.feature_constructor = PNetVNodeFeatureConstructor(
-            self.node_attr_benchmarks or {},
-            self.link_attr_benchmarks or {},
-            self.link_sum_attr_benchmarks or {},
-            self.config
-        )
+        super(GnnMlpInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 class A3cGcnMlpInstanceEnv(JointPRStepInstanceRLEnv):
     """
     RL environment for GNN-MLP-based solvers.
     """
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(A3cGcnMlpInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
             config.rl.feature_constructor.if_use_degree_metric = False
             config.rl.feature_constructor.if_use_more_topological_metrics = False
             config.rl.feature_constructor.if_use_aggregated_link_attrs = True
             config.rl.feature_constructor.if_use_node_status_flags = True
-        self.feature_constructor = PNetVNodeFeatureConstructor(
-            self.node_attr_benchmarks or {},
-            self.link_attr_benchmarks or {},
-            self.link_sum_attr_benchmarks or {},
-            self.config
-        )
-        self.reward_calculator = GradualIntermediateRewardCalculator(self.config)
+        super(A3cGcnMlpInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
 @SolverRegistry.register(solver_name='a3n_gcn_mlp', solver_type='r_learning')

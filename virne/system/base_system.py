@@ -8,6 +8,7 @@ from sympy import im
 import tqdm
 import pprint
 import random
+import numpy as np
 import copy
 from typing import Union, Dict, TYPE_CHECKING
 from omegaconf import OmegaConf, DictConfig, open_dict
@@ -23,19 +24,22 @@ from virne.network import BaseNetwork, PhysicalNetwork, VirtualNetwork, Generato
 from virne.solver.base_solver import SolverRegistry, Solver
 from virne.solver.learning.rl_core import RLSolver
 from virne.utils.config import get_run_id_dir
+from typing import Tuple
+
+from virne.utils.dataset import set_seed
 
 
 class BaseSystem:
 
     def __init__(
             self, 
-            env: 'BaseEnvironment', 
-            solver: 'Solver',
-            logger: 'Logger',
-            counter: 'Counter',
-            controller: 'Controller',
-            recorder: 'Recorder',
-            config: Union[DictConfig, Dict],
+            env: BaseEnvironment, 
+            solver: Solver,
+            logger: Logger,
+            counter: Counter,
+            controller: Controller,
+            recorder: Recorder,
+            config: DictConfig,
         ):
         self.env = env
         self.solver = solver
@@ -72,50 +76,45 @@ class BaseSystem:
             system = TimeWindowSystem(env, solver, logger, counter, controller, recorder, config)
         else:
             system = OnlineSystem(env, solver, logger, counter, controller, recorder, config)
-        # if config.verbose >= 2: print(config)
-        system.logger.info(f'Config: {pprint.pformat(OmegaConf.to_container(config, resolve=True))}')
-        cls.save_system( config,system)
+        system.logger.info(f'Config:\n{pprint.pformat(OmegaConf.to_container(config, resolve=True))}')
+        system.save_system(config)
         return system
 
-    @classmethod
-    def save_system(cls, config, system ):
+    def save_system(self, config):
         if config.experiment.if_save_config:
             config_path = os.path.join(get_run_id_dir(config), 'config.yaml')
             with open(config_path, 'w') as f:
                 OmegaConf.save(config, f)
-                system.logger.info(f'Config saved to {config_path}')
-        if config.experiment.if_save_pnet: 
-            p_net_dataset_dir = os.path.join(config.experiment.save_root_dir,config.simulation.p_net_dataset_dir)
-            system.env.p_net.save_dataset(p_net_dataset_dir)
-            system.logger.info(f'save p_net dataset to {p_net_dataset_dir}') 
-                
+                self.logger.info(f'Config saved to {config_path}')
+        if config.experiment.if_save_p_net: 
+            p_net_dataset_dir = config.simulation.p_net_dataset_dir
+            self.env.p_net.save_dataset(p_net_dataset_dir)
+            self.logger.info(f'save p_net dataset to {p_net_dataset_dir}') 
+        if config.experiment.if_save_v_nets:
+            v_nets_dataset_dir = config.simulation.v_nets_dataset_dir
+            self.env.v_net_simulator.renew(v_nets=True, events=True, seed=config.experiment.seed)
+            self.env.v_net_simulator.save_dataset(v_nets_dataset_dir)
+            self.logger.info(f'save v_nets dataset to {v_nets_dataset_dir}') 
+
     @classmethod
-    def optionally_save_vnets(cls, config, system ):
-        if config.experiment.if_save_vnet:  
-            v_net_dataset_dir = os.path.join(config.experiment.save_root_dir,config.simulation.v_nets_dataset_dir)
-            system.env.v_net_simulator.save_dataset(v_net_dataset_dir)
-            system.logger.info(f'save v_net dataset to {v_net_dataset_dir}')  
-            
-    @classmethod
-    def load_dataset(cls, logger, config):
-        # Create p_net and v_net simulator
-        p_net_dataset_dir = os.path.join(config.experiment.save_root_dir,config.simulation.p_net_dataset_dir)
+    def load_dataset(
+        cls, 
+        logger: Logger, 
+        config: DictConfig,
+    ) -> Tuple[PhysicalNetwork, VirtualNetworkRequestSimulator]:
+        p_net_dataset_dir = config.simulation.p_net_dataset_dir
         logger.info(f'Dataset Dir of Physical Network: {p_net_dataset_dir}')
-        if os.path.exists(p_net_dataset_dir) and config.experiment.if_load_pnet:
+        logger.info(f'Fix seed: {config.experiment.seed}')
+        if os.path.exists(p_net_dataset_dir) and config.experiment.if_load_p_net:
             p_net = PhysicalNetwork.load_dataset(p_net_dataset_dir)
             logger.critical(f'Physical Network: Loaded from {p_net_dataset_dir}')
-            with open_dict(config):
-                config.p_net_setting.topology.num_nodes = p_net.num_nodes
-                if 'simulation' in config:
-                    config.simulation.p_net_num_nodes = p_net.num_nodes
         else:
-            p_net = PhysicalNetwork.from_setting(config.p_net_setting)
+            p_net = PhysicalNetwork.from_setting(config.p_net_setting, seed=config.experiment.seed)
             logger.critical(f'Physical Network: Regenerate it from setting')
-            with open_dict(config):
-                config.p_net_setting.topology.num_nodes = p_net.num_nodes
-                if 'simulation' in config:
-                    config.simulation.p_net_num_nodes = p_net.num_nodes
-        v_net_simulator = VirtualNetworkRequestSimulator.from_setting(config.v_sim_setting)
+        with open_dict(config):
+            config.p_net_setting.topology.num_nodes = p_net.num_nodes
+            config.simulation.p_net_num_nodes = p_net.num_nodes
+        v_net_simulator = VirtualNetworkRequestSimulator.from_setting(config.v_sim_setting, seed=config.experiment.seed)
         return p_net, v_net_simulator
 
     def reset(self):
@@ -145,7 +144,7 @@ class BaseSystem:
         if self.pbar is not None: self.pbar.close()
 
     def get_process_bar(self, epoch_id):
-        self.pbar = tqdm.tqdm(desc=f'Running with {self.config.solver.solver_name} in epoch {epoch_id}', total=self.env.num_v_nets)
+        self.pbar = tqdm.tqdm(desc=f'Running with {self.config.solver.solver_name} in epoch {epoch_id}', total=self.env.v_net_simulator.num_v_nets)
 
     def update_process_bar(self, info):
         if self.pbar is not None: 
@@ -164,17 +163,13 @@ class OnlineSystem(BaseSystem):
 
     def run(self):
         self.ready()
-        vnets_saved = False
         for epoch_id in range(self.config.experiment.num_simulations):
-            self.logger.info(f'\nEpoch {epoch_id}')
+            self.logger.info(f'Epoch {epoch_id}')
             self.env.epoch_id = epoch_id
             self.solver.epoch_id = epoch_id
 
             instance = self.env.reset(self.config.experiment.seed)
-            if not vnets_saved:
-                super().optionally_save_vnets(self.config, self) 
-                vnets_saved=True
-                
+
             self.get_process_bar(epoch_id)
 
             while True:
@@ -199,27 +194,26 @@ class ChangeableSystem(BaseSystem):
 
     def run(self):
         self.ready()
-        vnets_saved = False
 
         for epoch_id in range(self.config.experiment.num_simulations):
-            self.logger.info(f'\nEpoch {epoch_id}')
+            self.logger.info(f'Epoch {epoch_id}')
             self.env.epoch_id = epoch_id
             self.solver.epoch_id = epoch_id
-
-            print('!!!set seed', self.config.experiment.seed)
             instance = self.env.reset(self.config.experiment.seed)
+
             self.env.v_net_simulator = Generator.generate_changeable_v_nets_dataset_from_config(self.config, save=False)
-            if not vnets_saved:
-                super().optionally_save_vnets(self.config, self) 
-                vnets_saved=True
-            print('\n', [v.num_nodes for v in self.env.v_net_simulator.v_nets])
-
+            self.logger.info([v.num_nodes for v in self.env.v_net_simulator.v_nets])
             self.get_process_bar(epoch_id)
-            for v_net in self.env.v_net_simulator.v_nets:
-                solution = self.solver.solve(instance, v_net)
-                self.env.step(solution)
+            while True:
+                solution = self.solver.solve(instance)
 
-                self.update_process_bar(self.env.counter.get_info())
+                next_instance, _, done, info = self.env.step(solution)
+
+                self.update_process_bar(info)
+
+                if done:
+                    break
+                instance = next_instance
 
         self.complete()
 
@@ -237,7 +231,7 @@ class OfflineSystem(BaseSystem):
 
         def _scale_attr_data(attr_data):
             # attr_data_new = [int((v - 50) * 1.6) for v in attr_data]
-            attr_data_new = [int(v * 0.5) for v in attr_data]
+            attr_data_new = [int(v * 0.75) for v in attr_data]
             # set seed for reproducibility
             random.seed(self.seed_for_regeneration)
             random.shuffle(attr_data_new)
@@ -262,7 +256,7 @@ class OfflineSystem(BaseSystem):
         self.ready()
 
         for epoch_id in range(self.config.experiment.num_simulations):
-            print(f'\nEpoch {epoch_id}') if self.verbose >= 2 else None
+            self.logger.info(f'Epoch {epoch_id}')
             self.env.epoch_id = epoch_id
             self.solver.epoch_id = epoch_id
 
@@ -314,14 +308,14 @@ class TimeWindowSystem(BaseSystem):
         return enter_event_list, leave_event_list
 
     def _transit(self, solution_dict):
-        return NotImplementedError
+        raise NotImplementedError
 
     def run(self):
         self.ready()
         
         for epoch_id in range(self.config.experiment.num_simulations):
-            print(f'\nEpoch {epoch_id}') if self.verbose >= 2 else None
-            pbar = tqdm.tqdm(desc=f'Running with {self.solver.name} in epoch {epoch_id}', total=self.env.num_v_nets) if self.verbose <= 1 else None
+            self.logger.info(f'Epoch {epoch_id}')
+            pbar = tqdm.tqdm(desc=f'Running with {self.solver.name} in epoch {epoch_id}', total=self.env.v_net_simulator.num_v_nets)
             instance = self.env.reset(self.config.experiment.seed)
 
             current_event_id = 0

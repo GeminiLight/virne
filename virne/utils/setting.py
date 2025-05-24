@@ -7,7 +7,7 @@ import json
 import yaml
 
 
-def read_setting(fpath, mode='r'):
+def read_setting(fpath, mode='r') -> dict:
     """Read the setting from a file"""
     with open(fpath, mode, encoding='utf-8') as f:
         if fpath[-4:] == 'json':
@@ -15,7 +15,7 @@ def read_setting(fpath, mode='r'):
         elif fpath[-4:] == 'yaml':
             setting_dict = yaml.load(f, Loader=yaml.Loader)
         else:
-            return ValueError('Only supports settings files in yaml and json format!')
+            raise ValueError('Only supports settings files in yaml and json format!')
     return setting_dict
 
 def write_setting(setting_dict, fpath, mode='w'):

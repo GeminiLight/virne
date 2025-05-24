@@ -150,7 +150,7 @@ class GaeClusteringSolver(Solver):
             p_net.__dict__ = copy.deepcopy(temp_p_net.__dict__)
             return solution
         else:
-            return Solution(v_net)
+            return Solution.from_v_net(v_net)
 
     def sample_from_p_net(self, cluster_index, cluster_id):
         """return a node from one cluste"""

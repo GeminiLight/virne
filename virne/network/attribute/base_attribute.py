@@ -32,6 +32,7 @@ class BaseAttribute(abc.ABC):
     min: Optional[float] = None  # Add min attribute with a default value
     max: Optional[float] = None  # Add max attribute with a default value
     originator: Optional[str] = None  # For extrema attributes
+    is_constraint: bool = False  # For constraint checking attributes
 
     def __init__(self, name: str, owner: str, type: str, generative: bool = False, **kwargs):
         self.name = name
@@ -43,10 +44,6 @@ class BaseAttribute(abc.ABC):
             # if hasattr(self, key):
             setattr(self, key, value)
 
-    # @abc.abstractmethod
-    # def get(self, net: Any, id: Any) -> Any:
-    #     pass
-
     @abc.abstractmethod
     def set_data(self, network: 'BaseNetwork', attribute_data: Union[dict, list, np.ndarray]) -> None:
         pass
@@ -54,6 +51,18 @@ class BaseAttribute(abc.ABC):
     @abc.abstractmethod
     def get_data(self, network: 'BaseNetwork') -> List[Any]:
         pass
+
+    def generate_data(self, network: 'BaseNetwork') -> np.ndarray:
+        """
+        Generate data for the attribute based on the network.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def update_data(self, network: 'BaseNetwork', attribute_data: Union[dict, list, np.ndarray]) -> None:
+        """
+        Update the attribute data in the network.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
 
     def to_dict(self) -> dict:
         return self.__dict__.copy()
@@ -86,107 +95,15 @@ class BaseAttribute(abc.ABC):
             data = np.random.uniform(0., 1., size)
             return data * (self.max - self.min) + self.min
         else:
-            raise NotImplementedError(f"Distribution '{self.distribution}' is not implemented.")
+            HINT = "You may initialize the attribute with a distribution key, e.g., 'uniform', 'normal', 'exponential', 'poisson', or 'customized'."
+            raise NotImplementedError(f"Distribution '{self.distribution}' is not implemented.\n{HINT}")
         return generate_data_with_distribution(size, distribution=self.distribution, dtype=self.dtype or "float", **kwargs)
 
 
-class NodeAttribute(BaseAttribute):
+def _get_config_value(config: Union[dict, Any], key: str, default: Any = None) -> Any:
     """
-    Concrete node attribute class with set/get methods for node-level attributes.
-    Inherit and extend for custom node attribute logic.
+    Safely get a value from a config dict or OmegaConf object.
     """
-    def get(self, net: Any, id: Any) -> Any:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("NodeAttribute requires 'name' attribute in the main class.")
-        return net.nodes[id][name]
-
-    def set_data(self, network: 'BaseNetwork', attribute_data: Union[dict, list, np.ndarray]) -> None:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("NodeAttribute requires 'name' attribute in the main class.")
-        if not isinstance(attribute_data, dict):
-            attribute_data = {n: attribute_data[i] for i, n in enumerate(network.nodes)}
-        nx.set_node_attributes(network, attribute_data, name)
-
-    def get_data(self, network: 'BaseNetwork') -> List[Any]:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("NodeAttribute requires 'name' attribute in the main class.")
-        return list(nx.get_node_attributes(network, name).values())
-
-
-class LinkAttribute(BaseAttribute):
-    """
-    Concrete link attribute class with set/get/aggregate methods for link-level attributes.
-    Inherit and extend for custom link attribute logic.
-    """
-    def get(self, net: Any, id: Any) -> Any:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("LinkAttribute requires 'name' attribute in the main class.")
-        return net.edges[id][name]
-
-    def set_data(self, network: 'BaseNetwork', attribute_data: Union[dict, list, np.ndarray]) -> None:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("LinkAttribute requires 'name' attribute in the main class.")
-        if not isinstance(attribute_data, dict):
-            attribute_data = {e: attribute_data[i] for i, e in enumerate(network.edges)}
-        nx.set_edge_attributes(network, attribute_data, name)
-
-    def get_data(self, network: 'BaseNetwork') -> List[Any]:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("LinkAttribute requires 'name' attribute in the main class.")
-        return list(nx.get_edge_attributes(network, name).values())
-
-    def get_adjacency_data(self, network: 'BaseNetwork', normalized: bool = False) -> np.ndarray:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("LinkAttribute requires 'name' attribute in the main class.")
-        return nx.attr_sparse_matrix(
-            network, edge_attr=name, normalized=normalized, rc_order=list(network.nodes)).toarray()
-
-    def get_aggregation_data(self, network: 'BaseNetwork', aggr: str = 'sum', normalized: bool = False) -> np.ndarray:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("LinkAttribute requires 'name' attribute in the main class.")
-        if aggr not in ['sum', 'mean', 'max', 'min']:
-            raise NotImplementedError(f"Aggregation '{aggr}' is not supported.")
-        attr_sparse_matrix = nx.attr_sparse_matrix(
-            network, edge_attr=name, normalized=normalized, rc_order=list(network.nodes)).toarray()
-        if aggr == 'sum':
-            return np.asarray(attr_sparse_matrix.sum(axis=0))
-        elif aggr == 'mean':
-            return np.asarray(attr_sparse_matrix.mean(axis=0))
-        elif aggr == 'max':
-            return attr_sparse_matrix.max(axis=0)
-        elif aggr == 'min':
-            return attr_sparse_matrix.min(axis=0)
-        else:
-            raise NotImplementedError(f"Aggregation '{aggr}' is not implemented.")
-
-
-class GraphAttribute(BaseAttribute):
-    """
-    Concrete graph attribute class with set/get methods for graph-level attributes.
-    Inherit and extend for custom graph attribute logic.
-    """
-    def get(self, net: Any) -> Any:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("GraphAttribute requires 'name' attribute in the main class.")
-        return net.graph[name]
-
-    def set_data(self, network: 'BaseNetwork', attribute_data: Any) -> None:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("GraphAttribute requires 'name' attribute in the main class.")
-        network.graph[name] = attribute_data
-
-    def get_data(self, network: 'BaseNetwork') -> Any:
-        name = getattr(self, 'name', None)
-        if name is None:
-            raise AttributeError("GraphAttribute requires 'name' attribute in the main class.")
-        return network.graph[name]
+    if hasattr(config, 'get'):
+        return config.get(key, default)
+    return getattr(config, key, default) if hasattr(config, key) else default

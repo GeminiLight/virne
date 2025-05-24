@@ -3,10 +3,11 @@
 # ==============================================================================
 
 
-from functools import cached_property
 import numpy as np
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict, Union
+from functools import cached_property
 import networkx as nx
+from omegaconf import DictConfig
 
 from virne.network.base_network import BaseNetwork
 from virne.network.attribute import BaseAttribute
@@ -26,9 +27,14 @@ class VirtualNetwork(BaseNetwork):
         total_link_resource_demand: Get the total resource demand of all links.
         total_resource_demand: Get the total resource demand of all nodes and links.
     """
+
+    id: int
+    arrival_time: float
+    lifetime: float
+
     def __init__(self,
                  incoming_graph_data: Optional[Any] = None,
-                 config: Optional[dict] = None,
+                 config: Optional[DictConfig | dict] = None,
                  **kwargs: Any) -> None:
         super(VirtualNetwork, self).__init__(
             incoming_graph_data,
@@ -42,15 +48,8 @@ class VirtualNetwork(BaseNetwork):
 
     def to_gml(self, fpath):
         gml_graph = self._prepare_gml_graph()
-
-        # vnet specfic metadata: only if defined
-        for key in ['id', 'arrival_time', 'lifetime', 'num_nodes', 'type']:
-            val = getattr(self, key, None)
-            if val is not None:
-                gml_graph.graph[key] = val
-
         nx.write_gml(gml_graph, fpath)
-        
+
     @property
     def total_node_resource_demand(self) -> float:
         """Calculates the total resource demand of all nodes in the virtual network."""

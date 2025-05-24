@@ -39,7 +39,7 @@ class MipSolver(Solver):
 
     def solve(self, instance):
         v_net, p_net  = instance['v_net'], instance['p_net']
-        self.solution = Solution(v_net)
+        self.solution = Solution.from_v_net(v_net)
         self.solver_with_or_tools(v_net, p_net)
         return self.solution
 

@@ -30,10 +30,10 @@ class InstanceAgent(object):
         return solution
 
     def validate(self, env, checkpoint_path=None):
-        print(f"\n{'-' * 20}  Validate  {'-' * 20}\n") if self.verbose >= 0 else None
+        self.logger.info(f"\n{'-' * 20}  Validate  {'-' * 20}\n")
         if checkpoint_path: self.load_model(checkpoint_path)
 
-        pbar = tqdm.tqdm(desc=f'Validate', total=env.num_v_nets) if self.verbose <= 1 else None
+        pbar = tqdm.tqdm(desc=f'Validate', total=env.v_net_simulator.num_v_nets)
         
         self.eval()
         instance = env.reset(seed=self.seed)
@@ -53,7 +53,7 @@ class InstanceAgent(object):
             instance = next_instance
 
         if pbar is not None: pbar.close()
-        print(f"\n{'-' * 20}     Done    {'-' * 20}\n") if self.verbose >= 0 else None
+        self.logger.info(f"\n{'-' * 20}     Done    {'-' * 20}\n")
 
     def get_baseline_solution_info(self, instance, if_use_baseline_solver=True):
         """
@@ -85,7 +85,7 @@ class InstanceAgent(object):
         else:
             baseline_solution = self.baseline_solver.solve(instance)
             baseline_solution_info = self.counter.count_solution(instance['v_net'], baseline_solution)
-            print(f"Baseline - Result {baseline_solution_info['result']}, Violation {baseline_solution_info['v_net_total_hard_constraint_violation']}, Is Feasible {baseline_solution.is_feasible()}") if self.verbose > 0 else None
+            print(f"Baseline - Result {baseline_solution_info['result']}, Violation {baseline_solution_info['v_net_total_hard_constraint_violation']}, Is Feasible {baseline_solution.is_feasible()}")
         # if baseline_solution_info['result'] == 0:
         #     print(baseline_solution_info)
         #     import pdb; pdb.set_trace()
@@ -182,11 +182,21 @@ class InstanceAgent(object):
             epoch_logprobs_tensor = np.concatenate(epoch_logprobs, axis=0)
             end_time = time.time()
             time_cost = end_time - start_time
-            self.logger.info(f'\nepoch {epoch_id:4d}, success_count {success_count:5d}, r2c {info["long_term_r2c_ratio"]:1.4f}, mean logprob {epoch_logprobs_tensor.mean():2.4f}, time_cost {time_cost}') if self.verbose > 0 else None
+            self.logger.info(f'\nepoch {epoch_id:4d}, success_count {success_count:5d}, r2c {info["long_term_r2c_ratio"]:1.4f}, mean logprob {epoch_logprobs_tensor.mean():2.4f}, time_cost {time_cost}')
+            self.logger.log(
+                {
+                    'train_epochs/epoch': epoch_id,
+                    'train_epochs/success_count': success_count,
+                    'train_epochs/r2c': info['long_term_r2c_ratio'],
+                    'train_epochs/mean_logprob': epoch_logprobs_tensor.mean(),
+                    'train_epochs/time_cost': time_cost
+                }, step=epoch_id
+            )
             if self.rank == 0:
                 # save
                 if (epoch_id + 1) != num_epochs and (epoch_id + 1) % self.config.training.save_interval == 0:
                     self.save_model(f'model-{epoch_id}.pkl')
+                    self.save_model(f'model.pkl')
                 # validate
                 if (epoch_id + 1) != num_epochs and (epoch_id + 1) % self.config.training.eval_interval == 0:
                     self.validate(env)

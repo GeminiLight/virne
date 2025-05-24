@@ -83,7 +83,7 @@ class GraphConvNet(nn.Module):
         # self._init_parameters()
 
     def get_conv(self, input_dim, output_dim, edge_dim=None, aggr='add', bias=True, **kwargs):
-        return NotImplementedError
+        raise NotImplementedError
 
     def _init_parameters(self):
         for layer_id in range(self.num_layers):
@@ -229,16 +229,16 @@ class DeepEdgeFeatureGAT(nn.Module):
             self.add_module('dout_{}'.format(layer_id), dout)
             self.register_parameter(f'weight_{layer_id}', weight)
         self.conv_e = GATConv(embedding_dim, output_dim, heads=num_heads, edge_dim=edge_dim)
-        self._init_parameters()
+        # self._init_parameters()
 
-    def _init_parameters(self):
-        for layer_id in list(range(self.num_mid_layers)) + ['s', 'e']:
-            nn.init.orthogonal_(getattr(self, f'conv_{layer_id}').lin_src.weight)
-            nn.init.orthogonal_(getattr(self, f'conv_{layer_id}').lin_dst.weight)
-            if self.edge_dim is not None:
-                nn.init.orthogonal_(getattr(self, f'conv_{layer_id}').lin_edge.weight)
-            if layer_id not in ['s', 'e']:
-                nn.init.orthogonal_(getattr(self, f'weight_{layer_id}'))
+    # def _init_parameters(self):
+    #     for layer_id in list(range(self.num_mid_layers)) + ['s', 'e']:
+    #         nn.init.orthogonal_(getattr(self, f'conv_{layer_id}').lin_src.weight)
+    #         nn.init.orthogonal_(getattr(self, f'conv_{layer_id}').lin_dst.weight)
+    #         if self.edge_dim is not None:
+    #             nn.init.orthogonal_(getattr(self, f'conv_{layer_id}').lin_edge.weight)
+    #         if layer_id not in ['s', 'e']:
+    #             nn.init.orthogonal_(getattr(self, f'weight_{layer_id}'))
 
     def forward(self, input):
         x, edge_index, edge_attr = input['x'], input['edge_index'], input.get('edge_attr', None)
@@ -279,7 +279,7 @@ class GraphPooling(nn.Module):
         elif aggr == 'mean':
             self.pooling = global_mean_pool
         else:
-            return NotImplementedError
+            raise NotImplementedError
 
     def forward(self, x, batch):
         return self.pooling(x, batch)

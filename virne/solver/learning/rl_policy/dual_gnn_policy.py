@@ -26,25 +26,25 @@ def _make_advanced_actor_critic(gnn_class, use_cost_critic=False, use_lambda_net
     return ActorCritic
 
 
-@ActorCriticRegistry.register('bi_gcn')
+@ActorCriticRegistry.register('dual_gcn')
 class BiGcnActorCritic(_make_actor_critic(GCNConvNet)): pass
-@ActorCriticRegistry.register('bi_gat')
+@ActorCriticRegistry.register('dual_gat')
 class BiGatActorCritic(_make_actor_critic(GATConvNet)): pass
-@ActorCriticRegistry.register('bi_deep_edge_gat')
+@ActorCriticRegistry.register('dual_deep_edge_gat')
 class BiDeepEdgeFeatureGatActorCritic(_make_actor_critic(DeepEdgeFeatureGAT)): pass
 
-@ActorCriticRegistry.register('bi_gcn_with_cost')
+@ActorCriticRegistry.register('dual_gcn_with_cost')
 class BiGcnWithCostActorCritic(_make_advanced_actor_critic(GCNConvNet, use_cost_critic=True)): pass
-@ActorCriticRegistry.register('bi_gat_with_cost')
+@ActorCriticRegistry.register('dual_gat_with_cost')
 class BiGatWithCostActorCritic(_make_advanced_actor_critic(GATConvNet, use_cost_critic=True)): pass
-@ActorCriticRegistry.register('bi_deep_edge_gat_with_cost')
+@ActorCriticRegistry.register('dual_deep_edge_gat_with_cost')
 class BiDeepEdgeFeatureGatWithCostActorCritic(_make_advanced_actor_critic(DeepEdgeFeatureGAT, use_cost_critic=True)): pass
 
-@ActorCriticRegistry.register('bi_gcn_with_cost_and_lambda')
+@ActorCriticRegistry.register('dual_gcn_with_cost_and_lambda')
 class BiGcnWithCostAndLambdaActorCritic(_make_advanced_actor_critic(GCNConvNet, use_cost_critic=True, use_lambda_net=True)): pass
-@ActorCriticRegistry.register('bi_gat_with_cost_and_lambda')
+@ActorCriticRegistry.register('dual_gat_with_cost_and_lambda')
 class BiGatWithCostAndLambdaActorCritic(_make_advanced_actor_critic(GATConvNet, use_cost_critic=True, use_lambda_net=True)): pass
-@ActorCriticRegistry.register('bi_deep_edge_gat_with_cost_and_lambda')
+@ActorCriticRegistry.register('dual_deep_edge_gat_with_cost_and_lambda')
 class BiDeepEdgeFeatureGatWithCostAndLambdaActorCritic(_make_advanced_actor_critic(DeepEdgeFeatureGAT, use_cost_critic=True, use_lambda_net=True)): pass
 
 

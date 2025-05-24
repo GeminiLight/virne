@@ -37,7 +37,7 @@ class BaseNodeRankSolver(Solver):
     def solve(self, instance: dict) -> Solution:
         v_net, p_net  = instance['v_net'], instance['p_net']
 
-        solution = Solution(v_net)
+        solution = Solution.from_v_net(v_net)
         node_mapping_result = self.node_mapping(v_net, p_net, solution)
         if node_mapping_result:
             link_mapping_result = self.link_mapping(v_net, p_net, solution)

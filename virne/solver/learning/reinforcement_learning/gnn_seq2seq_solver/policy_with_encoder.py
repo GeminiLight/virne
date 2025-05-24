@@ -13,11 +13,11 @@ from virne.solver.learning.neural_network import GCNConvNet, DeepEdgeFeatureGAT,
 
 class GnnSeq2SeqActorCritic(nn.Module):
     
-    def __init__(self, p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
+    def __init__(self, p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
         super(GnnSeq2SeqActorCritic, self).__init__()
         self.encoder = Encoder(v_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
-        self.actor = Actor(p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
-        self.critic = Critic(p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
+        self.actor = Actor(p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
+        self.critic = Critic(p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
         self._last_hidden_state = None
 
     def encode(self, obs):
@@ -44,23 +44,23 @@ class GnnSeq2SeqActorCritic(nn.Module):
 
 class GcnSeq2SeqActorCritic(GnnSeq2SeqActorCritic):
 
-    def __init__(self, p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, **kwargs):
-        super(GcnSeq2SeqActorCritic, self).__init__(p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type='gcn')
+    def __init__(self, p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, **kwargs):
+        super(GcnSeq2SeqActorCritic, self).__init__(p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type='gcn')
 
 class GATSeq2SeqActorCritic(GnnSeq2SeqActorCritic):
-    def __init__(self, p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, **kwargs):
-        super(GATSeq2SeqActorCritic, self).__init__(p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type='gat')
+    def __init__(self, p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, **kwargs):
+        super(GATSeq2SeqActorCritic, self).__init__(p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type='gat')
 
 class DeepEdgeGnnSeq2SeqActorCritic(GnnSeq2SeqActorCritic):
-    def __init__(self, p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, **kwargs):
-        super(DeepEdgeGnnSeq2SeqActorCritic, self).__init__(p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type='deep_edge_gat')
+    def __init__(self, p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, **kwargs):
+        super(DeepEdgeGnnSeq2SeqActorCritic, self).__init__(p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type='deep_edge_gat')
 
 
 class Actor(nn.Module):
 
-    def __init__(self, p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
+    def __init__(self, p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
         super(Actor, self).__init__()
-        self.decoder = Decoder(p_net_num_nodes, p_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
+        self.decoder = Decoder(p_net_num_nodes, p_net_x_dim, p_net_edge_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
 
     def forward(self, obs):
         """Return logits of actions"""
@@ -70,9 +70,9 @@ class Actor(nn.Module):
 
 class Critic(nn.Module):
 
-    def __init__(self, p_net_num_nodes, p_net_x_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
+    def __init__(self, p_net_num_nodes, p_net_x_dim, p_net_edge_dim, v_net_x_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
         super(Critic, self).__init__()
-        self.decoder = Decoder(p_net_num_nodes, p_net_x_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
+        self.decoder = Decoder(p_net_num_nodes, p_net_x_dim, p_net_edge_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, gnn_type=gnn_type)
 
     def forward(self, obs):
         """Return logits of actions"""
@@ -97,12 +97,16 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     
-    def __init__(self, p_net_num_nodes, feature_dim, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
+    def __init__(self, p_net_num_nodes, feature_dim, edge_dim=None, embedding_dim=128, dropout_prob=0., batch_norm=False, gnn_type='gcn'):
         super(Decoder, self).__init__()
+        if p_net_num_nodes <= 100:
+            self.p_net_num_nodes = 100
+        else:
+            self.p_net_num_nodes = p_net_num_nodes
         self.emb = nn.Embedding(p_net_num_nodes + 1, embedding_dim)
         self.att = Attention(embedding_dim)
         GnnNet = get_gnn_class(gnn_type)
-        self.gcn = GnnNet(feature_dim, embedding_dim, edge_dim=None, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, return_batch=True)
+        self.gcn = GnnNet(feature_dim, embedding_dim, edge_dim=edge_dim, embedding_dim=embedding_dim, dropout_prob=dropout_prob, batch_norm=batch_norm, return_batch=True)
         self.mlp = nn.Sequential(
             nn.Linear(embedding_dim, 1),
             nn.Flatten()
@@ -121,6 +125,9 @@ class Decoder(nn.Module):
         hidden_state = hidden_state.permute(1, 0, 2)
         encoder_outputs = obs['encoder_outputs']
         mask = obs['mask']
+        # p_node_id is in batch model [batch_size, p_net_num_nodes]
+        # if any p_node_id large than 100, please use 100 as the index
+        p_node_id = torch.clamp(p_node_id, max=self.p_net_num_nodes)
         p_node_emb = self.emb(p_node_id).unsqueeze(0)
         context, attention = self.att(hidden_state, encoder_outputs, mask)
         context = context.unsqueeze(0)

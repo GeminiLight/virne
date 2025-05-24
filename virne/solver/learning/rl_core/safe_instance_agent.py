@@ -48,7 +48,7 @@ class SafeInstanceAgent(InstanceAgent):
             revenue2cost_list = []
             cost_list = []
             import time
-            for i in range(env.num_v_nets):
+            for i in range(env.v_net_simulator.num_v_nets):
                 ### --- sub env --- ###
                 sub_buffer = RolloutBufferWithCost()
                 v_net, p_net = instance['v_net'], instance['p_net']
@@ -90,7 +90,7 @@ class SafeInstanceAgent(InstanceAgent):
                     avg_cost = sum(cost_list) / len(cost_list)
                     loss = self.update(avg_cost)
                     epoch_cost_list += cost_list
-                    print(f'avg_cost: {avg_cost:+2.4f}, cost budget: {self.cost_budget:+2.4f}, loss: {loss.item():+2.4f}, mean r2c: {np.mean(revenue2cost_list):+2.4f}') if self.verbose > 0 else None
+                    self.logger.info(f'avg_cost: {avg_cost:+2.4f}, cost budget: {self.cost_budget:+2.4f}, loss: {loss.item():+2.4f}, mean r2c: {np.mean(revenue2cost_list):+2.4f}')
                 ### --- sub env --- ###
                 instance, reward, done, info = env.step(solution)
                 # epoch finished
@@ -100,14 +100,23 @@ class SafeInstanceAgent(InstanceAgent):
             avg_epoch_cost = sum(epoch_cost_list) / len(epoch_cost_list)
             end_time = time.time()
             time_cost = end_time - start_time
-            print(f'\nepoch {epoch_id:4d}, success_count {success_count:5d}, r2c {info["long_term_r2c_ratio"]:1.4f}, avg_cost: {avg_epoch_cost:1.4f}, mean logprob {epoch_logprobs_tensor.mean():2.4f}, time_cost {time_cost}') if self.verbose > 0 else None
-            
+            self.logger.info(f'\nepoch {epoch_id:4d}, success_count {success_count:5d}, r2c {info["long_term_r2c_ratio"]:1.4f}, avg_cost: {avg_epoch_cost:1.4f}, mean logprob {epoch_logprobs_tensor.mean():2.4f}, time_cost {time_cost}')
+            self.logger.log(
+                {
+                    'train_epochs/epoch': epoch_id,
+                    'train_epochs/success_count': success_count,
+                    'train_epochs/r2c': info['long_term_r2c_ratio'],
+                    'train_epochs/avg_cost': avg_epoch_cost,
+                    'train_epochs/mean_logprob': epoch_logprobs_tensor.mean(),
+                    'train_epochs/time_cost': time_cost
+                }, step=epoch_id
+            )
             if self.rank == 0:
                 if (epoch_id + 1) != num_epochs and (epoch_id + 1) % self.config.training.save_interval == 0:
                     self.save_model(f'model-{epoch_id}.pkl')
+                    self.save_model(f'model.pkl')
                 if (epoch_id + 1) != num_epochs and (epoch_id + 1) % self.config.training.eval_interval == 0:
                     self.validate(env)
-
 
     def merge_instance_experience(self, instance, solution, instance_buffer, last_value):
         merge_flag = False

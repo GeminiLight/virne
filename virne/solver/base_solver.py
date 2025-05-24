@@ -100,7 +100,7 @@ class SolverRegistry:
         def decorator(handler_cls: Type[Solver]):
             if solver_name in cls._registry:
                 raise ValueError(f"Solver '{solver_name}' is already registered.")
-            handler_cls.type = solver_type
+            setattr(handler_cls, 'type', solver_type)
             cls._registry[solver_name] = handler_cls
             return handler_cls
         return decorator

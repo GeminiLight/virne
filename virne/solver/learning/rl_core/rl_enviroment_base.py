@@ -10,10 +10,12 @@ import numpy as np
 import networkx as nx
 from gym import spaces
 from collections import defaultdict
+
+from virne.network.attribute.attribute_benchmark_manager import AttributeBenchmarkManager
 from ..obs_handler import ObservationHandler
 from ...rank.node_rank import rank_nodes
 from virne.network import PhysicalNetwork, VirtualNetwork
-from virne.core import Solution, Controller, Recorder, Counter, Solution
+from virne.core import Controller, Recorder, Counter, Solution
 
 
 class RLBaseEnv(gym.Env):
@@ -34,15 +36,10 @@ class RLBaseEnv(gym.Env):
         self.revocable_action = self.p_net.num_nodes - 1 + int(self.allow_revocable) + int(self.allow_rejection) if allow_revocable else None
         self.num_actions = self.p_net.num_nodes + int(allow_rejection) + int(allow_revocable)
         self.action_space = spaces.Discrete(self.num_actions)
-        self.degree_benchmark = self.p_net.degree_benchmark
-        self.node_attr_benchmarks = self.p_net.node_attr_benchmarks
-        self.link_attr_benchmarks = self.p_net.link_attr_benchmarks
-        self.link_sum_attr_benchmarks = self.p_net.link_sum_attr_benchmarks
         # for revocable action
         self.if_allow_constraint_violation = kwargs.get('if_allow_constraint_violation', False)
         self.revoked_actions_dict = defaultdict(list)
         self.extra_info_dict = {}
-
 
     def reset(self):
         self.extra_info_dict = {}
@@ -56,13 +53,13 @@ class RLBaseEnv(gym.Env):
         return self.revocable_action and action == self.revocable_action
 
     def step(self, action):
-       return NotImplementedError
+       raise NotImplementedError
 
     def compute_reward(self,):
-        return NotImplementedError
+        raise NotImplementedError
 
     def get_observation(self):
-        return NotImplementedError
+        raise NotImplementedError
 
     def get_info(self, record={}):
         info = copy.deepcopy(record)
@@ -116,7 +113,8 @@ class RLBaseEnv(gym.Env):
 
     @property
     def num_placed_v_net_nodes(self):
-        return len(self.solution['node_slots'].keys())
+        node_slots = self.solution['node_slots']
+        return len(node_slots.keys())
 
     @property
     def last_placed_v_node_id(self):

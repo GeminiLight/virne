@@ -10,7 +10,7 @@ from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 import torch
 import numpy as np
-from omegaconf import open_dict
+from omegaconf import DictConfig, open_dict
 
 from virne.network import PhysicalNetwork, VirtualNetwork
 from virne.core import Controller, Recorder, Counter, Solution, Logger
@@ -32,8 +32,7 @@ build_policy = PolicyBuilder.build_mlp_policy
 
 
 class PgMlpInstanceRLEnv(PlaceStepInstanceRLEnv):
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(PgMlpInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
             config.rl.feature_constructor.if_use_degree_metric = True
@@ -42,11 +41,9 @@ class PgMlpInstanceRLEnv(PlaceStepInstanceRLEnv):
             config.rl.feature_constructor.if_use_node_status_flags = True
             config.rl.reward_calculator.name = 'vanilla'
             config.rl.if_use_negative_sample = False
-        self.feature_constructor = PNetVNodeFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
-        self.reward_calculator = VanillaRewardCalculator(self.config)
+        super(PgMlpInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
-# @SolverRegistry.register(solver_name='pg_mlp', solver_type='r_learning')
 @SolverRegistry.register(solver_name='pg_mlp', solver_type='r_learning')
 class PgMlpSolver(InstanceAgent, PGSolver):
     """
@@ -60,8 +57,7 @@ class PgMlpSolver(InstanceAgent, PGSolver):
 
 
 class PgMlp2InstanceRLEnv(PlaceStepInstanceRLEnv):
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(PgMlp2InstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
             config.rl.feature_constructor.if_use_degree_metric = True
@@ -69,12 +65,10 @@ class PgMlp2InstanceRLEnv(PlaceStepInstanceRLEnv):
             config.rl.feature_constructor.if_use_aggregated_link_attrs = True
             config.rl.feature_constructor.if_use_node_status_flags = True
             config.rl.reward_calculator.name = 'vanilla'
-        self.feature_constructor = PNetVNodeFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
-        self.reward_calculator = VanillaRewardCalculator(self.config)
+        super(PgMlp2InstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
 
-# @SolverRegistry.register(solver_name='pg_mlp2', solver_type='r_learning')
 @SolverRegistry.register(solver_name='pg_mlp2', solver_type='r_learning')
 class PgMlp2Solver(InstanceAgent, PGSolver):
     """
@@ -88,13 +82,12 @@ class PgMlp2Solver(InstanceAgent, PGSolver):
         PGSolver.__init__(self, controller, recorder, counter, logger, config, build_policy, obs_as_tensor, **kwargs)
 
 
-
-
 class MlpInstanceEnv(JointPRStepInstanceRLEnv):
 
     def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
+        with open_dict(config):
+            config.rl.feature_constructor.name = 'p_net_v_node'
         super(MlpInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
-        self.feature_constructor = PNetVNodeFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
 
 
 extended_mlp_solvers = [

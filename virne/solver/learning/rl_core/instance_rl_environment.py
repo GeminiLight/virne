@@ -20,13 +20,13 @@ from virne.core import Controller, Recorder, Counter, Solution, Logger
 
 from virne.solver.learning.rl_core.reward_calculator import RewardCalculatorRegistry, BaseRewardCalculator
 from virne.solver.learning.rl_core.feature_constructor import FeatureConstructorRegistry, BaseFeatureConstructor
-from virne.utils.network import calcuate_topological_metrics
+from virne.network import TopologicalMetricCalculator, TopologicalMetrics, AttributeBenchmarkManager, AttributeBenchmarks
 
 
 class InstanceRLEnv(RLBaseEnv):
 
-    reward_calculator: 'BaseRewardCalculator'
-    feature_constructor: 'BaseFeatureConstructor'
+    reward_calculator: BaseRewardCalculator
+    feature_constructor: BaseFeatureConstructor
 
     def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
         self.p_net = p_net
@@ -49,21 +49,21 @@ class InstanceRLEnv(RLBaseEnv):
         # calcuate graph metrics
         self.ranked_v_net_nodes = rank_nodes(self.v_net, self.config.solver.node_ranking_method)
         # solution
-        self.solution = Solution(v_net)
+        self.solution = Solution.from_v_net(v_net)
         self.solution['v_net_reward'] = 0
         self.solution['num_interactions'] = 0
-        # feature constructor
-        feature_constructor_cls = FeatureConstructorRegistry.get(self.config.rl.feature_constructor.name) 
-        self.feature_constructor = feature_constructor_cls(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
-        if self.config.rl.feature_constructor.if_use_degree_metric or self.config.rl.feature_constructor.if_use_more_topological_metrics:
-            calcuate_topological_metrics(self.v_net, degree=True, closeness=True, eigenvector=True, betweenness=True)
+        # feature constructor & refresh the TopologicalMetricCalculator cache on "v_net"
+        v_net_topological_metrics = TopologicalMetricCalculator.calculate(v_net)
+        TopologicalMetricCalculator.add_to_cache('v_net', v_net_topological_metrics)
+        feature_constructor_cls = FeatureConstructorRegistry.get(self.config.rl.feature_constructor.name)
+        self.feature_constructor = feature_constructor_cls(self.p_net, self.v_net, self.config)
         # reward calculator
         reward_calculator_cls = RewardCalculatorRegistry.get(self.config.rl.reward_calculator.name)
         self.reward_calculator = reward_calculator_cls(self.config)
         self.intermediate_reward = self.config.rl.reward_calculator.intermediate_reward
 
     def reset(self):
-        self.solution.reset()
+        self.solution = Solution.from_v_net(self.v_net)
         self.p_net = copy.deepcopy(self.p_net_backup)
         return super().reset()
 
@@ -109,7 +109,7 @@ class SolutionStepInstanceRLEnv(InstanceRLEnv):
             self.solution['description'] = 'Success'
         # Failure
         else:
-            solution = Solution(self.v_net)
+            solution = Solution.from_v_net(self.v_net)
         return self.get_observation(), self.compute_reward(), True, self.get_info(solution.to_dict())
 
     def get_observation(self):
@@ -358,7 +358,7 @@ class NodeSlotsStepInstanceRLEnv(InstanceRLEnv):
                 self.solution['description'] = 'Success'
             # Failure
             # else:
-            #     self.solution = Solution(self.v_net)
+            #     self.solution = Solution.from_v_net(self.v_net)
         else:
             self.solution['description'] = 'Uncompleted solution'
         return self.get_observation(), self.compute_reward(self.solution), True, self.get_info(self.solution.to_dict())

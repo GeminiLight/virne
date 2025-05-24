@@ -6,9 +6,12 @@
 import os
 import csv
 import copy
+from typing import Any, Dict
 import numpy as np
 import pandas as pd
 from collections import defaultdict, OrderedDict
+
+from sympy import solve
 from virne import solver
 from virne.core.solution import Solution
 from omegaconf import OmegaConf
@@ -201,10 +204,9 @@ class Recorder:
         else:
             raise NotImplementedError
 
-    def count(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, solution: Solution) -> None:
+    def count(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, solution: Solution) -> Dict[str, Any]:
         """
         Count the state of the environment, including the resource utilization of the physical network.
-
         Args:
             v_net (VirtualNetwork): The virtual network.
             p_net (PhysicalNetwork): The physical network.
@@ -292,6 +294,8 @@ class Recorder:
         #     if_use_degree_metric: false
         #     if_use_more_topological_metrics: false
         reward_calculator_name = f'{self.config.rl.reward_calculator.name}_{self.config.rl.reward_calculator.intermediate_reward}'
+        if not self.config.rl.mask_actions:
+            reward_calculator_name += '_no_mask'
         feature_constructor_used_features = f'['
         if self.config.rl.feature_constructor.if_use_node_status_flags:
             feature_constructor_used_features += '_status'
@@ -305,22 +309,29 @@ class Recorder:
 
         config_str = f'reward_{reward_calculator_name}-feature_{feature_constructor_used_features}'
 
-        summary_path = os.path.join(self.save_root_dir, f'{self.config.solver.solver_name}-{config_str}-{self.run_id}-summary.csv')
+        solver_name = self.config.solver.solver_name
+        run_id = self.config.experiment.run_id
+
+        summary_path = os.path.join(self.save_root_dir, solver_name, f'{solver_name}-{config_str}-{run_id}-summary.csv')
         write_csv(summary_path, summary_info)
 
-        global_summary_path = os.path.join(self.save_root_dir, f'global_summary.csv')
         global_summary_info = {
+            'solver_name': summary_info.pop('solver_name'),
+            'run_id': summary_info.pop('run_id'),
             'reward_calculator_name': reward_calculator_name,
             'feature_constructor_used_features': feature_constructor_used_features,
             **summary_info
         }
+        solver_summary_path = os.path.join(self.save_root_dir, solver_name, f'solver_summary.csv')
+        write_csv(solver_summary_path, global_summary_info)
+        global_summary_path = os.path.join(self.save_root_dir, f'global_summary.csv')
         write_csv(global_summary_path, global_summary_info)
         global_summary_path = os.path.join(self.save_root_dir, f'training_summary.csv')
         training_summary_info = {
-            'solver_name': self.config.solver.solver_name,
+            'solver_name': solver_name,
             'reward_calculator_name': reward_calculator_name,
             'feature_constructor_used_features': feature_constructor_used_features,
-            'run_id': self.run_id,
+            'run_id': run_id,
             'num_train_epochs': self.config.training.num_train_epochs,
         }
         write_csv(global_summary_path, training_summary_info)

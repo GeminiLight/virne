@@ -19,7 +19,7 @@ class BaseJointPRSolver(Solver):
     def solve(self, instance):
         v_net, p_net = v_net, p_net  = instance['v_net'], instance['p_net']
 
-        solution = Solution(v_net)
+        solution = Solution.from_v_net(v_net)
         for v_node_id in list(v_net.nodes):
             selected_p_net_nodes = list(solution['node_slots'].values())
             candidate_p_net_nodes = self.controller.find_candidate_nodes(v_net, p_net, v_node_id, filter=selected_p_net_nodes)
@@ -39,7 +39,7 @@ class BaseJointPRSolver(Solver):
         return solution
 
     def select_p_net_node(self, p_net, candidate_p_net_nodes):
-        return NotImplementedError
+        raise NotImplementedError
 
 
 @SolverRegistry.register(solver_name='random_joint_pr', solver_type='heuristic')

@@ -10,20 +10,17 @@ from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 import torch
 import numpy as np
-from omegaconf import open_dict
+from omegaconf import DictConfig, open_dict
 
 from virne.network import PhysicalNetwork, VirtualNetwork
 from virne.core import Controller, Recorder, Counter, Solution, Logger
 
 from virne.solver import SolverRegistry
-from virne.solver.learning.rl_policy import CnnActorCritic
 from virne.solver.learning.rl_core import JointPRStepInstanceRLEnv, PlaceStepInstanceRLEnv
 from virne.solver.learning.rl_core.rl_solver import PGSolver, A2CSolver, PPOSolver, A3CSolver
 from virne.solver.learning.rl_core.instance_agent import InstanceAgent
 from virne.solver.learning.rl_core.tensor_convertor import TensorConvertor
 from virne.solver.learning.rl_core.policy_builder import PolicyBuilder
-from virne.solver.learning.rl_core.feature_constructor import FeatureConstructorRegistry, PNetVNodeFeatureConstructor
-from virne.solver.learning.rl_core.reward_calculator import RewardCalculatorRegistry, VanillaRewardCalculator
 from virne.solver.learning.reinforcement_learning.solver_maker import make_solver_class
 
 
@@ -32,8 +29,7 @@ build_policy = PolicyBuilder.build_cnn_policy
 
 
 class PgCnnInstanceRLEnv(PlaceStepInstanceRLEnv):
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(PgCnnInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
             config.rl.feature_constructor.if_use_degree_metric = True
@@ -42,11 +38,9 @@ class PgCnnInstanceRLEnv(PlaceStepInstanceRLEnv):
             config.rl.feature_constructor.if_use_node_status_flags = True
             config.rl.reward_calculator.name = 'vanilla'
             config.rl.if_use_negative_sample = False
-        self.feature_constructor = PNetVNodeFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
-        self.reward_calculator = VanillaRewardCalculator(self.config)
+        super(PgCnnInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
-# @SolverRegistry.register(solver_name='pg_cnn', solver_type='r_learning')
 @SolverRegistry.register(solver_name='pg_cnn', solver_type='r_learning')
 class PgCnnSolver(InstanceAgent, PGSolver):
     """
@@ -59,10 +53,8 @@ class PgCnnSolver(InstanceAgent, PGSolver):
         PGSolver.__init__(self, controller, recorder, counter, logger, config, build_policy, obs_as_tensor, **kwargs)
 
 
-
 class PgCnn2InstanceRLEnv(PlaceStepInstanceRLEnv):
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(PgCnn2InstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
             config.rl.feature_constructor.if_use_degree_metric = True
@@ -70,10 +62,9 @@ class PgCnn2InstanceRLEnv(PlaceStepInstanceRLEnv):
             config.rl.feature_constructor.if_use_aggregated_link_attrs = True
             config.rl.feature_constructor.if_use_node_status_flags = True
             config.rl.reward_calculator.name = 'vanilla'
-        self.feature_constructor = PNetVNodeFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
-        self.reward_calculator = VanillaRewardCalculator(self.config)
+        super(PgCnn2InstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
-# @SolverRegistry.register(solver_name='pg_cnn2', solver_type='r_learning')
+
 @SolverRegistry.register(solver_name='pg_cnn2', solver_type='r_learning')
 class PgCnn2Solver(InstanceAgent, PGSolver):
     """
@@ -89,9 +80,10 @@ class PgCnn2Solver(InstanceAgent, PGSolver):
 
 class CnnInstanceEnv(JointPRStepInstanceRLEnv):
 
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
+        with open_dict(config):
+            config.rl.feature_constructor.name = 'p_net_v_node'
         super(CnnInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
-        self.feature_constructor = PNetVNodeFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
 
 
 extented_cnn_solvers = [

@@ -89,7 +89,7 @@ class A3CGcnMultiPoliciesSolver(InstanceAgent, PPOSolver):
         for task_id, policy, optimizer in model_list:
             task_model_dict['task_policies'][task_id] = {'policy': policy.state_dict(), 'optimizer': optimizer.state_dict()}
         torch.save(task_model_dict, checkpoint_fname)
-        print(f'Save model to {checkpoint_fname}\n') if self.verbose >= 0 else None
+        self.logger.info(f'Save model to {checkpoint_fname}\n')
 
     def load_model(self, checkpoint_path):
         print('Attempting to load the pretrained model')
@@ -104,9 +104,9 @@ class A3CGcnMultiPoliciesSolver(InstanceAgent, PPOSolver):
                     print('New task policy is created for task {}'.format(task_id))
                 self.task_policies[task_id].load_state_dict(checkpoint['task_policies'][task_id]['policy'])
                 self.task_optimizers[task_id].load_state_dict(checkpoint['task_policies'][task_id]['optimizer'])
-            print(f'Loaded pretrained model from {checkpoint_path}') if self.verbose >= 0 else None
+            self.logger.info(f'Loaded pretrained model from {checkpoint_path}')
         except Exception as e:
-            print(f'Load failed from {checkpoint_path}\nInitilized with random parameters') if self.verbose >= 0 else None
+            self.logger.info(f'Load failed from {checkpoint_path}\nInitilized with random parameters')
 
     def learn_with_instance(self, instance):
         # sub env for sub agent

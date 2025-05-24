@@ -1,15 +1,35 @@
-from typing import Any, Optional, Tuple, Union, Dict
+from typing import Any, Optional, Tuple, Union, Dict, TYPE_CHECKING
 import numpy as np
 import networkx as nx
 
-from .base_attribute import GraphAttribute
-from .attribute_method import ResourceAttributeMethod, ExtremaAttributeMethod, InformationAttributeMethod, ConstraintAttributeMethod
+from virne.network.attribute.base_attribute import BaseAttribute, _get_config_value
+from virne.network.attribute.attribute_method import ResourceAttributeMethod, ExtremaAttributeMethod, InformationAttributeMethod, ConstraintAttributeMethod
+if TYPE_CHECKING:
+    from virne.network.base_network import BaseNetwork
 
 
-def _get_config_value(config: Dict, key: str, default: Any = None) -> Any:
-    if hasattr(config, 'get'):
-        return config.get(key, default)
-    return getattr(config, key, default) if hasattr(config, key) else default
+class GraphAttribute(BaseAttribute):
+    """
+    Concrete graph attribute class with set/get methods for graph-level attributes.
+    Inherit and extend for custom graph attribute logic.
+    """
+    def get(self, net: Any) -> Any:
+        name = getattr(self, 'name', None)
+        if name is None:
+            raise AttributeError("GraphAttribute requires 'name' attribute in the main class.")
+        return net.graph[name]
+
+    def set_data(self, network: 'BaseNetwork', attribute_data: Any) -> None:
+        name = getattr(self, 'name', None)
+        if name is None:
+            raise AttributeError("GraphAttribute requires 'name' attribute in the main class.")
+        network.graph[name] = attribute_data
+
+    def get_data(self, network: 'BaseNetwork') -> Any:
+        name = getattr(self, 'name', None)
+        if name is None:
+            raise AttributeError("GraphAttribute requires 'name' attribute in the main class.")
+        return network.graph[name]
 
 
 class GraphStatusAttribute(InformationAttributeMethod, GraphAttribute):

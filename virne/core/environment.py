@@ -9,52 +9,76 @@ import time
 import numpy as np
 import networkx as nx
 import pprint
-from typing import Optional
+from typing import Any, Dict, List, Optional, Union
+from omegaconf import DictConfig, OmegaConf
 
-from virne.core.solution import Solution
-from virne.utils.network import calcuate_topological_metrics
-from virne.utils import get_p_net_dataset_dir_from_setting, get_v_nets_dataset_dir_from_setting
+from virne.network.attribute.attribute_benchmark_manager import AttributeBenchmarks
+from virne.network.topology.topological_metric_calculator import TopologicalMetrics
+
+
+from .controller import Controller
+from .recorder import Recorder
+from .counter import Counter
+from .logger import Logger
+from .solution import Solution
+from virne.utils import get_p_net_dataset_dir_from_setting, get_v_nets_dataset_dir_from_setting, set_seed
+from virne.network import PhysicalNetwork, VirtualNetwork, VirtualNetworkRequestSimulator
+from virne.network import AttributeBenchmarkManager, TopologicalMetricCalculator
 
 
 class BaseEnvironment:
     """A general environment for various solvers based on heuristics and RL"""
-    def __init__(self, p_net, v_net_simulator, controller, recorder, counter, logger, config, **kwargs):
+
+    def __init__(
+        self,
+        p_net: PhysicalNetwork,
+        v_net_simulator: VirtualNetworkRequestSimulator,
+        controller: Controller,
+        recorder: Recorder,
+        counter: Counter,
+        logger: Logger,
+        config: DictConfig,
+        **kwargs: Any
+    ) -> None:
         self.controller = controller
         self.recorder = recorder
         self.counter = counter
         self.logger = logger
         self.config = config
         self.p_net = p_net
-        calcuate_topological_metrics(self.p_net, degree=True, closeness=True, eigenvector=True, betweenness=True)
         self.init_p_net = copy.deepcopy(p_net)
         self.v_net_simulator = v_net_simulator
-        self.num_v_nets = self.v_net_simulator.num_v_nets
-        self.num_events = self.num_v_nets * 2
 
-        self.verbose = kwargs.get('verbose', 1)
-        self.p_net_dataset_dir = self.config.simulation.p_net_dataset_dir
-        self.v_nets_dataset_dir = self.config.simulation.v_nets_dataset_dir
+        # calculate and cache the topological metrics and attribute benchmarks
+        p_net_topological_metrics: TopologicalMetrics = TopologicalMetricCalculator.calculate(self.p_net)
+        TopologicalMetricCalculator.add_to_cache('p_net', p_net_topological_metrics)
+        p_net_attribute_benchmarks: AttributeBenchmarks = AttributeBenchmarkManager.get_benchmarks(self.p_net)
+        AttributeBenchmarkManager.add_to_cache('p_net', p_net_attribute_benchmarks)
+
+        self.verbose: int = kwargs.get('verbose', 1)
+        self.p_net_dataset_dir: str = self.config.simulation.p_net_dataset_dir
+        self.v_nets_dataset_dir: str = self.config.simulation.v_nets_dataset_dir
 
         ### --- Exp Config --- ###
-        self.run_id = self.config.experiment.run_id
-        self.seed = self.config.experiment.seed  # None
+        self.run_id: Any = self.config.experiment.run_id
+        self.seed: Optional[int] = self.config.experiment.seed  # None
         ### --- Solver Config --- ###
-        self.solver_name = self.config.solver.solver_name
+        self.solver_name: str = self.config.solver.solver_name
         # ranking strategy
-        self.node_ranking_method = self.config.solver.node_ranking_method  # 'order'
-        self.link_ranking_method = self.config.solver.link_ranking_method  # 'order'
+        self.node_ranking_method: str = self.config.solver.node_ranking_method  # 'order'
+        self.link_ranking_method: str = self.config.solver.link_ranking_method  # 'order'
         # node mapping
-        self.matching_mathod = self.config.solver.matching_mathod      # 'greedy'
-        self.shortest_method = self.config.solver.shortest_method  # 'k_shortest'
-        self.k_shortest = self.config.solver.k_shortest                # 10
+        self.matching_mathod: str = self.config.solver.matching_mathod      # 'greedy'
+        self.shortest_method: str = self.config.solver.shortest_method  # 'k_shortest'
+        self.k_shortest: int = self.config.solver.k_shortest                # 10
         # config
-        self.extra_summary_info = {}
-        self.extra_record_info = {}
+        self.extra_summary_info: Dict[str, Any] = {}
+        self.extra_record_info: Dict[str, Any] = {}
 
-        self.r2c_ratio_threshold = kwargs.get('r2c_ratio_threshold', 0.0)
-        self.vn_size_threshold = kwargs.get('vn_size_threshold', 10000)
+        self.r2c_ratio_threshold: float = kwargs.get('r2c_ratio_threshold', 0.0)
+        self.vn_size_threshold: int = kwargs.get('vn_size_threshold', 10000)
 
-    def ready(self, event_id: int = 0):
+    def ready(self, event_id: int = 0) -> None:
         """
         Prepare for the given event.
 
@@ -64,49 +88,43 @@ class BaseEnvironment:
         self.curr_event = self.v_net_simulator.events[event_id]
         self.num_processed_v_nets += 1
         self.v_net = self.v_net_simulator.v_nets[int(self.curr_event['v_net_id'])]
-        self.solution = Solution(self.v_net)
-        self.p_net_backup = copy.deepcopy(self.p_net) if self.curr_event['type'] == 1 else None
+        self.solution = Solution.from_v_net(self.v_net)
+        self.p_net_backup = copy.deepcopy(self.p_net)
         self.recorder.update_state({
             'event_id': self.curr_event['id'],
             'event_type': self.curr_event['type'],
             'event_time': self.curr_event['time'],
         })
-        # self.recorder.ready(self.curr_event)
-        # if self.verbose >= 2:
         self.logger.debug(f"\nEvent: id={event_id}, type={self.curr_event['type']}")
         self.logger.debug(f"{'-' * 30}")
 
-    def reset(self, seed: Optional[int] = None):
+    def reset(self, seed: Optional[int] = None) -> Dict[str, Any]:
         """
         Reset the environment.
 
         Args:
             seed: the seed for the random number generator. If None, use the seed in the config.
         """
-        # assert seed is not None, 'seed is required'
-        # seed = seed if seed is not None else self.seed
         self.seed = seed
         self.p_net = copy.deepcopy(self.init_p_net)
         self.recorder.reset()
         self.recorder.count_init_p_net_info(self.p_net)
         if self.recorder.if_temp_save_records:
             self.logger.info(f'Temp save record in {self.recorder.temp_save_path}\n')
-
-        self.v_nets_dataset_dir = get_v_nets_dataset_dir_from_setting(self.v_net_simulator.v_sim_setting)
-        v_net_dir= os.path.join( self.config.experiment.save_root_dir, self.v_nets_dataset_dir )
-        if os.path.exists(v_net_dir) and seed is not None and self.config.experiment.if_load_vnet:
-            self.v_net_simulator = self.v_net_simulator.load_dataset(v_net_dir, self.v_net_simulator.v_sim_setting)
-            self.logger.critical(f'Virtual networks: Load them from {v_net_dir}')
+        self.v_nets_dataset_dir = get_v_nets_dataset_dir_from_setting(self.v_net_simulator.v_sim_setting, seed=seed)
+        if os.path.exists(self.v_nets_dataset_dir) and seed is not None and self.config.experiment.if_load_v_nets:
+            self.v_net_simulator = self.v_net_simulator.load_dataset(self.v_nets_dataset_dir)
+            self.logger.critical(f'Virtual networks: Load them from {self.v_nets_dataset_dir}')
         else: 
             self.v_net_simulator.renew(v_nets=True, events=True, seed=seed)
             self.logger.critical(f'Virtual networks: Generate them with seed {seed}')
-        self.cumulative_reward = 0
-        self.num_processed_v_nets = 0
-        self.start_run_time = time.time()
+        self.cumulative_reward: float = 0
+        self.num_processed_v_nets: int = 0
+        self.start_run_time: float = time.time()
         self.ready(event_id=0)
         return self.get_observation()
 
-    def step(self, action):
+    def step(self, action: Any) -> Any:
         """
         Take an action and return the next observation, reward, done, and info.
 
@@ -119,30 +137,30 @@ class BaseEnvironment:
             done: whether the episode is done.
             info: the extra information.
         """
-        return NotImplementedError
+        raise NotImplementedError
 
     def compute_reward(self) -> float:
         """Compute the reward for the current Virtual Network."""
-        return NotImplementedError
+        raise NotImplementedError
 
-    def get_observation(self) -> dict:
+    def get_observation(self) -> Dict[str, Any]:
         """Get the observation for the current Virtual Network."""
-        return NotImplementedError
+        raise NotImplementedError
 
-    def render(self, mode="human") -> None:
+    def render(self, mode: str = "human") -> None:
         """
         Render the environment.
 
         Args:
             mode: the mode to render the environment.
         """
-        return NotImplementedError
+        raise NotImplementedError
 
-    def release(self) -> dict:
+    def release(self) -> Dict[str, Any]:
         """
         Release the current Virtual Network when it leaves the system.
         """
-        solution = self.recorder.get_record(v_net_id=self.v_net['id'])
+        solution = self.recorder.get_record(v_net_id=self.v_net.id)
         self.controller.release(self.v_net, self.p_net, solution)
         self.solution['description'] = 'Leave Event'
         record = self.count_and_add_record()
@@ -167,18 +185,17 @@ class BaseEnvironment:
         else:
             return 'unknown'
 
-    def rollback_for_failure(self, reason='place') -> None:
+    def rollback_for_failure(self, reason: Union[str, int] = 'place') -> None:
         """
         Rollback the state of the physical network for the failure of the current Virtual Network.
 
         Args:
             reason (str): the reason of failure.
         """
-        # self.solution.reset()
         self.p_net = copy.deepcopy(self.p_net_backup)
         if reason in ['unknown', -1]:
             self.solution['description'] = 'Unknown Reason'
-        if reason in ['reject', 0]:
+        elif reason in ['reject', 0]:
             self.solution['description'] = 'Early Rejection'
             self.solution['early_rejection'] = True
         elif reason in ['place', 1]:
@@ -188,7 +205,8 @@ class BaseEnvironment:
             self.solution['description'] = 'Route Failure'
             self.solution['route_result'] = False
         else:
-            return NotImplementedError
+            raise NotImplementedError(f"Unknown reason: {reason}")
+        # self.logger.warning(f"Rollback for {reason} failure")
 
     def transit_obs(self) -> bool:
         """
@@ -202,7 +220,7 @@ class BaseEnvironment:
         while True:
             next_event_id = int(self.curr_event['id'] + 1)
             # episode finished
-            if next_event_id > self.num_events - 1:
+            if next_event_id > self.v_net_simulator.num_events - 1:
                 summary_info = self.summary_records()
                 return True
             self.ready(next_event_id)
@@ -212,12 +230,12 @@ class BaseEnvironment:
                 return False
 
     @property
-    def selected_p_net_nodes(self) -> list:
+    def selected_p_net_nodes(self) -> List[Any]:
         """Get the already selected physical nodes for the current Virtual Network."""
         return list(self.solution['node_slots'].values())
 
     @property
-    def placed_v_net_nodes(self) -> list:
+    def placed_v_net_nodes(self) -> List[Any]:
         """Get the already placed virtual nodes for the current Virtual Network."""
         return list(self.solution['node_slots'].keys())
 
@@ -227,7 +245,7 @@ class BaseEnvironment:
         return len(self.solution['node_slots'].keys())
 
     ### recorder ###
-    def add_record(self, record: dict, extra_info: dict = {}) -> dict:
+    def add_record(self, record: Dict[str, Any], extra_info: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Add extra information to the record and add the record to the recorder.
 
@@ -244,7 +262,7 @@ class BaseEnvironment:
             self.display_record(record, extra_items=list(extra_info.keys()))
         return record
 
-    def count_and_add_record(self, extra_info: dict = {}) -> dict:
+    def count_and_add_record(self, extra_info: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Count the record and add the record to the recorder.
 
@@ -257,10 +275,10 @@ class BaseEnvironment:
 
     def display_record(
             self, 
-            record: dict, 
-            display_items: list = ['result', 'v_net_id', 'v_net_cost', 'v_net_revenue', 
+            record: Dict[str, Any], 
+            display_items: List[str] = ['result', 'v_net_id', 'v_net_cost', 'v_net_revenue', 
                         'p_net_available_resource', 'total_revenue', 'total_cost', 'description'], 
-            extra_items: list = []
+            extra_items: List[str] = []
         ) -> None:
         """
         Display the record, including the default display items and extra display items.
@@ -273,7 +291,12 @@ class BaseEnvironment:
         display_items = display_items + extra_items
         self.logger.info(''.join([f'{k}: {v}\n' for k, v in record.items() if k in display_items]))
 
-    def summary_records(self, extra_summary_info={}, summary_file_name=None, record_file_name=None) -> None:
+    def summary_records(
+        self,
+        extra_summary_info: Dict[str, Any] = {},
+        summary_file_name: Optional[str] = None,
+        record_file_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Summarize the records and save the summary information and records to the file.
 
@@ -290,7 +313,7 @@ class BaseEnvironment:
         summary_info = self.recorder.summary_records(self.recorder.memory)
         end_run_time = time.time()
         clock_running_time = end_run_time - self.start_run_time
-        run_info_dict = {
+        run_info_dict: Dict[str, Any] = {
             'solver_name': self.solver_name,
             'seed': self.seed,
             'p_net_dataset_dir': self.p_net_dataset_dir,

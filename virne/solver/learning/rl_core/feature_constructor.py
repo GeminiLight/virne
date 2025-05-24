@@ -4,6 +4,7 @@ from omegaconf import DictConfig
 from typing import Any, Dict, Optional, Type
 
 from virne.network import VirtualNetwork, PhysicalNetwork
+from virne.network import AttributeBenchmarkManager, AttributeBenchmarks, TopologicalMetrics, TopologicalMetricCalculator
 from virne.solver.learning.obs_handler import ObservationHandler
 from virne.core import Solution, Controller
 
@@ -13,12 +14,32 @@ class BaseFeatureConstructor:
     Abstract base class for feature construction. Extend this for custom observation logic.
     All required state should be passed as arguments to methods, not stored as instance attributes.
     """
-    def __init__(self, node_attr_benchmarks: dict, link_attr_benchmarks: dict, link_sum_attr_benchmarks: dict, config: DictConfig):
+    def __init__(
+            self, 
+            p_net: PhysicalNetwork,
+            v_net: VirtualNetwork,
+            config: Optional[DictConfig] = None
+        ):
         self.obs_handler = ObservationHandler()
-        self.node_attr_benchmarks = node_attr_benchmarks
-        self.link_attr_benchmarks = link_attr_benchmarks
-        self.link_sum_attr_benchmarks = link_sum_attr_benchmarks
         self.config = config
+        self.p_net = p_net
+        self.v_net = v_net
+        p_net_attribute_benchmarks = AttributeBenchmarkManager.get_from_cache('p_net')
+        p_net_topological_metrics = TopologicalMetricCalculator.get_from_cache('p_net')
+        v_net_topological_metrics = TopologicalMetricCalculator.get_from_cache('v_net')
+        if p_net_attribute_benchmarks is None:
+            p_net_attribute_benchmarks = AttributeBenchmarkManager.get_benchmarks(p_net, node_attrs=True, link_attrs=True, link_sum_attrs=True)
+        if p_net_topological_metrics is None:
+            p_net_topological_metrics = TopologicalMetricCalculator.calculate(p_net, degree=True, closeness=True, eigenvector=True, betweenness=True)
+        if v_net_topological_metrics is None:
+            v_net_topological_metrics = TopologicalMetricCalculator.calculate(v_net, degree=True, closeness=True, eigenvector=True, betweenness=True)
+        self.p_net_attribute_benchmarks = p_net_attribute_benchmarks
+        self.node_attr_benchmarks = p_net_attribute_benchmarks.node_attr_benchmarks
+        self.link_attr_benchmarks = p_net_attribute_benchmarks.link_attr_benchmarks
+        self.link_sum_attr_benchmarks = p_net_attribute_benchmarks.link_sum_attr_benchmarks
+
+        self.p_net_topological_metrics = p_net_topological_metrics
+        self.v_net_topological_metrics = v_net_topological_metrics
         self.extracted_attr_types = config.rl.feature_constructor.extracted_attr_types
         self.if_use_degree_metric = config.rl.feature_constructor.if_use_degree_metric
         self.if_use_more_topological_metrics = config.rl.feature_constructor.if_use_more_topological_metrics
@@ -42,7 +63,6 @@ class BaseFeatureConstructor:
             'p_net_edge_attr': spaces.Box(low=0, high=p_net.num_nodes, shape=(p_net.num_links, 2), dtype=np.int32),
             'v_node': spaces.Box(low=0, high=100, shape=(int(num_p_net_node_attrs/2) + int(num_p_net_link_attrs/2) + 2, ), dtype=np.float32)
         })
-        # Example: return {'v_node': spaces.Box(low=0, high=1, shape=(10,), dtype=np.float32)}
         raise NotImplementedError
 
     def _construct_p_net_features(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, solution: Solution, curr_v_node_id: int) -> Dict[str, Any]:
@@ -69,11 +89,13 @@ class BaseFeatureConstructor:
         # Node Data 4: Topological Metrics
         avg_distance = self.obs_handler.get_average_distance(p_net, solution['node_slots'], normalization=True)
         if self.config.rl.feature_constructor.if_use_degree_metric:
-            p_net_degree_metrics = self.obs_handler.get_node_topological_metrics(p_net, degree=True, closeness=False, eigenvector=False, betweenness=False)
+            p_net_degree_metrics = self.obs_handler.get_node_topological_metrics(
+                p_net, self.p_net_topological_metrics, degree=True, closeness=False, eigenvector=False, betweenness=False)
         else:
             p_net_degree_metrics = np.zeros((p_net.num_nodes, 0), dtype=np.float32)
         if self.config.rl.feature_constructor.if_use_more_topological_metrics:
-            p_net_more_topological_metrics = self.obs_handler.get_node_topological_metrics(p_net, degree=False, closeness=True, eigenvector=True, betweenness=True)
+            p_net_more_topological_metrics = self.obs_handler.get_node_topological_metrics(
+                p_net, self.p_net_topological_metrics, degree=False, closeness=True, eigenvector=True, betweenness=True)
         else:
             p_net_more_topological_metrics = np.zeros((p_net.num_nodes, 0), dtype=np.float32)
         p_net_topological_metrics = np.concatenate((avg_distance, p_net_degree_metrics, p_net_more_topological_metrics), axis=-1)
@@ -158,11 +180,13 @@ class BaseFeatureConstructor:
         v_num_neighbors = np.expand_dims(v_num_neighbors, axis=1)
         v_num_neighbors = np.ones((v_net.num_nodes, 1), dtype=np.float32) * v_num_neighbors
         if self.config.rl.feature_constructor.if_use_degree_metric:
-            v_node_degree_metrics = self.obs_handler.get_node_topological_metrics(v_net, degree=True, closeness=False, eigenvector=False, betweenness=False)
+            v_node_degree_metrics = self.obs_handler.get_node_topological_metrics(
+                v_net, self.v_net_topological_metrics, degree=True, closeness=False, eigenvector=False, betweenness=False)
         else:
             v_node_degree_metrics = np.zeros((v_net.num_nodes, 0), dtype=np.float32)
         if self.config.rl.feature_constructor.if_use_more_topological_metrics:
-            v_node_more_topological_metrics = self.obs_handler.get_node_topological_metrics(v_net, degree=False, closeness=True, eigenvector=True, betweenness=True)
+            v_node_more_topological_metrics = self.obs_handler.get_node_topological_metrics(
+                v_net, self.v_net_topological_metrics, degree=False, closeness=True, eigenvector=True, betweenness=True)
         else:
             v_node_more_topological_metrics = np.zeros((v_net.num_nodes, 0), dtype=np.float32)
         v_node_topological_metrics = np.concatenate((v_num_neighbors, v_node_degree_metrics, v_node_more_topological_metrics), axis=-1)

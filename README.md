@@ -109,7 +109,7 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
 1. Create a new conda environment
 
 ```bash
-conda create -n virne python=3.12
+conda create -n virne python=3.10
 conda activate virne
 ```
 

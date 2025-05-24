@@ -7,14 +7,17 @@ import copy
 import numpy as np
 import networkx as nx
 
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Union
 from functools import cached_property, lru_cache
 from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
 from networkx.classes.filters import no_filter
 from omegaconf import DictConfig
 
 from virne.utils import write_setting, flatten_dict_list_for_gml
-from virne.network.attribute import create_attr_from_dict, BaseAttribute, NodeAttribute
+from virne.network.attribute import BaseAttribute, NodeAttribute, LinkAttribute, GraphAttribute
+from virne.network.attribute import create_link_attrs_from_dict, create_node_attrs_from_dict
+from virne.network.topology import TopologyGenerator
+from virne.utils.config import resolve_config_to_dict
 
 
 class BaseNetwork(nx.Graph):
@@ -47,7 +50,7 @@ class BaseNetwork(nx.Graph):
     def __init__(
             self, 
             incoming_graph_data: Optional[nx.Graph] = None, 
-            config: Optional[object] = None,
+            config: Optional[DictConfig | dict] = None,
             **kwargs
         ):
         """
@@ -60,32 +63,39 @@ class BaseNetwork(nx.Graph):
         """
         super(BaseNetwork, self).__init__(incoming_graph_data)
         # Convert config to dict if needed
-        if config is None:
-            config_dict = {}
-        elif config and isinstance(config, dict): 
-            config_dict = config
-        elif config and isinstance(config, DictConfig): 
-            from omegaconf import OmegaConf
-            config_dict = OmegaConf.to_container(config, resolve=True) if isinstance(config, DictConfig) else vars(config)
-        else:
-            config_dict = vars(config)
+        config_dict = resolve_config_to_dict(config) if config else {}
         assert isinstance(config_dict, dict), "config must be a dict or DictConfig."
         # Set graph attributes from config
         self.config = config_dict
+        node_attrs_setting = self.graph.get('node_attrs_setting', []) + config_dict.get('node_attrs_setting', [])
+        link_attrs_setting = self.graph.get('link_attrs_setting', []) + config_dict.get('link_attrs_setting', [])
+        # depulicate node and link attrs setting
+        node_attrs_setting = {n_attr_dict['name']: n_attr_dict for n_attr_dict in node_attrs_setting}
+        link_attrs_setting = {e_attr_dict['name']: e_attr_dict for e_attr_dict in link_attrs_setting}
         self.graph.update({
-            'topology': config_dict.get('topology', {}),
-            'output': config_dict.get('output', {}),
-            'node_attrs_setting': self.graph.get('node_attrs_setting', []) + config_dict.get('node_attrs_setting', []),
-            'link_attrs_setting': self.graph.get('link_attrs_setting', []) + config_dict.get('link_attrs_setting', [])
+            'node_attrs_setting': list(node_attrs_setting.values()),
+            'link_attrs_setting': list(link_attrs_setting.values()),
         })
         self.create_attrs_from_setting()
+
+
+        if 'topology' in config_dict: self.graph['topology'] = config_dict['topology']
+        if 'output' in config_dict: self.graph['output'] = config_dict['output']
+
         # Read extra kwargs
+        self.set_graph_attrs_data(config_dict.get('graph_attrs_setting', {}))
         self.set_graph_attrs_data(kwargs)
 
     def create_attrs_from_setting(self):
         """Create node and link attribute dictionaries from their respective settings."""
-        self.node_attrs = {n_attr_dict['name']: create_attr_from_dict(n_attr_dict) for n_attr_dict in self.graph['node_attrs_setting']}
-        self.link_attrs = {e_attr_dict['name']: create_attr_from_dict(e_attr_dict) for e_attr_dict in self.graph['link_attrs_setting']}
+        self.node_attrs: Dict[str, NodeAttribute] = dict(
+            (n_attr_dict['name'], create_node_attrs_from_dict(n_attr_dict)) 
+            for n_attr_dict in self.graph['node_attrs_setting']
+        )
+        self.link_attrs: Dict[str, LinkAttribute] = dict(
+            (e_attr_dict['name'], create_link_attrs_from_dict(e_attr_dict)) 
+            for e_attr_dict in self.graph['link_attrs_setting']
+        )
 
     def check_attrs_existence(self) -> None:
         """
@@ -126,37 +136,7 @@ class BaseNetwork(nx.Graph):
             AssertionError: If num_nodes < 1 or type is unsupported.
             NotImplementedError: If the graph type is not implemented.
         """
-        assert num_nodes >= 1, "num_nodes must be >= 1."
-        assert type in ['path', 'star', 'waxman', 'random'], (
-            f"Unsupported graph type: {type}")
-        self.set_graph_attrs_data({'num_nodes': num_nodes, 'type': type})
-        if type == 'path':
-            G = nx.path_graph(num_nodes)
-        elif type == 'star':
-            G = nx.star_graph(num_nodes)
-        elif type == 'grid_2d':
-            m = kwargs.get('m')
-            n = kwargs.get('n')
-            if m is None or n is None:
-                raise ValueError("'grid_2d' type requires 'm' and 'n' keyword arguments.")
-            G = nx.grid_2d_graph(m, n, periodic=False)
-        elif type == 'waxman':
-            wm_alpha = kwargs.get('wm_alpha', 0.5)
-            wm_beta = kwargs.get('wm_beta', 0.2)
-            not_connected = True
-            while not_connected:
-                G = nx.waxman_graph(num_nodes, wm_alpha, wm_beta)
-                not_connected = not nx.is_connected(G)
-            self.set_graph_attrs_data({'wm_alpha': wm_alpha, 'wm_beta': wm_beta})
-        elif type == 'random':
-            random_prob = kwargs.get('random_prob', 0.5)
-            self.set_graph_attrs_data({'random_prob': random_prob})
-            not_connected = True
-            while not_connected:
-                G = nx.erdos_renyi_graph(num_nodes, random_prob, directed=False)
-                not_connected = not nx.is_connected(G)
-        else:
-            raise NotImplementedError(f"Graph type '{type}' is not implemented.")
+        G = TopologyGenerator.generate(type, num_nodes, **kwargs)
         self.__dict__['_node'] = G.__dict__['_node']
         self.__dict__['_adj'] = G.__dict__['_adj']
 
@@ -166,11 +146,19 @@ class BaseNetwork(nx.Graph):
             for n_attr in self.node_attrs.values():
                 if n_attr.generative or n_attr.type == 'extrema':
                     attribute_data = n_attr.generate_data(self)
+                    assert len(attribute_data) == self.num_nodes, (
+                        f"Node attribute '{n_attr.name}' data length {len(attribute_data)} \
+                            does not match number of nodes {self.num_nodes}."
+                    )
                     n_attr.set_data(self, attribute_data)
         if link:
             for l_attr in self.link_attrs.values():
                 if l_attr.generative or l_attr.type == 'extrema':
                     attribute_data = l_attr.generate_data(self)
+                    assert len(attribute_data) == self.num_links, (
+                        f"Link attribute '{l_attr.name}' data length {len(attribute_data)} \
+                            does not match number of links {self.num_links}."
+                    )
                     l_attr.set_data(self, attribute_data)
 
     ### Number ###
@@ -265,22 +253,6 @@ class BaseNetwork(nx.Graph):
             for l_attr in self.link_attrs.values():
                 selected_link_attrs.append(l_attr) if l_attr.name in names else None
         return selected_link_attrs
-
-    @lru_cache
-    def get_graph_constraint_attrs(self):
-        """Get the constrained graph attributes."""
-        # TODO: implement this method
-        raise NotImplementedError
-    
-    @lru_cache
-    def get_node_constraint_attrs(self):
-        """Get the constrained node attributes."""
-        return [n_attr for n_attr in self.node_attrs.values() if n_attr.is_constraint == 'constrained']
-
-    @lru_cache
-    def get_link_constraint_attrs(self):
-        """Get the constrained link attributes."""
-        return [l_attr for l_attr in self.link_attrs.values() if l_attr.is_constraint == 'constrained']
 
     @property
     def num_node_features(self) -> int:
@@ -382,27 +354,6 @@ class BaseNetwork(nx.Graph):
         return aggregation_data
 
     ### other ###
-    def calculate_topological_metrics(self, degree=True, closeness=True, eigenvector=True, betweenness=True):
-        if self.num_nodes == 0:
-            print(f'The network is empty: {self}')
-            return
-        # degree
-        if degree:
-            node_degrees = np.array(list(nx.degree_centrality(self).values()), dtype=np.float32)
-            self.node_degree_centrality = (node_degrees - node_degrees.min()) / (node_degrees.max() - node_degrees.min())
-        # closeness
-        if closeness:
-            self.node_closeness_centrality = np.array(list(nx.closeness_centrality(self).values()), dtype=np.float32)
-            # self.node_closenesses = (node_closenesses - node_closenesses.min()) / (node_closenesses.max() - node_closenesses.min())
-        # eigenvector
-        if eigenvector:
-            self.node_eigenvector_centrality = np.array(list(nx.eigenvector_centrality(self).values()), dtype=np.float32)
-            # self.node_eigenvectors = (node_eigenvectors - node_eigenvectors.min()) / (node_eigenvectors.max() - node_eigenvectors.min())
-        # betweenness
-        if betweenness:
-            self.node_betweenness_centrality = np.array(list(nx.betweenness_centrality(self).values()), dtype=np.float32)
-            # self.node_betweennesses = (node_betweennesses - node_betweennesses.min()) / (node_betweennesses.max() - node_betweennesses.min())
-
     def subgraph(self, nodes):
         subnet = super().subgraph(nodes)
         subnet.node_attrs = self.node_attrs
@@ -421,94 +372,6 @@ class BaseNetwork(nx.Graph):
     def get_subnetwork_view(self, filter_node=no_filter, filter_edge=no_filter):
         return self.get_subgraph_view(filter_node, filter_edge)
 
-    ### Update ###
-    def update_node_resources(self, node_id, v_net_node, method='+'):
-        """Update (increase) the value of node atributes."""
-        for n_attr in self.node_attrs.keys():
-            if n_attr.type != 'resource':
-                continue
-            n_attr.update(self.nodes[node_id], v_net_node, method)
-
-    def update_link_resources(self, link_pair, v_net_link, method='+'):
-        """Update (increase) the value of link atributes."""
-        for l_attr in self.link_attrs:
-            if l_attr.type != 'resource':
-                continue
-            l_attr.update(self.links[link_pair], v_net_link, method)
-
-    def update_path_resources(self, path, v_net_link, method='+'):
-        """Update (increase) the value of links atributes of path with the same increments."""
-        assert len(path) >= 1
-        for l_attr in self.link_attrs:
-            l_attr.update_path(self, path, v_net_link, method)
-
-    ### Benchmark ###
-    @lru_cache
-    def get_degree_benchmark(self) -> float:
-        """
-        Return the maximum node degree in the network, or 0 if the network is empty.
-        """
-        degree_items = []
-        degree_obj = self.degree
-        # DegreeView is iterable, int is not
-        if hasattr(degree_obj, '__iter__') and not isinstance(degree_obj, int):
-            degree_items = list(degree_obj)
-        if not degree_items:
-            return 0.0
-        degrees = [d for _, d in degree_items]
-        return float(max(degrees))
-
-    @lru_cache
-    def get_node_attr_benchmarks(self, node_attr_types: list = ['resource', 'extrema']):
-        if node_attr_types is None:
-            n_attrs = self.get_node_attrs()
-            node_attr_types = [n_attr.type for n_attr in n_attrs]
-        else:
-            n_attrs = self.get_node_attrs(node_attr_types)
-        n_attrs = self.get_node_attrs(node_attr_types)
-        node_data = np.array(self.get_node_attrs_data(n_attrs), dtype=np.float32)
-        node_attr_benchmarks = self.get_attr_benchmarks(node_attr_types, n_attrs, node_data)
-        return node_attr_benchmarks
-
-    @lru_cache
-    def get_link_attr_benchmarks(self, link_attr_types=['resource', 'extrema']):
-        if link_attr_types is None:
-            l_attrs = self.get_link_attrs()
-            link_attr_types = [l_attr.type for l_attr in l_attrs]
-        else:
-            l_attrs = self.get_link_attrs(link_attr_types)
-        link_data = np.array(self.get_link_attrs_data(l_attrs), dtype=np.float32)
-        link_data = np.concatenate([link_data, link_data], axis=1)
-        link_attr_benchmarks = self.get_attr_benchmarks(link_attr_types, l_attrs, link_data)
-        return link_attr_benchmarks
-
-    @lru_cache
-    def get_link_sum_attr_benchmarks(self, link_attr_types=['resource', 'extrema']):
-        if link_attr_types is None:
-            l_attrs = self.get_link_attrs()
-            link_attr_types = [l_attr.type for l_attr in l_attrs]
-        else:
-            l_attrs = self.get_link_attrs(link_attr_types)
-        link_sum_attrs_data = np.array(self.get_aggregation_attrs_data(l_attrs, aggr='sum'), dtype=np.float32)
-        link_sum_attr_benchmarks = self.get_attr_benchmarks(link_attr_types, l_attrs, link_sum_attrs_data)
-        return link_sum_attr_benchmarks
-
-    def get_attr_benchmarks(self, attr_types: list, attrs_list: list, attr_data: np.ndarray) -> dict:
-        """Get attributes benchmark for normalization."""
-        attr_benchmarks = {}
-        if 'extrema' in attr_types:
-            for attr, attr_data in zip(attrs_list, attr_data):
-                if attr.type == 'resource':
-                    continue
-                elif attr.type == 'extrema':
-                    attr_benchmarks[attr.originator] = attr_data.max()
-                else:
-                    attr_benchmarks[attr.name] = attr_data.max()
-        else:
-            for attr, attr_data in zip(attrs_list, attr_data):
-                attr_benchmarks[attr.name] = attr_data.max()
-        return attr_benchmarks
-
     ### Internal ###
     def __getitem__(self, key):
         """Gets the data of the attribute key."""
@@ -523,10 +386,9 @@ class BaseNetwork(nx.Graph):
         net_info = {
             'num_nodes': self.num_nodes,
             'num_links': self.num_links,
-            # 'num_node_features': self.num_node_features,
-            # 'num_link_features': self.num_link_features,
             'node_attrs': list(self.node_attrs.keys()),
-            'link_attrs': list(self.link_attrs.keys())
+            'link_attrs': list(self.link_attrs.keys()),
+            'graph_attrs': {k: v for k, v in self.graph.items() if k not in ['node_attrs_setting', 'link_attrs_setting']},
         }
         net_info_strings = [f'{k}={v}' for k, v in net_info.items()]
         return f"{self.__class__.__name__}({', '.join(net_info_strings)})"
@@ -545,6 +407,9 @@ class BaseNetwork(nx.Graph):
         """
         Return a GML-safe copy of the graph with structured metadata.
         uses GML's native repeated-key support.
+
+        Specifically, it flattens the graph attributes into a single dictionary
+        with keys in the format 'key___subkey' for nested dictionaries.
         """
         gml_safe_graph = nx.Graph()
         gml_safe_graph.add_nodes_from(self.nodes(data=True))
@@ -557,16 +422,16 @@ class BaseNetwork(nx.Graph):
         gml_safe_graph.graph["link_attrs_setting"] = flatten_dict_list_for_gml(
             self.graph.get("link_attrs_setting", [])
         )
-
-        # Flatten other dict keys (topology, output)
-        for key in ["topology", "output"]:
-            d = self.graph.get(key, {})
-            if isinstance(d, dict):
-                for subk, subv in d.items():
-                    gml_safe_graph.graph[f"{key}_{subk}"] = str(subv)
-        
+        # Store graph attributes safely by flattening dictionaries
+        for key, value in self.graph.items():
+            if key in ["node_attrs_setting", "link_attrs_setting"]:
+                continue
+            if isinstance(value, (dict, DictConfig)):
+                for subk, subv in value.items():
+                    gml_safe_graph.graph[f"{key}___{subk}"] = str(subv)
+            else:
+                gml_safe_graph.graph[key] = value
         return gml_safe_graph
-
 
     @classmethod
     def from_gml(cls, fpath, label='id'):
@@ -580,9 +445,23 @@ class BaseNetwork(nx.Graph):
         gml_net = nx.read_gml(fpath, label=label)
         if not all(isinstance(node, int) for node in gml_net.nodes):
             gml_net = nx.convert_node_labels_to_integers(gml_net)
-        # import pdb; pdb.set_trace()
         net = cls(incoming_graph_data=gml_net)
         net.check_attrs_existence()
+        # Restore graph attributes that were flattened
+        for key, value in gml_net.graph.items():
+            if key in ["node_attrs_setting", "link_attrs_setting"]:
+                continue
+            if '___' in key:
+                main_key, sub_key = key.split('___')
+                if main_key not in net.graph:
+                    net.graph[main_key] = {}
+                if not hasattr(net, main_key):
+                    setattr(net, main_key, {})
+                net.graph[main_key][sub_key] = value
+                getattr(net, main_key)[sub_key] = value
+                del net.graph[key]
+            else:
+                setattr(net, key, value)
         return net
 
     def save_attrs_dict(self, fpath: str) -> None:

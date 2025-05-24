@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "A comprehensive simulator and benchmark for Resource Allocation in Network Function Virtualization (NFV-RA)."
 readme = "README.md"
 requires-python = ">= 3.10"
-authors = [{ name = "GeminiLight", email = "tianfuwang.cs@gmail.com" }]
+authors = [{ name = "GeminiLight", email = "wtfly2018@gmail.com" }]
 license = { text = "Apache License, Version 2.0" }
 keywords = ["Network Function Virtualization", "Virtual Network Embedding", "Reinforcement Learning"]
 classifiers = [

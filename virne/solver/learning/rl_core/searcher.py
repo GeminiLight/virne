@@ -65,7 +65,7 @@ def select_action(
         candidate_action_dist = Categorical(probs=candidate_action_probs)
     else:
         candidate_action_probs = F.softmax(action_logits / softmax_temp, dim=-1)
-        candidate_action_dist = Categorical(probs=candidate_action_dist)
+        candidate_action_dist = Categorical(probs=candidate_action_probs)
 
     if sample:
         action = candidate_action_dist.sample()

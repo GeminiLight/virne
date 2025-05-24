@@ -36,11 +36,11 @@ class DeterministicRoundingSolver(Solver):
         if v_p_value_dict is not None:
             solution = self.deploy_with_v_p_value_dict(v_net, p_net, v_p_value_dict, candidates_dict)
         else:
-            solution = Solution(v_net)
+            solution = Solution.from_v_net(v_net)
         return solution
 
     def deploy_with_v_p_value_dict(self, v_net, p_net, v_p_value_dict, candidates_dict):
-        solution = Solution(v_net)
+        solution = Solution.from_v_net(v_net)
         for v_node_id in list(v_net.nodes):
             selected_p_net_nodes = list(solution['node_slots'].values())
             v_p_candidate_prob_dict = {p_node_id: v_p_value_dict[v_node_id][p_node_id] for p_node_id in list(p_net.nodes)

@@ -41,7 +41,7 @@ class MctsSolver(Solver):
         v_net, p_net = instance['v_net'], instance['p_net']
         init_state = State(p_net, v_net, self.controller, self.recorder, self.counter)
         current_node = Node(None, init_state)
-        solution = Solution(v_net)
+        solution = Solution.from_v_net(v_net)
 
         # node mapping
         for v_node_id in range(v_net.num_nodes):

@@ -75,11 +75,11 @@ class BaseMetaHeuristicSolver(Solver):
         self.candidates_dict = self.controller.construct_candidates_dict(v_net, p_net)
         self.fitness_recording = list()
         if {} in self.candidates_dict.values():
-            return Solution(v_net)
+            return Solution.from_v_net(v_net)
         self.best_individual = None
         solution = self.meta_run(v_net, p_net)
         if solution['v_net_total_hard_constraint_violation'] > 0:
-            return Solution(v_net)
+            return Solution.from_v_net(v_net)
         # depoly with solution
         if solution['result']:
             self.controller.deploy(v_net, p_net, solution)
@@ -206,7 +206,7 @@ class Individual:
             self.ranked_v_nodes = list(v_net.nodes)
         else:
             self.ranked_v_nodes = ranked_v_nodes
-        self.solution = Solution(v_net)
+        self.solution = Solution.from_v_net(v_net)
         for v_node_id in self.ranked_v_nodes:
             self.solution.node_slots[v_node_id] = -1
         self.best_solution = copy.deepcopy(self.solution)

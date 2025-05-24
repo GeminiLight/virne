@@ -126,7 +126,7 @@ class HopfieldNetworkSolver(Solver):
                                                             shortest_method=self.shortest_method,
                                                             k=self.k_shortest, inplace=True)
             return link_mapping_result
-        self.solution = Solution(v_net)
+        self.solution = Solution.from_v_net(v_net)
         node_mapping_result = node_mapping(v_net, p_net)
         if node_mapping_result:
             link_mapping_result = link_mapping(v_net, p_net)

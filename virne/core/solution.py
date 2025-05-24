@@ -3,6 +3,7 @@
 # ==============================================================================
 
 
+from calendar import c
 import pprint
 from collections import OrderedDict
 from virne.utils.class_dict import ClassDict
@@ -70,6 +71,19 @@ class Solution(ClassDict):
         self.v_net_num_egdes = v_net.num_links
         self.reset()
 
+    @classmethod
+    def from_v_net(cls, v_net):
+        """
+        Creates a new Solution object from a virtual network.
+
+        Args:
+            v_net: The virtual network being mapped.
+
+        Returns:
+            A new Solution object.
+        """
+        return cls(v_net)
+
     def reset(self) -> None:
         """
         Resets all attributes of the Solution object to their initial state.
@@ -120,6 +134,8 @@ class Solution(ClassDict):
         self.early_rejection: bool = False
         self.revoke_times: int = 0
         self.selected_actions: list = []
+        self.num_interactions: int = 0
+        self.v_net_reward: float = 0.0
 
     def is_feasible(self) -> bool:
         """
@@ -151,18 +167,3 @@ class Solution(ClassDict):
         """
         for key, value in new_dict.items():
             setattr(self, key, value)
-
-
-class ConstraintViolations:
-    """
-    A class representing the constraint violations of a solution.
-
-    Attributes:
-        node_level: A dictionary mapping node IDs to their constraint violations.
-        link_level: A dictionary mapping link IDs to their constraint violations.
-        path_level: A dictionary mapping path IDs to their constraint violations.
-    """
-    def __init__(self):
-        self.node_level = {}
-        self.link_level = {}
-        self.path_level = {}

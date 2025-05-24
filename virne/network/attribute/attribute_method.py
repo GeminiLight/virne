@@ -7,7 +7,7 @@ import networkx as nx
 from typing import Any, Dict, List, Optional, Type, Union, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..network import BaseNetwork
+    from virne.network.base_network import BaseNetwork
 
 
 class ResourceAttributeMethod:
@@ -116,5 +116,3 @@ class ConstraintAttributeMethod:
             return True, offset
         else:
             raise ValueError(f"Unknown constraint restriction: {self.constraint_restrictions}")
-
-

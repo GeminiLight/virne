@@ -38,13 +38,9 @@ encoder_obs_to_tensor = TensorConvertor.v_net_x_obs_as_tensor
 class A3CGcnSeq2SeqInstanceEnv(JointPRStepInstanceRLEnv):
 
     def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(A3CGcnSeq2SeqInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_net'
-        #     config.rl.feature_constructor.if_use_degree_metric = False
-        #     config.rl.feature_constructor.if_use_more_topological_metrics = False
-        self.feature_constructor = FeatureConstructorRegistry.get(config.rl.feature_constructor.name)(
-            self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
+        super(A3CGcnSeq2SeqInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
 @SolverRegistry.register(solver_name='ppo_gcn_seq2seq+', solver_type='r_learning')
@@ -72,18 +68,22 @@ class PpoGcnSeq2SeqSolver(InstanceAgent, PPOSolver):
         encoder_outputs = self.policy.encode(self.preprocess_encoder_obs(encoder_obs, device=self.device))
         encoder_outputs = encoder_outputs.squeeze(1).cpu().detach().numpy()
         p_node_id = p_net.num_nodes
+        hidden_state = self.policy.get_last_rnn_state()
+        encoder_obs['p_node_id'] = p_node_id
+        encoder_obs['hidden_state'] = np.squeeze(hidden_state.cpu().detach().numpy(), axis=0)
+        encoder_obs['encoder_outputs'] = encoder_outputs
+        encoder_obs['action_mask'] = np.expand_dims(sub_env.generate_action_mask(), axis=0)
+        instance_obs = encoder_obs
         while not instance_done:
-            instance_obs = encoder_obs
             hidden_state = self.policy.get_last_rnn_state()
-            instance_obs['p_node_id'] = p_node_id
-            instance_obs['hidden_state'] = np.squeeze(hidden_state.cpu().detach().numpy(), axis=0)
-            instance_obs['encoder_outputs'] = encoder_outputs
-            instance_obs['action_mask'] =  np.expand_dims(sub_env.generate_action_mask(), axis=0)
             tensor_instance_obs = self.preprocess_obs(instance_obs, device=self.device)
             action, action_logprob = self.select_action(tensor_instance_obs, sample=True)
             next_instance_obs, instance_reward, instance_done, instance_info = sub_env.step(action)
 
-            p_node_id = action
+            next_instance_obs['p_node_id'] = action
+            next_instance_obs['hidden_state'] = np.squeeze(hidden_state.cpu().detach().numpy(), axis=0)
+            next_instance_obs['encoder_outputs'] = encoder_outputs
+            next_instance_obs['action_mask'] = np.expand_dims(sub_env.generate_action_mask(), axis=0)
 
             if instance_done:
                 break
@@ -115,7 +115,7 @@ class PpoGcnSeq2SeqSolver(InstanceAgent, PPOSolver):
             next_instance_obs, instance_reward, instance_done, instance_info = sub_env.step(action)
         
             sub_buffer.add(instance_obs, action, instance_reward, instance_done, action_logprob, value=value)
-            next_instance_obs['p_node_id'] = p_node_id
+            next_instance_obs['p_node_id'] = action
             next_instance_obs['hidden_state'] = np.squeeze(hidden_state.cpu().detach().numpy(), axis=0)
             next_instance_obs['encoder_outputs'] = encoder_outputs
             next_instance_obs['action_mask'] = np.expand_dims(sub_env.generate_action_mask(), axis=0)
@@ -136,6 +136,7 @@ def make_policy(agent, **kwargs):
     policy = GcnSeq2SeqActorCritic(
         p_net_num_nodes=feature_dim_config['p_net_num_nodes'], 
         p_net_x_dim=feature_dim_config['p_net_x_dim'],
+        p_net_edge_dim=feature_dim_config['p_net_edge_dim'],
         v_net_x_dim=feature_dim_config['v_net_x_dim'], 
         **general_nn_config).to(agent.device)
     optimizer = OptimizerBuilder.build_optimizer(agent.config, policy)
@@ -145,7 +146,9 @@ def make_policy(agent, **kwargs):
 @SolverRegistry.register(solver_name='ppo_gat_seq2seq+', solver_type='r_learning')
 class PpoGatSeq2SeqSolver(PpoGcnSeq2SeqSolver):
     def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super().__init__(controller, recorder, counter, logger, config, **kwargs)
+        InstanceAgent.__init__(self, A3CGcnSeq2SeqInstanceEnv)
+        PPOSolver.__init__(self, controller, recorder, counter, logger, config, make_policy_gat, obs_as_tensor, **kwargs)
+        self.preprocess_encoder_obs = encoder_obs_to_tensor
 
 def make_policy_gat(agent, **kwargs):
     feature_dim_config = PolicyBuilder.get_feature_dim_config(agent.config)
@@ -153,6 +156,7 @@ def make_policy_gat(agent, **kwargs):
     policy = GATSeq2SeqActorCritic(
         p_net_num_nodes=feature_dim_config['p_net_num_nodes'], 
         p_net_x_dim=feature_dim_config['p_net_x_dim'],
+        p_net_edge_dim=feature_dim_config['p_net_edge_dim'],
         v_net_x_dim=feature_dim_config['v_net_x_dim'], 
         **general_nn_config).to(agent.device)
     optimizer = OptimizerBuilder.build_optimizer(agent.config, policy)

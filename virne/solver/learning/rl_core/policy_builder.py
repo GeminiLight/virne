@@ -179,7 +179,7 @@ class PolicyBuilder:
         return policy, optimizer
 
     @staticmethod
-    def build_bi_gcn_policy(agent: Any) -> Tuple[nn.Module, torch.optim.Optimizer]:
+    def build_dual_gcn_policy(agent: Any) -> Tuple[nn.Module, torch.optim.Optimizer]:
         """
         Build a Bi-GCN-based actor-critic policy and its optimizer.
         """
@@ -193,7 +193,7 @@ class PolicyBuilder:
         return policy, optimizer
 
     @staticmethod
-    def build_bi_gat_policy(agent: Any) -> Tuple[nn.Module, torch.optim.Optimizer]:
+    def build_dual_gat_policy(agent: Any) -> Tuple[nn.Module, torch.optim.Optimizer]:
         """
         Build a Bi-GCN-based actor-critic policy and its optimizer.
         """
@@ -205,7 +205,7 @@ class PolicyBuilder:
         return policy, optimizer
 
     @staticmethod
-    def build_bi_deep_edge_gat_policy(agent: Any) -> Tuple[nn.Module, torch.optim.Optimizer]:
+    def build_dual_deep_edge_gat_policy(agent: Any) -> Tuple[nn.Module, torch.optim.Optimizer]:
         """
         Build a Bi-GCN-based actor-critic policy and its optimizer.
         """

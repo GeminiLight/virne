@@ -42,7 +42,7 @@ class SafeRLSolver(RLSolver):
             'optimizer': self.optimizer.state_dict(),
             'penalty_params': self.penalty_params
         }, checkpoint_fname)
-        print(f'Save model to {checkpoint_fname}\n') if self.verbose >= 0 else None
+        self.logger.critical(f'Save model to {checkpoint_fname}\n')
 
     def load_model(self, checkpoint_fname):
         super().load_model(checkpoint_fname)
@@ -138,9 +138,6 @@ class FixedPenaltyPPOSolver(PPOSolver, SafeRLSolver):
 
             self.update_time += 1
 
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()
@@ -166,7 +163,7 @@ class LagrangianPPOSolver(PPOSolver, SafeRLSolver):
         penalty_loss.backward(retain_graph=True)
         self.optimizer.step()
         cur_penalty = softplus(self.penalty_params).item()
-        print('loss: ', penalty_loss.item(), 'penalty_params: ', self.penalty_params, 'avg_cost: ', avg_cost)
+        self.logger.info('loss: ', penalty_loss.item(), 'penalty_params: ', self.penalty_params, 'avg_cost: ', avg_cost)
         # update the policy params repeatly
         sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         for i in range(sample_times):
@@ -239,9 +236,6 @@ class LagrangianPPOSolver(PPOSolver, SafeRLSolver):
 
             self.update_time += 1
 
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()
@@ -307,7 +301,7 @@ class NeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
                 cost_values = self.estimate_cost(observations).detach()
                 penalty_loss = -(cur_penalty * (cost_values - self.cost_budget)).mean()
                 # penalty_loss = torch.zeros(size=(1,), device=self.device).mean()
-                print(f'curr_penalty: {cur_penalty.mean().item():.4f}, cost_budget {self.cost_budget:.4f}, penalty_loss: {penalty_loss.mean().item():.4f},  cost_returns: {cost_returns.mean().item():.4f},  cost_values: {cost_values.mean().item():.4f}, cost_critic_loss: {cost_critic_loss.mean().item():.4f}')
+                self.logger.info(f'curr_penalty: {cur_penalty.mean().item():.4f}, cost_budget {self.cost_budget:.4f}, penalty_loss: {penalty_loss.mean().item():.4f},  cost_returns: {cost_returns.mean().item():.4f},  cost_values: {cost_values.mean().item():.4f}, cost_critic_loss: {cost_critic_loss.mean().item():.4f}')
             else:
                 penalty_loss = torch.zeros(size=(1,), device=self.device).mean()
 
@@ -351,9 +345,6 @@ class NeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
 
             self.update_time += 1
 
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()
@@ -393,7 +384,7 @@ class RobustNeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
         batch_returns = torch.FloatTensor(self.buffer.returns)
         batch_feasibiliy_flags = torch.FloatTensor(self.buffer.feasibility_flags)
         import pdb; pdb.set_trace()
-        print(f'feasibility_flags: {batch_feasibiliy_flags.mean().item():.4f}')
+        self.logger.info(f'feasibility_flags: {batch_feasibiliy_flags.mean().item():.4f}')
         batch_cost_violations = batch_cost_returns - self.cost_budget
         # update the policy params repeatly
         # sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
@@ -439,7 +430,7 @@ class RobustNeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
                 penalty_loss = -(cur_penalty * (cost_values - self.cost_budget)).mean()
                 
                 # penalty_loss = torch.zeros(size=(1,), device=self.device).mean()
-                print(f'curr_penalty: {cur_penalty.mean().item():.4f}, cost_budget {self.cost_budget:.4f}, penalty_loss: {penalty_loss.mean().item():.4f},  cost_returns: {cost_returns.mean().item():.4f},  cost_values: {cost_values.mean().item():.4f}, cost_critic_loss: {cost_critic_loss.mean().item():.4f}')
+                self.logger.info(f'curr_penalty: {cur_penalty.mean().item():.4f}, cost_budget {self.cost_budget:.4f}, penalty_loss: {penalty_loss.mean().item():.4f},  cost_returns: {cost_returns.mean().item():.4f},  cost_values: {cost_values.mean().item():.4f}, cost_critic_loss: {cost_critic_loss.mean().item():.4f}')
             else:
                 penalty_loss = torch.zeros(size=(1,), device=self.device).mean()
 
@@ -485,12 +476,8 @@ class RobustNeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
 
             if self.if_use_baseline_solver and self.update_time % 100 == 0:
                 self.baseline_solver.policy.load_state_dict(self.policy.state_dict())
-                print(f'Update time == {self.update_time},  baseline_solver updated')
+                self.logger.info(f'Update time == {self.update_time},  baseline_solver updated')
 
-
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()
@@ -618,12 +605,8 @@ class RewardCPOSolver(PPOSolver, SafeRLSolver):
         
             if self.update_time % 100 == 0:
                 self.baseline_solver.policy.load_state_dict(self.policy.state_dict())
-                print(f'Update time == {self.update_time},  baseline_solver updated')
+                self.logger.info(f'Update time == {self.update_time},  baseline_solver updated')
 
-
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()
@@ -712,7 +695,7 @@ class AdaptiveStateWiseSafePPOSolver(PPOSolver, SafeRLSolver):
                 cost_values = self.estimate_cost(observations).detach()
                 # current objective
                 curr_objective =  returns - current_penalty * costs
-                print(curr_objective.mean())
+                # print(curr_objective.mean())
 
                 # print((sm_objective - curr_objective).mean())
 
@@ -725,8 +708,8 @@ class AdaptiveStateWiseSafePPOSolver(PPOSolver, SafeRLSolver):
                 # cost_budgets =  cost_budgets_scaler * cost_values.detach()
                 cost_budgets = cost_budgets_scaler
                 penalty_loss = -(current_penalty * (costs.detach() - cost_budgets)).mean() + budget_loss
-                print(f'cost_budget: {cost_budgets.mean().item():.4f}, cost_budgets_scaler: {cost_budgets_scaler.mean().item():.4f}, budget_loss: {budget_loss.mean().item():.4f},  mean_task_difficuties: {task_difficuties.mean().item():.4f}, mean_returns: {returns.mean().item():.4f}, mean_costs: {costs.mean().item():.4f}')
-                print(f'curr_penalty: {current_penalty.mean().item():.4f}, penalty_loss: {penalty_loss.mean().item():.4f},  cost_values: {cost_values.mean().item():.4f}')
+                self.logger.info(f'cost_budget: {cost_budgets.mean().item():.4f}, cost_budgets_scaler: {cost_budgets_scaler.mean().item():.4f}, budget_loss: {budget_loss.mean().item():.4f},  mean_task_difficuties: {task_difficuties.mean().item():.4f}, mean_returns: {returns.mean().item():.4f}, mean_costs: {costs.mean().item():.4f}')
+                self.logger.info(f'curr_penalty: {current_penalty.mean().item():.4f}, penalty_loss: {penalty_loss.mean().item():.4f},  cost_values: {cost_values.mean().item():.4f}')
             else:
                 penalty_loss = torch.zeros(size=(1,), device=self.device).mean()
 
@@ -766,9 +749,7 @@ class AdaptiveStateWiseSafePPOSolver(PPOSolver, SafeRLSolver):
                 }
                 self.logger.log(data=info, step=self.update_time)
             self.update_time += 1
-        # print(f'loss: {loss.detach():+2.4f} = {actor_loss.detach():+2.4f} & {critic_loss:+2.4f} & {entropy_loss:+2.4f} & {mask_loss:+2.4f}, ' +
-        #         f'action log_prob: {action_logprobs.mean():+2.4f} (old: {batch_old_action_logprobs.detach().mean():+2.4f}), ' +
-        #         f'mean reward: {returns.detach().mean():2.4f}', file=self.fwriter) if self.verbose >= 0 else None
+
         self.lr_scheduler.step() if self.lr_scheduler is not None else None
         
         self.buffer.clear()

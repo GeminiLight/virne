@@ -33,6 +33,5 @@ def make_solver_class(solver_name: str, instance_env_cls, base_solver_cls, polic
             base_solver_cls.__init__(self, controller, recorder, counter, logger, config, policy_builder, obs_as_tensor, **kwargs)
     SolverClass.__name__ = solver_name
     SolverClass.__qualname__ = solver_name
-    # registry.register(solver_name=solver_name, solver_type='r_learning')(SolverClass)
     SolverRegistry.register(solver_name=solver_name, solver_type='r_learning')(SolverClass)
     return SolverClass

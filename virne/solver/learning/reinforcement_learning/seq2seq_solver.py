@@ -3,11 +3,6 @@
 # ==============================================================================
 
 
-# ==============================================================================
-# Copyright 2023 GeminiLight (wtfly2018@gmail.com). All Rights Reserved.
-# ==============================================================================
-
-
 import numpy as np
 from gym import spaces
 from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
@@ -15,7 +10,7 @@ from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 import torch
 import numpy as np
-from omegaconf import open_dict
+from omegaconf import DictConfig, open_dict
 
 from virne.network import PhysicalNetwork, VirtualNetwork
 from virne.core import Controller, Recorder, Counter, Solution, Logger
@@ -31,16 +26,9 @@ from virne.solver.learning.rl_core.feature_constructor import FeatureConstructor
 from virne.solver.learning.rl_core.reward_calculator import RewardCalculatorRegistry, GradualIntermediateRewardCalculator
 from virne.solver.learning.reinforcement_learning.solver_maker import make_solver_class
 
-obs_as_tensor = TensorConvertor.obs_as_tensor_for_gnn_seq2seq
 
-import os
 import torch
 import numpy as np
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions import Categorical
-from torch_geometric.data import Data, Batch
-from torch.nn.utils.rnn import pad_sequence, pad_packed_sequence
 
 from virne.core import Solution, SolutionStepEnvironment
 from virne.solver.base_solver import SolverRegistry
@@ -48,13 +36,16 @@ from virne.solver.learning.rl_core import RLSolver, PPOSolver, InstanceAgent, A2
 from virne.solver.learning.utils import get_pyg_data
 
 
+obs_as_tensor = TensorConvertor.obs_as_tensor_for_gnn_seq2seq
+
 
 
 class GnnSeq2SeqInstanceEnv(JointPRStepInstanceRLEnv):
 
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
+        with open_dict(config):
+            config.rl.feature_constructor.name = 'p_net_v_node'
         super(GnnSeq2SeqInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
-        self.feature_constructor = PNetVNodeFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
 
 
 @SolverRegistry.register(solver_name='a3c_gcn_seq2seq', solver_type='r_learning')

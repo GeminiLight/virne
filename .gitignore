@@ -9,8 +9,6 @@
 **/.DS_Store
 **/.ipynb_checkpoints
 **/*.pytest_cache
-outputs
-results
 
 # build
 virne.egg-info/
@@ -18,6 +16,8 @@ dist
 build
 
 # save
+outputs
+results
 save
 running_log
 old_save

@@ -10,7 +10,7 @@ from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 import torch
 import numpy as np
-from omegaconf import open_dict
+from omegaconf import DictConfig, open_dict
 
 from virne.network import PhysicalNetwork, VirtualNetwork
 from virne.core import Controller, Recorder, Counter, Solution, Logger
@@ -22,8 +22,6 @@ from virne.solver.learning.rl_core.rl_solver import PGSolver, A2CSolver, PPOSolv
 from virne.solver.learning.rl_core.instance_agent import InstanceAgent
 from virne.solver.learning.rl_core.tensor_convertor import TensorConvertor
 from virne.solver.learning.rl_core.policy_builder import PolicyBuilder
-from virne.solver.learning.rl_core.feature_constructor import FeatureConstructorRegistry, PNetVNodeFeatureConstructor, PNetVNetFeatureConstructor
-from virne.solver.learning.rl_core.reward_calculator import RewardCalculatorRegistry, VanillaRewardCalculator, AdaptiveWeightRewardCalculator
 from virne.solver.learning.reinforcement_learning.solver_maker import make_solver_class
 
 
@@ -32,16 +30,14 @@ build_policy = PolicyBuilder.build_att_policy
 
 
 class AttInstanceRLEnv(PlaceStepInstanceRLEnv):
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(AttInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
-        self.feature_constructor = FeatureConstructorRegistry.get(config.rl.feature_constructor.name)(
-            self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
+        super(AttInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+
 
 class PpoAttInstanceRLEnv(PlaceStepInstanceRLEnv):
-    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs):
-        super(PpoAttInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
+    def __init__(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config: DictConfig, **kwargs):
         with open_dict(config):
             config.rl.feature_constructor.name = 'p_net_v_node'
             config.rl.feature_constructor.if_use_degree_metric = True
@@ -50,11 +46,9 @@ class PpoAttInstanceRLEnv(PlaceStepInstanceRLEnv):
             config.rl.feature_constructor.if_use_node_status_flags = True
             config.rl.reward_calculator.name = 'adaptive_intermediate'
             config.rl.if_use_negative_sample = False
-        self.feature_constructor = PNetVNetFeatureConstructor(self.node_attr_benchmarks or {}, self.link_attr_benchmarks or {}, self.link_sum_attr_benchmarks or {}, self.config)
-        self.reward_calculator = AdaptiveWeightRewardCalculator(self.config)
+        super(PpoAttInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
-# @SolverRegistry.register(solver_name='ppo_att', solver_type='r_learning')
 @SolverRegistry.register(solver_name='ppo_att', solver_type='r_learning')
 class PpoAttSolver(InstanceAgent, PGSolver):
     """
