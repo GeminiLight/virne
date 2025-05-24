@@ -5,7 +5,7 @@ topology:
   type: waxman
   wm_alpha: 0.5
   wm_beta: 0.2
-  # file_path: './dataset/topology/Geant.gml'
+  # file_path: './datasets/topology/Geant.gml'
 
 link_attrs_setting:
   - distribution: uniform

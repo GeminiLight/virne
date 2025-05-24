@@ -5,7 +5,7 @@ topology:
   type: waxman             # Topology type: waxman, random, etc.
   wm_alpha: 0.5            # Waxman alpha parameter
   wm_beta: 0.2             # Waxman beta parameter
-  # file_path: './dataset/topology/Geant.gml'  # Uncomment to use a specific topology file
+  # file_path: './datasets/topology/Geant.gml'  # Uncomment to use a specific topology file
 
 node_attrs_setting:
   - name: cpu

@@ -36,22 +36,21 @@
 
 Virne offers a unified and flexible framework for NFV-RA, with the following key features:
 
-* **Highly Customizable Simulations**: Simulates diverse network environments (e.g., cloud, edge, 5G), with user-defined topologies, resources, and service requirements.
-* **Extensive Algorithm Suite**: Implements 30+ NFV-RA algorithms (including exact, heuristics, meta-heuristics, and RL-based methods) in a modular, extensible architecture.
-* **Reinforcement Learning Support**: Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
-* **Comprehensive Evaluation Aspects**: Enables in-depth analysis beyond effectiveness, covering multiple practicality perspectives (e.g., solvability, generalization, and scalability).
-
-![](resources/figures/virne-architecture.png)
+* 1️⃣ **Highly Customizable Simulations**: Simulates diverse network environments (e.g., cloud, edge, 5G), with user-defined topologies, resources, and service requirements.
+* 2️⃣ **Extensive Algorithm Suite**: Implements 30+ NFV-RA algorithms (including exact, heuristics, meta-heuristics, and RL-based methods) in a modular, extensible architecture.
+* 3️⃣ **Reinforcement Learning Support**: Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
+* 4️⃣ **Comprehensive Evaluation Aspects**: Enables in-depth analysis beyond effectiveness, covering multiple practicality perspectives (e.g., solvability, generalization, and scalability).
 
 > [!IMPORTANT]
 > 🎉 We have released the [benchmark paper of Virne](resources/pdfs/virne_benchmark_paper.pdf). Welcome to check it out!
 >
 > ✨ If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
+![](resources/figures/virne-architecture.png)
 
 ### Citations
 
-> ✨ If you find Virne helpful to your research, please feel free to cite our related papers:heart:
+> ❤️ If you find Virne helpful to your research, please feel free to cite our related papers.
 
 **[IJCAI, 2024] FlagVNE** ([paper](https://arxiv.org/pdf/2404.12633) & [code](https://github.com/GeminiLight/flag-vne))
 
@@ -149,7 +148,7 @@ Some examples of command line arguments are:
 python main.py solver.solver_name=nrm_rank
 
 # Run with a specific physical topology
-python main.py p_net_setting.topology.file_path=../../dataset/topology/Geant.gml
+python main.py p_net_setting.topology.file_path=../../datasets/topology/Geant.gml
 
 # Run with a specific network system
 python main.py system.if_offline_system=true
