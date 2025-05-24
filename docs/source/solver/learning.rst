@@ -112,31 +112,3 @@ PgCnn2Solver
         :members:
         :private-members:
 
-
-PgSeq2SeqSolver
-~~~~~~~~~~~~~~~
-
-.. card::
-    :class-header: sd-bg-success sd-text-white
-    :class-card: sd-outline-success  sd-rounded-1
-
-    Documentation
-    ^^^
-
-    .. autoclass:: PgSeq2SeqSolver
-        :members:
-        :private-members:
-
-A3CGcnSeq2SeqSolver
-~~~~~~~~~~~~~~~~~~~
-
-.. card::
-    :class-header: sd-bg-success sd-text-white
-    :class-card: sd-outline-success  sd-rounded-1
-
-    Documentation
-    ^^^
-
-    .. autoclass:: A3CGcnSeq2SeqSolver
-        :members:
-        :private-members:

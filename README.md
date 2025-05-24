@@ -32,12 +32,12 @@
 
 > In the literature, RA in NFV is often termed Virtual Network Embedding (VNE), Virtual Network Function (VNF) placement, service function chain (SFC) deployment, or network slicing in 5G.
 
-Virne offers a unified and flexible framework for NFV-RA, with the following key features:
+Virne offers a unified and comprehensive framework for NFV-RA, with the following key features:
 
 * 1️⃣ **Highly Customizable Simulations**: Simulates diverse network environments (e.g., cloud, edge, 5G), with user-defined topologies, resources, and service requirements.
 * 2️⃣ **Extensive Algorithm Suite**: Implements 30+ NFV-RA algorithms (including exact, heuristics, meta-heuristics, and RL-based methods) in a modular, extensible architecture.
 * 3️⃣ **Reinforcement Learning Support**: Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
-* 4️⃣ **Comprehensive Evaluation Aspects**: Enables in-depth analysis beyond effectiveness, covering multiple practicality perspectives (e.g., solvability, generalization, and scalability).
+* 4️⃣ **In-depth Evaluation Aspects**: Enables insightful analysis beyond effectiveness, covering multiple practicality perspectives (e.g., solvability, generalization, and scalability).
 
 > [!IMPORTANT]
 > 🎉 We have released the [benchmark paper of Virne](resources/pdfs/virne_benchmark_paper.pdf). Welcome to check it out!

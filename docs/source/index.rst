@@ -3,61 +3,60 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Virne: A Simulator for NFV-RA
-===================================
+Virne: An NFV-RA Simulator & Benchmark
+=====================================
+
+**Virne** is a simulator and benchmark designed to address **resource allocation (RA) problems in network function virtualization (NFV)**, with a highlight on supporting **reinforcement learning (RL)**-based algorithms.
 
 .. note::
 
-  **Virne** is still under development. 
-  If you have any questions, 
-  please open an new issue on `Github <https://github.com/GeminiLight/virne>`_  or 
-  contact me via email: wtfly2018@gmail.com.
+  In the literature, RA in NFV is often termed Virtual Network Embedding (VNE), Virtual Network Function (VNF) placement, service function chain (SFC) deployment, or network slicing in 5G.
+
+Virne offers a unified and comprehensive framework for NFV-RA, with the following key features:
+
+.. grid:: 2 2 2 4
+   :gutter: 3
+
+   .. grid-item-card::
+      :class-item: sd-font-weight-bold
+      :class-header: sd-bg-info sd-text-white sd-font-weight-bold
+      :class-card: sd-outline-info sd-rounded-1
+
+      1️⃣ Highly Customizable Simulations
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Simulate diverse network environments (e.g., cloud, edge, 5G) with user-defined topologies, resources, and service requirements.
+
+   .. grid-item-card::
+      :class-item: sd-font-weight-bold
+      :class-header: sd-bg-success sd-text-white sd-font-weight-bold
+      :class-card: sd-outline-success sd-rounded-1
+
+      2️⃣ Extensive Algorithm Suite
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Implements 30+ NFV-RA algorithms (exact, heuristics, meta-heuristics, RL-based) in a modular, extensible architecture.
+
+   .. grid-item-card::
+      :class-item: sd-font-weight-bold
+      :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
+      :class-card: sd-outline-primary sd-rounded-1
+
+      3️⃣ Reinforcement Learning Support
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
+
+   .. grid-item-card::
+      :class-item: sd-font-weight-bold
+      :class-header: sd-bg-warning sd-text-white sd-font-weight-bold
+      :class-card: sd-outline-warning sd-rounded-1
+
+      4️⃣ In-depth Evaluation Aspects
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Enables insightful analysis beyond effectiveness, covering practicality perspectives such as solvability, generalization, and scalability.
 
 
-**Virne** is a simulator designed to address **resource allocation problems in network function virtualization**. This category of problems is often referred to by various names, including:
-
-- **Virtual Network Embedding (VNE)**
-- **Virtual Network Function Placement (VNF Placement)**
-- **Service Function Chain Deployment (SFC Deployment)**
-- **Network Slicing**
-
-The main goal of Virne is to provide a unified and flexible framework for solving these problems. Its main characteristics are as follows.
-
-.. grid:: 12 4 4 4
-
-    .. grid-item-card::
-        :class-item: sd-font-weight-bold
-        :class-header: sd-bg-info sd-text-white sd-font-weight-bold
-        :class-card: sd-outline-info  sd-rounded-1
-        :columns: 12 6 6 4
-
-        Rich Implementations
-        ^^^^^^^^^^^^^^^^^^^^
-        Provide 20+ solvers, including exact, heuristic, meta-heuristic, and machine learning-based algorithms.
-
-    .. grid-item-card::
-        :class-item: sd-font-weight-bold
-        :class-header: sd-bg-success sd-text-white sd-font-weight-bold
-        :class-card: sd-outline-success  sd-rounded-1
-        :columns: 12 6 6 4
-
-        Flexible Extensions 
-        ^^^^^^^^^^^^^^^^^^^^^^
-        Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
-        
-    .. grid-item-card::
-        :class-item: sd-font-weight-bold
-        :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
-        :class-card: sd-outline-primary  sd-rounded-1
-        :columns: 12 6 6 4
-
-        Light-Weight
-        ^^^^^^^^^^^^
-        Implement concisely with less necessary dependencies, and can be extended easily for specific algorithms.
-
-.. image:: _static/workflow.jpg
+.. image:: _static/virne-architecture.jpg
   :width: 1000
-  :alt: Overall Workflow of Virne
+  :alt: Overall Architecture of Virne
 
 Citations
 ---------
@@ -105,45 +104,6 @@ If you find Virne helpful to your research, please feel free to cite our related
       doi={10.1109/ICC42927.2021.9500964}
     }
 
-
-Supported Features
-------------------
-
-- **Diverse Network Topologies for Simulation**
-  
-  - Simple Network Structures: e.g. Star for Centralized Network, Path for Chain-style Network, etc.
-  - Random Network Topologies: e.g. Waxman Graph, Edge Probabilistic Connection Graph, etc.
-  - Real-world Network Topologies: e.g. Abilene, Geant, etc.
-  
-- **Multiple level Attributes for QoS**: 
-
-  - Graph Level: e.g. the global requirements of user service requests, etc.
-  - Node level: e.g. computing resource, server position, energy consumption, etc.
-  - Link level: e.g. bandwidth resource, communication delay, etc.
-  
-- **Unified Reinforcement Learning Interface for Extension**
-  
-  - Provide serval RL Environments in gym.Env-style.
-  - Implement the many RL training algorithms, including MCTS, PPO, A2C, etc.
-  - Support the integration of RL algorithms from other libraries.
-  
-- **Various Simulation Scenarios**
-  
-  - Admission control: Early Reject some not cost-effective service requests.
-  - Cloud-Edge: Heteregenous infrastructure with different QoS provision.
-  - Time window: Globally process the a batch service requests in a time window.
-
-- **Predefined QoS Awarenesses** (Additional Constraints/ Objectives)
-
-  - [x] Position (Node level)
-  - [x] Latency (Graph, Node and Link level)
-  - [x] Security (Graph, Node and Link level)
-  - [ ] Congestion (Graph, Node and Link level)
-  - [ ] Energy (Graph, Node and Link level)
-  - [x] Reliability (Graph, Node and Link level)
-  - [ ] Dynamic (Graph, Node and Link level)
-  - [ ] Parallelization
-  - [ ] Privacy
 
 Indices and tables
 ------------------
