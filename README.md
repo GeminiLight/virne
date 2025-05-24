@@ -8,8 +8,17 @@
 </div>
 
 <div align="center">
-<img src="https://img.shields.io/badge/version-1.0.0-blue" />  <img src="https://img.shields.io/pypi/v/virne?label=pypi" /> <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
+<a href="https://deepwiki.com/geminilight/virne">
+  <img src="https://devin.ai/assets/deepwiki-badge.png" alt="Ask DeepWiki.com" height="19"/>
+</a>
+<img src="https://img.shields.io/badge/version-1.0.0-blue" /> 
+<img src="https://img.shields.io/pypi/v/virne?label=pypi" />
+<img src="https://img.shields.io/badge/license-Apache--2.0-green" />
 </div>
+<div align="center">
+
+</div>
+
 
 <p align="center">
   <a href="resources/pdfs/virne_benchmark_paper.pdf">✨ Benchmark Paper</a> &nbsp;&nbsp;•&nbsp;&nbsp;
@@ -18,39 +27,31 @@
   <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a>
 </p>
 
+
 --------------------------------------------------------------------------------
 
-**Virne** is a simulator designed to address **resource allocation problems in network function virtualization**. This category of problems is often referred to by various names, including:
+**Virne** is a simulator and benchmark designed to address **resource allocation (RA) problems in network function virtualization (NFV)**, with a highlight on supporting **reinforcement learning (RL)**-based algorithms.
 
-- **Virtual Network Embedding (VNE)**
-- **Virtual Network Function Placement (VNF Placement)**
-- **Service Function Chain Deployment (SFC Deployment)**
-- **Network Slicing** and so on.
+> In the literature, RA in NFV is often termed Virtual Network Embedding (VNE), Virtual Network Function (VNF) placement, service function chain (SFC) deployment, or network slicing in 5G.
+
+Virne offers a unified and flexible framework for NFV-RA, with the following key features:
+
+* **Highly Customizable Simulations**: Simulates diverse network environments (e.g., cloud, edge, 5G), with user-defined topologies, resources, and service requirements.
+* **Extensive Algorithm Suite**: Implements 30+ NFV-RA algorithms (including exact, heuristics, meta-heuristics, and RL-based methods) in a modular, extensible architecture.
+* **Reinforcement Learning Support**: Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
+* **Comprehensive Evaluation Aspects**: Enables in-depth analysis beyond effectiveness, covering multiple practicality perspectives (e.g., solvability, generalization, and scalability).
 
 ![](resources/figures/virne-architecture.png)
 
-
-The main goal of Virne is to provide a unified and flexible framework for solving these problems. Its main characteristics are as follows.
-
-- **Customizable Simulation**: Support various network topologies, network attributes, and QoS requirements.
-- **Rich Implementations**: Provide 20+ solvers, including exact, heuristic, meta-heuristic, and machine learning-based algorithms.
-- **Extensible Development**: Provide a variety of network topologies, network attributes, and RL environments, which can be easily extended.
-        
-
 > [!IMPORTANT]
-> :sparkles: We successfully upgrade Virne to **1.0.0** version!
-> Our benchmark papers and documentation on Virne will be available soon.
+> 🎉 We have released the benchmark paper of Virne. Welcome to check it out!
 > 
-> - Diverse simulations +++
-> - Flexible implementations +++
-> - Comprehensive evaluations +++
->
-> If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
+> ✨ If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
 
 ### Citations
 
-:sparkles: If you find Virne helpful to your research, please feel free to cite our related papers:heart:
+> ✨ If you find Virne helpful to your research, please feel free to cite our related papers:heart:
 
 **[IJCAI, 2024] FlagVNE** ([paper](https://arxiv.org/pdf/2404.12633) & [code](https://github.com/GeminiLight/flag-vne))
 
@@ -96,7 +97,6 @@ The main goal of Virne is to provide a unified and flexible framework for solvin
     - [Install with pip](#install-with-pip)
     - [Install with script](#install-with-script)
   - [Minimal Example](#minimal-example)
-- [Supported Features](#supported-features)
 - [Implemented Algorithms](#implemented-algorithms)
   - [Exact Algorithms](#exact-algorithms)
   - [Heuristic Algorithms](#heuristic-algorithms)
@@ -123,45 +123,6 @@ bash install.sh -c 0
 # use cuda (only support cuda=12.4 and torch=2.6.0)
 bash install.sh -c 12.4
 ```
-
-## Supported Features
-
-- **Diverse Network Topologies for Simulation**
-  
-  - Simple Network Structures: e.g. Star for Centralized Network, Path for Chain-style Network, etc.
-  - Random Network Topologies: e.g. Waxman Graph, Edge Probabilistic Connection Graph, etc.
-  - Real-world Network Topologies: e.g. Abilene, Geant, etc.
-  
-- **Multiple level Attributes for QoS**: 
-
-  - Graph Level: e.g. the global requirements of user service requests, etc.
-  - Node level: e.g. computing resource, server position, energy consumption, etc.
-  - Link level: e.g. bandwidth resource, communication delay, etc.
-  
-- **Unified Reinforcement Learning Interface for Extension**
-  
-  - Provide serval RL Environments in gym.Env-style.
-  - Implement the many RL training algorithms, including MCTS, PPO, A2C, etc.
-  - Support the integration of RL algorithms from other libraries.
-  
-- **Various Simulation Scenarios**
-  
-  - Admission control: Early Reject some not cost-effective service requests.
-  - Cloud-Edge: Heteregenous infrastructure with different QoS provision.
-  - Time window: Globally process the a batch service requests in a time window.
-
-- **Predefined QoS Awarenesses** (Additional Constraints/ Objectives)
-
-  - [x] Position (Node level)
-  - [x] Latency (Graph, Node and Link level)
-  - [x] Security (Graph, Node and Link level)
-  - [ ] Congestion (Graph, Node and Link level)
-  - [ ] Energy (Graph, Node and Link level)
-  - [x] Reliability (Graph, Node and Link level)
-  - [ ] Dynamic (Graph, Node and Link level)
-  - [ ] Parallelization
-  - [ ] Privacy
-
 
 ## Implemented Algorithms
 
@@ -251,30 +212,3 @@ bash install.sh -c 12.4
 | First Fit Decreasing Rank                     | `ffd_rank`          | `two-stage`  |
 | First Fit Decreasing Joint Place and Route    | `ffd_joint_pr`      | `joint_pr`   |
 | First Fit Decreasing Rank Breath First Search | `ffd_bfs_trials`    | `bfs_trials` |
-
-
-## To-do List
-
-### Environment Modeling
-
-- [ ] `ADD` `Scenario` Window Batch Processing
-- [x] `ADD` `Environment` Check Attributes of p_net and v_net
-- [x] `ADD` `Environment` Latency Constraint
-- [x] `ADD` `Controller` Check graph constraints
-- [x] `ADD` `Controller` Multi-commodity flow
-- [x] `ADD` `Environment` QoS level Constraints
-- [x] `ADD` `Recorder` Count partial solutions' information
-- [x] `ADD` `Enironment` Early rejection (Admission control)
-- [x] `ADD` `Environment` Multi-Resources Attributes
-- [x] `ADD` `Environment` Position Constraint
-- [x] `ADD` `Recorder` Count Running physical network nodes
-
-### Algorithm Implementations
-
-| Name            | Command          | Type         | Mapping     | Title                                                        | Publication | Year | Note |
-| --------------- | ---------------- | ------------ | ----------- | ------------------------------------------------------------ | ----------- | --------------- | --------------- |
-| PG-Conv-QoS-Security | `pg_cnn_qs` | `learning`   | `joint`     | [VNE Solution for Network Differentiated QoS and Security Requirements: From the Perspective of Deep Reinforcement Learning](https://arxiv.org/pdf/2202.01362.pdf) | arXiv        |         | Security |
-| DDPG-Attention* | `ddpg_attention` | `learning`   | `joint`     | [A-DDPG: Attention Mechanism-based Deep Reinforcement Learning for NFV](https://research.tudelft.nl/en/publications/a-ddpg-attention-mechanism-based-deep-reinforcement-learning-for-) | IWQOS       | 2021   |  |
-| MUVINE          | `mu`        | `learning`   | `joint`     | [MUVINE: Multi-stage Virtual Network Embedding in Cloud Data Centers using Reinforcement Learning based Predictions](https://arxiv.org/pdf/2111.02737.pdf) | JSAC        | 2020    | Admission Control |
-| TD      | `td`      | `learning`   | `two-stage` | [VNE-TD: A virtual network embedding algorithm based on temporal-difference learning](https://www.sciencedirect.com/science/article/pii/S138912861830584X?via%3Dihub) | CN          | 2019      |  |
-| RNN          | `rnn`         | `learning`   | `two-stage` | [Boost Online Virtual Network Embedding: Using Neural Networks for Admission Control](https://mediatum.ub.tum.de/doc/1346092/1346092.pdf) | CNSM        | 2016    | Admission Control |
