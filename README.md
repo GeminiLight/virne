@@ -8,9 +8,7 @@
 </div>
 
 <div align="center">
-<a href="https://deepwiki.com/geminilight/virne">
-  <img src="https://devin.ai/assets/deepwiki-badge.png" alt="Ask DeepWiki.com" height="19"/>
-</a>
+<a href="https://deepwiki.com/GeminiLight/virne"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 <img src="https://img.shields.io/badge/version-1.0.0-blue" /> 
 <img src="https://img.shields.io/pypi/v/virne?label=pypi" />
 <img src="https://img.shields.io/badge/license-Apache--2.0-green" />
