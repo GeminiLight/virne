@@ -44,8 +44,8 @@ Virne offers a unified and flexible framework for NFV-RA, with the following key
 ![](resources/figures/virne-architecture.png)
 
 > [!IMPORTANT]
-> 🎉 We have released the benchmark paper of Virne. Welcome to check it out!
-> 
+> 🎉 We have released the [benchmark paper of Virne](resources/pdfs/virne_benchmark_paper.pdf). Welcome to check it out!
+>
 > ✨ If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
 
@@ -94,9 +94,7 @@ Virne offers a unified and flexible framework for NFV-RA, with the following key
 
 - [Quick Start](#quick-start)
   - [Installation](#installation)
-    - [Install with pip](#install-with-pip)
-    - [Install with script](#install-with-script)
-  - [Minimal Example](#minimal-example)
+  - [Running Examples](#running-examples)
 - [Implemented Algorithms](#implemented-algorithms)
   - [Exact Algorithms](#exact-algorithms)
   - [Heuristic Algorithms](#heuristic-algorithms)
@@ -124,20 +122,43 @@ bash install.sh -c 0
 bash install.sh -c 12.4
 ```
 
+### Running Examples
+
+1. Run the default example
+
+Before running the example, you could update the configuration file in `settings/` directory to set the parameters on simulation and algorithm.
+
+```bash
+python main.py
+```
+
+
+2. Run with custom configuration
+
+
+Virne is built on [Hydra](https://hydra.cc/), which allows you to override configuration parameters directly from the command line.
+
+```bash
+python main.py CONFIG_NAME=NEW_VALUE
+```
+
+Some examples of command line arguments are:
+
+```bash
+# Run with a specific nfv-ra algorithm
+python main.py solver.solver_name=nrm_rank
+
+# Run with a specific physical topology
+python main.py p_net_setting.topology.file_path=../../dataset/topology/Geant.gml
+
+# Run with a specific network system
+python main.py system.if_offline_system=true
+```
+
+
 ## Implemented Algorithms
 
-**Virne** has implemented the following heuristic-based and learning-based algorithms:
-
-> Mapping Strategies
-> - Two-Stage
->   - In this fromework, the VNE solving process are composed of Node mapping and Edge Mapping.
->   - Firstly, the node mapping solution is generate with node mapping algorithm, i.e., Node Ranking
->   - Secondly, the BFS algorithm is employed to route the physical link pairs obtained from the node mapping solution. 
-> - Joint Place and Route
->   - The solution of node mapping consists of a sequential placement decision.
->   - Simultaneously, the available physical link pairs are routed by BFS algorithm.
-> - BFS Trails
->   - Based on breadth-first search, it expands the search space by exploiting the awareness of restarts.
+**Virne** has implemented the rich heuristic-based and learning-based algorithms for NFV-RA. Some of them are listed in the following tables. 
 
 ### Learning-based Solvers
 
