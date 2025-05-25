@@ -6,7 +6,7 @@
 import os
 import copy
 import numpy as np
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Sequence
 from dataclasses import dataclass, field, asdict
 from omegaconf import DictConfig, OmegaConf
 
@@ -80,20 +80,18 @@ class VirtualNetworkRequestSimulator(object):
     # Use a dict to cache by dataset_dir (it is a unique identifier for the dataset)
     _cached_vnets_loads = {}
 
-    def __init__(self, v_nets: List[VirtualNetwork] = [], events: List[VirtualNetworkEvent] = [], v_sim_setting: dict = {}, **kwargs):
+    def __init__(
+            self, 
+            v_nets: Sequence[VirtualNetwork] = [], 
+            events: Sequence[VirtualNetworkEvent] = [], 
+            v_sim_setting: dict = {}, 
+            **kwargs
+        ):
         super(VirtualNetworkRequestSimulator, self).__init__()
         self.v_nets = v_nets
         self.events = events
         self.v_sim_setting = copy.deepcopy(v_sim_setting)
         self._construct_v2event_dict()
-
-        # self.aver_arrival_rate = self.v_sim_setting['arrival_rate']['lam']
-        # if self.v_sim_setting['lifetime']['distribution'] == 'exponential':
-        #     self.aver_lifetime = self.v_sim_setting['lifetime']['scale']
-        # elif self.v_sim_setting['lifetime']['distribution'] == 'uniform':
-        #     self.aver_lifetime = (self.v_sim_setting['lifetime']['high'] + self.v_sim_setting['lifetime']['low']) / 2.
-        # else:
-        #     raise NotImplementedError
 
     @property
     def num_v_nets(self):
@@ -245,7 +243,7 @@ class VirtualNetworkRequestSimulator(object):
         for v_net_fname in v_net_fnames_list:
             v_net = VirtualNetwork.from_gml(os.path.join(v_nets_dir, v_net_fname))
             v_nets.append(v_net)
-        # Check if the number of virtual networks matches the number of events
+        # Check if the number of virtual networks matches the number of events * 2
         if len(v_nets) * 2 != len(events):
             raise ValueError(f"Number of virtual networks ({len(v_nets)}) should be half of the number of events ({len(events)})")
         # Create a new VirtualNetworkRequestSimulator object

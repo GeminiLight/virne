@@ -120,15 +120,18 @@ class PhysicalNetwork(BaseNetwork):
             except Exception as e:
                 print(f"Error loading GML {file_path}: {e}. Attempting to generate topology.")
                 topology_config = config.get('topology', {})
-                num_nodes = topology_config.get('num_nodes', 100)
-                gen_topology_type = topology_config.get('type', 'waxman')
-                net_instance.generate_topology(num_nodes, type=gen_topology_type, **topology_config)
+                # Ensure num_nodes is available for topology generation
+                if 'num_nodes' not in topology_config:
+                    raise KeyError("'num_nodes' must be specified in topology config for topology generation")
+                net_instance.generate_topology(**topology_config)
         else:
             if file_path:
                 print(f"Warning: Topology file not found at {file_path}. Generating new topology.")
             topology_config = dict(config.get('topology', {}))
-            num_nodes = topology_config.pop('num_nodes', 100)
-            net_instance.generate_topology(num_nodes, **topology_config)
+            # Ensure num_nodes is available for topology generation
+            if 'num_nodes' not in topology_config:
+                raise KeyError("'num_nodes' must be specified in topology config for topology generation")
+            net_instance.generate_topology(**topology_config)
         # Generate attributes for nodes and links
         net_instance.generate_attrs_data()
         if isinstance(config, DictConfig):

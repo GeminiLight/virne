@@ -12,7 +12,7 @@ class TopologyGenerator:
             case 'path':
                 return nx.path_graph(num_nodes)
             case 'star':
-                return nx.star_graph(num_nodes)
+                return nx.star_graph(num_nodes - 1)
             case 'grid_2d':
                 m = kwargs.get('m')
                 n = kwargs.get('n')

@@ -47,7 +47,7 @@ class Generator:
             PhysicalNetwork: A PhysicalNetwork object representing the generated dataset.
         """
         assert isinstance(config, (DictConfig, dict)), "config must be a DictConfig or dict"
-        assert 'p_net_setting' in config, "config must contain 'p_net' key"
+        assert 'p_net_setting' in config, "config must contain 'p_net_setting' key"
         set_seed(config.get('seed', None))
 
         p_net_setting = config.get('p_net_setting', {})
@@ -70,7 +70,7 @@ class Generator:
             VirtualNetworkRequestSimulator: A VirtualNetworkRequestSimulator object representing the generated dataset.
         """
         assert isinstance(config, (DictConfig, dict)), "config must be a DictConfig or dict"
-        assert 'v_sim_setting' in config, "config must contain 'v_sim' key"
+        assert 'v_sim_setting' in config, "config must contain 'v_sim_setting' key"
         set_seed(config.get('seed', None))
         v_sim_setting = config.get('v_sim_setting', {})
         v_net_simulator = VirtualNetworkRequestSimulator.from_setting(v_sim_setting)

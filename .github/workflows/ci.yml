@@ -23,6 +23,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[pyg-cpu]
           pip install pytest
+          pip install hydra-core
 
       - name: Test CLI (help)
         run: |
@@ -30,4 +31,4 @@ jobs:
 
       - name: Run all tests
         run: |
-          pytest
+          pytest tests

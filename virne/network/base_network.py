@@ -83,7 +83,10 @@ class BaseNetwork(nx.Graph):
         if 'output' in config_dict: self.graph['output'] = config_dict['output']
 
         # Read extra kwargs
-        self.set_graph_attrs_data(config_dict.get('graph_attrs_setting', {}))
+        graph_attrs_setting = config_dict.get('graph_attrs_setting', {})
+        if graph_attrs_setting is None:
+            graph_attrs_setting = {}
+        self.set_graph_attrs_data(graph_attrs_setting)
         self.set_graph_attrs_data(kwargs)
 
     def create_attrs_from_setting(self):

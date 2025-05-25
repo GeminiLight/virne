@@ -28,8 +28,6 @@ class TopologicalMetricCalculator:
 
     def __init__(self, network: 'BaseNetwork', degree: bool = True, closeness: bool = False,
                  eigenvector: bool = False, betweenness: bool = False) -> None:
-        if not isinstance(network, BaseNetwork):
-            raise TypeError(f"network must be a BaseNetwork, got {type(network)}")
         self.network: 'BaseNetwork' = network
         self.metrics = self.calculate(
             network,
