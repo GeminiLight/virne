@@ -51,11 +51,24 @@ class DualGcnInstanceEnv(JointPRStepInstanceRLEnv):
         super(DualGcnInstanceEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
 
 
-@SolverRegistry.register(solver_name='acn_dual_gcn', solver_type='r_learning')
-class DualGcnSolver(InstanceAgent, PGSolver):
+@SolverRegistry.register(solver_name='a2c_dual_gcn', solver_type='r_learning')
+class A2CDualGcnSolver(InstanceAgent, A2CSolver):
     def __init__(self, controller, recorder, counter, logger, config, **kwargs):
         InstanceAgent.__init__(self, DualGcnInstanceEnv)
-        PGSolver.__init__(self, controller, recorder, counter, logger, config, PolicyBuilder.build_dual_gcn_policy, obs_as_tensor, **kwargs)
+        A2CSolver.__init__(self, controller, recorder, counter, logger, config, PolicyBuilder.build_dual_gcn_policy, obs_as_tensor, **kwargs)
+
+@SolverRegistry.register(solver_name='ppo_dual_gcn', solver_type='r_learning')
+class PpoDualGcnSolver(InstanceAgent, PPOSolver):
+    """A PPO solver for Dual-GCN-based solvers.
+
+    References:
+    
+    
+    """
+    def __init__(self, controller, recorder, counter, logger, config, **kwargs):
+        InstanceAgent.__init__(self, DualGcnInstanceEnv)
+        PPOSolver.__init__(self, controller, recorder, counter, logger, config, PolicyBuilder.build_dual_gcn_policy, obs_as_tensor, **kwargs)
+
 
 
 POLICY_BUILDERS = {

@@ -148,16 +148,16 @@ Indices and tables
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: introduction
+    :caption: Introduction
 
     intro/background
-    intro/problem
+    intro/formulation
     intro/framework
     intro/rl-support
 
 .. toctree::
     :hidden:
-    :caption: get start
+    :caption: Quick Start
 
     start/installation
     start/running
@@ -173,6 +173,13 @@ Indices and tables
     solver/heuristic
     solver/meta_heuristic
     solver/learning
+
+.. toctree::
+    :hidden:
+    :caption: Evaluation
+
+    evaluation/metrics
+    evaluation/aspects
 
 .. toctree::
     :hidden:

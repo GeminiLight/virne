@@ -50,6 +50,20 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 
 > ❤️ If you find Virne helpful to your research, please feel free to cite our related papers.
 
+#### Benchmark Paper
+
+**[arXiv, 2025] Virne**
+
+```bibtex
+@article{tfwang-2025-virne,
+  title={Virne: A Comprehensive Benchmark for Deep RL-based Network Resource Allocation in NFV},
+  author={Wang, Tianfu and Deng, Liwei and Chen, Xi and Wang, Junyang and He, Huiguo and Ding, Leilei and Wu, Wei and Fan, Qilin and Xiong, Hui},
+  year={2025},
+}
+```
+
+#### Algorithmic Papers
+
 **[IJCAI, 2024] FlagVNE** ([paper](https://arxiv.org/pdf/2404.12633) & [code](https://github.com/GeminiLight/flag-vne))
 
 ```bibtex
