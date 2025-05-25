@@ -2,7 +2,7 @@ Running
 =======
 
 1. Run the default example
--------------------------
+--------------------------
 
 Before running the example, you could update the configuration file in ``settings/`` directory to set the parameters on simulation and algorithm.
 

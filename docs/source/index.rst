@@ -99,7 +99,7 @@ Algorithmic Papers
 
 ..  code-block:: bib
 
-    @INPROCEEDINGS{ijcai-2024-flagvne,
+    @INPROCEEDINGS{tfwang-ijcai-2024-flagvne,
       title={FlagVNE: A Flexible and Generalizable Reinforcement Learning Framework for Network Resource Allocation},
       author={Wang, Tianfu and Fan, Qilin and Wang, Chao and Ding, Leilei and Yuan, Nicholas Jing and Xiong, Hui},
       booktitle={Proceedings of the 33rd International Joint Conference on Artificial Intelligence},
@@ -125,7 +125,7 @@ Algorithmic Papers
 
 ..  code-block:: bib
 
-    @INPROCEEDINGS{tfw-icc-2021-drl-sfcp,
+    @INPROCEEDINGS{tfwang-icc-2021-drl-sfcp,
       author={Wang, Tianfu and Fan, Qilin and Li, Xiuhua and Zhang, Xu and Xiong, Qingyu and Fu, Shu and Gao, Min},
       booktitle={ICC 2021 - IEEE International Conference on Communications}, 
       title={DRL-SFCP: Adaptive Service Function Chains Placement with Deep Reinforcement Learning}, 
@@ -168,6 +168,7 @@ Indices and tables
     :maxdepth: 3
     :caption: Solver List
 
+    solver/overview
     solver/exact
     solver/heuristic
     solver/meta_heuristic

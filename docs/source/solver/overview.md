@@ -1,5 +1,4 @@
-
-# Implemented Algorithms
+# Overview
 
 **Virne** has implemented the following heuristic-based and learning-based algorithms:
 
