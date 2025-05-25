@@ -1,7 +1,25 @@
 Formulation
 ===========
 
-Network Function Virtualization Resource Allocation (NFV-RA) is a critical challenge in modern networking. It involves efficiently mapping service requests, modeled as Virtual Networks (VNs) composed of interconnected Virtual Network Functions (VNFs), onto a shared physical network (PN) infrastructure. This process must satisfy various resource demands and constraints. NFV-RA is recognized as an NP-hard combinatorial optimization problem, necessitating sophisticated solution strategies.
+.. card::
+    :class-card: sd-outline-info  sd-rounded-1
+    :class-body: sd-font-weight-bold
+
+    #. System Model: Physical Network and Virtual Network
+    #. Basic Formulation for Cost Optimization
+    #. Extensions for Emerging Network Scenarios
+
+.. image:: ../_static/vne-example.png
+   :width: 1000
+   :alt: An example of resource allocation problem in network function virtualization (source: `IJCAI'24 - FlagVNE<https://arxiv.org/abs/2404.12633>`_)
+   :align: center
+
+.. note::
+   **Figure**: An example of a resource allocation problem in network function virtualization. It illustrates the mapping process of virtual network requests onto physical network resources. (Source: `IJCAI'24 - FlagVNE <https://arxiv.org/abs/2404.12633>`_)
+
+NFV-RA is a critical challenge in modern networking. It involves efficiently mapping service requests, modeled as Virtual Networks (VNs) composed of interconnected Virtual Network Functions (VNFs), onto a shared physical network (PN) infrastructure. 
+
+This process must satisfy various resource demands and constraints. NFV-RA is recognized as an NP-hard combinatorial optimization problem, necessitating sophisticated solution strategies.
 
 This page details the formal problem definition used within Virne, starting with a basic cost optimization model and then discussing common extensions.
 
