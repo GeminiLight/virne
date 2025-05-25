@@ -1,33 +1,33 @@
-Basic Usage
-===========
+Running
+=======
 
-Minimal Example
----------------
+1. Run the default example
+-------------------------
 
-.. code:: python
+Before running the example, you could update the configuration file in ``settings/`` directory to set the parameters on simulation and algorithm.
 
-    from virne.base import BasicScenario
-    from virne import Config, REGISTRY, Generator, update_simulation_setting
+.. code-block:: bash
 
+   python main.py
 
-    def run(config):
-        print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
-        # Load solver info: environment and solver class
-        solver_info = REGISTRY.get(config.solver_name)
-        Env, Solver = solver_info['env'], solver_info['solver']
-        print(f'Use {config.solver_name} Solver (Type = {solver_info["type"]})...\n')
+2. Run with custom configuration
+--------------------------------
 
-        scenario = BasicScenario.from_config(Env, Solver, config)
-        scenario.run()
+Virne is built on `Hydra <https://hydra.cc/>`_, which allows you to override configuration parameters directly from the command line.
 
-        print(f"\n{'-' * 20}   Complete   {'-' * 20}\n")
+.. code-block:: bash
 
+   python main.py CONFIG_NAME=NEW_VALUE
 
-    if __name__ == '__main__':
-        config = Config(
-            solver_name='nrm_rank',
-            # p_net_setting_path='customized_p_net_setting_file_path',
-            # v_sim_setting_path='customized_v_sim_setting_file_path',
-        )
-        Generator.generate_dataset(config, p_net=False, v_nets=False, save=False)
-        run(config)
+Some examples of command line arguments are:
+
+.. code-block:: bash
+
+   # Run with a specific nfv-ra algorithm
+   python main.py solver.solver_name=nrm_rank
+
+   # Run with a specific physical topology
+   python main.py p_net_setting.topology.file_path=../../datasets/topology/Geant.gml
+
+   # Run with a specific network system
+   python main.py system.if_offline_system=true

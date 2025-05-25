@@ -3,10 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Virne: An NFV-RA Simulator & Benchmark
-======================================
+Virne: An NFV-RA Benchmark
+==========================
 
-**Virne** is a simulator and benchmark designed to address **resource allocation (RA) problems in network function virtualization (NFV)**, with a highlight on supporting **reinforcement learning (RL)**-based algorithms.
+**Virne** is a comprehensive simulator and benchmark designed to address **resource allocation (RA) problems in network function virtualization (NFV)**, with a highlight on supporting **reinforcement learning (RL)**-based algorithms.
 
 .. note::
 
@@ -128,15 +128,7 @@ Indices and tables
 
     start/installation
     start/usage
-    start/solver_list
-
-.. toctree::
-    :hidden:
-    :maxdepth: 3
-    :caption: customlization
-
-    customlization/simulation
-    customlization/sfc_deployment
+    start/simulation
 
 .. toctree::
     :hidden:
