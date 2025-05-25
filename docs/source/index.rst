@@ -53,15 +53,47 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
       Enables insightful analysis beyond effectiveness, covering practicality perspectives such as solvability, generalization, and scalability.
 
+The overall architecture of Virne is illustrated below:
 
 .. image:: _static/virne-architecture.png
   :width: 1000
   :alt: Overall Architecture of Virne
 
+.. note::
+  Virne offers a streamlined workflow for supporting comprehensive experimentation of NFV-RA algorithms. (a) customize simulation configurations (b) launch event-driven network system (c) process service requests (d) record results for analysis.
+
+Particularly, Virne highlights the support for deep reinforcement learning (RL) algorithms, providing a unified Gym-style environment and RL pipeline.
+
+.. image:: _static/virne-rl-support.png
+  :width: 1000
+  :alt: Unified Gym-style Environment and RL Pipeline in Virne 
+
+.. note::
+
+  The RL pipeline in Virne is designed to be flexible and extensible, allowing researchers to easily integrate their own RL algorithms and environments.
+
+
 Citations
 ---------
 
-If you find Virne helpful to your research, please feel free to cite our related papers.
+❤️ If you find Virne helpful to your research, please feel free to cite our related papers.
+
+
+Benchmark Paper
+~~~~~~~~~~~~~~~
+
+**Virne Benchmark** (paper`  & `code <https://github.com/GeminiLight/virne>`__)
+
+..  code-block:: bib
+
+    @article{tfwang-2025-virne,
+      title={Virne: A Comprehensive Benchmark for Deep RL-based Network Resource Allocation in NFV},
+      author={Wang, Tianfu and Deng, Liwei and Chen, Xi and Wang, Junyang and He, Huiguo and Ding, Leilei and Wu, Wei and Fan, Qilin and Xiong, Hui},
+      year={2025},
+    }
+
+Algorithmic Papers
+~~~~~~~~~~~~~~~~~~
 
 **[IJCAI-2024] FlagVNE** (`paper <https://arxiv.org/abs/2404.12633>`__ & `code <https://github.com/GeminiLight/flag-vne>`__)
 
@@ -121,13 +153,14 @@ Indices and tables
     intro/background
     intro/problem
     intro/framework
+    intro/rl-support
 
 .. toctree::
     :hidden:
     :caption: get start
 
     start/installation
-    start/usage
+    start/running
     start/simulation
 
 .. toctree::
