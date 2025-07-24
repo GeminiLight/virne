@@ -106,6 +106,8 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 - [Quick Start](#quick-start)
   - [Installation](#installation)
   - [Running Examples](#running-examples)
+- [Framework Architecture](#framework-architecture)
+  - [Modularity and Interfaces](#modularity-and-interfaces)
 - [Implemented Algorithms](#implemented-algorithms)
   - [Exact Algorithms](#exact-algorithms)
   - [Heuristic Algorithms](#heuristic-algorithms)
@@ -166,6 +168,27 @@ python main.py p_net_setting.topology.file_path=../../datasets/topology/Geant.gm
 python main.py system.if_offline_system=true
 ```
 
+
+## Framework Architecture
+
+### Modularity and Interfaces
+
+Virne is built with a highly modular architecture that enables easy extension and customization for NFV resource allocation research. The framework provides clear interfaces between components and supports plugin-based development.
+
+📖 **[Complete Modularity Documentation](docs/MODULARITY_AND_INTERFACES.md)**
+
+This comprehensive guide covers:
+- **Concrete interfaces** between modules with detailed API contracts
+- **Data structures** and data flow pipelines throughout the framework
+- **Feature Constructor to Policy Network** integration with practical examples
+- **Extensibility mechanisms** including registry patterns and configuration-driven design
+- **Complete working examples** of custom solvers, feature constructors, and policy networks
+
+Key architectural highlights:
+- **Registry-based plugin system** for algorithms, feature constructors, and neural networks
+- **Configuration-driven customization** using Hydra for rapid experimentation
+- **Clear separation of concerns** between network representation, resource allocation, and learning
+- **Standardized data contracts** enabling seamless component integration
 
 ## Implemented Algorithms
 
