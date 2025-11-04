@@ -1,0 +1,12 @@
+solver_name,reward_calculator_name,feature_constructor_used_features,run_id,num_train_epochs
+mip,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],test_run_fixed,50
+mip,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],mip_tree_seed_0,50
+mip,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],mip_tree_seed_1,50
+mip,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],mip_tree_seed_2,50
+mip,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],mip_tree_seed_3,50
+mip,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],mip_tree_seed_4,50
+d_round,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],drounding_tree_seed_0,50
+d_round,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],drounding_tree_seed_1,50
+d_round,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],drounding_tree_seed_2,50
+d_round,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],drounding_tree_seed_3,50
+d_round,fixed_intermediate_0.1,[_status_aggr_degree_moretopo],drounding_tree_seed_4,50
