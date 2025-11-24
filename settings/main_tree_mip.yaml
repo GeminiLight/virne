@@ -18,7 +18,7 @@ experiment:
   seed: 0
   run_id: auto  # if auto: hostname-datatime
   num_simulations: 1
-  save_root_dir: virne/
+  save_root_dir: apresentacao/simulacoes/
   if_save_config: true
   if_save_p_net: false
   if_save_v_nets: false

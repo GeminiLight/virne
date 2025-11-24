@@ -2,7 +2,7 @@ defaults:
   - _self_
   - learning
   - v_sim_setting/v_sim_200_requests
-  - p_net_setting/tree_p_net_setting
+  - p_net_setting/fat_tree_p_net_setting
 
 hydra:
   run:
@@ -10,8 +10,6 @@ hydra:
   job:
     name: virne
 output_subdir: null
-
-# ${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 # For Experiment
 experiment:
@@ -35,10 +33,16 @@ system:
 
 # For VNE Solver
 solver:
-  solver_name: 'd_round'
+  solver_name: 'sa_meta'
+
+  # SA Meta-heuristic parameters
+  initial_temperature: 100.0
+  cooling_rate: 0.95
+  min_temperature: 0.01
+  iterations_per_temp: 50
 
   matching_mathod: greedy
-  shortest_method: k_shortest
+  shortest_method: bfs_shortest
 
   reusable: false   # Must be false in current version
   node_ranking_method: order
@@ -63,7 +67,7 @@ logger:
   # actual log dir: <save_root_dir>/<solver_name>/<generated_run_id>/<log_dir>
   log_dir_name: logs
   project_name: 'virne'
-  experiment_name: drounding_tree_experiment
+  experiment_name: sa_meta_fat_tree_experiment
   level: INFO
   verbose: 1
   backends: ['console', 'file', 'tensorboard']

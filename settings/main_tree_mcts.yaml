@@ -35,7 +35,7 @@ system:
 
 # For VNE Solver
 solver:
-  solver_name: 'd_round'
+  solver_name: 'mcts'
 
   matching_mathod: greedy
   shortest_method: k_shortest
@@ -47,6 +47,11 @@ solver:
   k_shortest: 10
   allow_revocable: false
   allow_rejection: false
+
+  # MCTS-specific parameters
+  computation_budget: 5  # Number of search iterations per node placement
+  exploration_constant: 0.5  # UCB exploration constant (higher = more exploration)
+
   # learnable models
   sub_solver_name: null
   pretrained_model_path: ''
@@ -63,7 +68,7 @@ logger:
   # actual log dir: <save_root_dir>/<solver_name>/<generated_run_id>/<log_dir>
   log_dir_name: logs
   project_name: 'virne'
-  experiment_name: drounding_tree_experiment
+  experiment_name: mcts_tree_experiment
   level: INFO
   verbose: 1
   backends: ['console', 'file', 'tensorboard']

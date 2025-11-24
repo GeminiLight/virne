@@ -35,10 +35,14 @@ system:
 
 # For VNE Solver
 solver:
-  solver_name: 'd_round'
+  solver_name: 'rw_rank_bfs'
+
+  # BFS-specific parameters
+  max_visit: 500  # Maximum number of nodes to visit during BFS
+  max_depth: 10   # Maximum BFS depth for exploration
 
   matching_mathod: greedy
-  shortest_method: k_shortest
+  shortest_method: bfs_shortest  # Use BFS for shortest path finding
 
   reusable: false   # Must be false in current version
   node_ranking_method: order
@@ -63,7 +67,7 @@ logger:
   # actual log dir: <save_root_dir>/<solver_name>/<generated_run_id>/<log_dir>
   log_dir_name: logs
   project_name: 'virne'
-  experiment_name: drounding_tree_experiment
+  experiment_name: rw_rank_bfs_tree_experiment
   level: INFO
   verbose: 1
   backends: ['console', 'file', 'tensorboard']
