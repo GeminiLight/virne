@@ -370,5 +370,29 @@ class RandomWalkRankSolver(BaseNodeRankSolver):
     #     return True if link_mapping_result else False
 
 
+@SolverRegistry.register(solver_name='topsis_rank',
+    solver_type='node_ranking')
+class TOPSISRankSolver(BaseNodeRankSolver):
+    """
+    A node ranking-based solver that uses TOPSIS (Technique for Order of
+    Preference by Similarity to Ideal Solution) to rank substrate nodes.
+
+    Node and link resource attributes serve as TOPSIS decision criteria.
+    Each substrate node is scored by its closeness coefficient — how close
+    it is to the ideal resource profile — and virtual nodes are placed onto
+    the highest-scoring substrate nodes first.
+
+    References:
+        - Paladugu, N., Das, D., Nagalla, S. (2024). "Network Function
+          Virtualization (NFV) for Flexible Network Services by Using TOPSIS
+          Method." Computer Science, Engineering and Technology, 2(2), 44–51.
+    """
+
+    def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs) -> None:
+        super(TOPSISRankSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
+        self.node_rank = TOPSISNodeRank()
+        self.link_rank = None
+
+
 if __name__ == '__main__':
     pass
