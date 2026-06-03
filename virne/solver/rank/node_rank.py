@@ -231,6 +231,63 @@ class RWNodeRank(NodeRank):
         return self.to_dict(network, nr, sort=sort)
 
 
+@NodeRankRegistry.register('topsis')
+class TOPSISNodeRank(NodeRank):
+    """
+    Ranks substrate nodes using TOPSIS (Technique for Order of Preference
+    by Similarity to Ideal Solution).
+
+    Each node is treated as an alternative whose decision criteria are its
+    available resource attributes (e.g. CPU, memory) concatenated with the
+    aggregate available bandwidth of its incident links.  The closeness
+    coefficient of each node — measuring its relative proximity to the
+    ideal solution — becomes its ranking score.  Nodes with higher scores
+    are preferred for virtual node placement.
+
+    All criteria are treated as benefit criteria (higher is better), and
+    equal weights are applied across all resource dimensions.
+    """
+
+    def rank(self, network: BaseNetwork, sort: bool = True) -> Dict[Any, float]:
+        node_attrs = network.get_node_attrs('resource')
+        node_data = np.array(network.get_node_attrs_data(node_attrs), dtype=float).T
+
+        link_attrs = network.get_link_attrs('resource')
+        link_agg = np.array(
+            network.get_aggregation_attrs_data(link_attrs, aggr='sum', normalized=False),
+            dtype=float,
+        ).T
+
+        if node_data.ndim == 1:
+            node_data = node_data.reshape(-1, 1)
+        if link_agg.ndim == 1:
+            link_agg = link_agg.reshape(-1, 1)
+
+        decision_matrix = np.hstack([node_data, link_agg])
+
+        # Normalise column-wise using the Euclidean norm
+        col_norms = np.sqrt((decision_matrix ** 2).sum(axis=0))
+        col_norms[col_norms == 0] = 1.0
+        normalized = decision_matrix / col_norms
+
+        # Equal weights across all criteria
+        num_criteria = normalized.shape[1]
+        weights = np.ones(num_criteria) / num_criteria
+        weighted = normalized * weights
+
+        # All resource criteria are benefit-type (higher is better)
+        ideal_pos = weighted.max(axis=0)
+        ideal_neg = weighted.min(axis=0)
+
+        dist_pos = np.sqrt(((weighted - ideal_pos) ** 2).sum(axis=1))
+        dist_neg = np.sqrt(((weighted - ideal_neg) ** 2).sum(axis=1))
+
+        # Closeness coefficient: 1 = ideal, 0 = anti-ideal
+        closeness = dist_neg / (dist_pos + dist_neg + 1e-9)
+
+        return self.to_dict(network, closeness, sort=sort)
+
+
 @NodeRankRegistry.register('nps')
 class NPSNodeRank(NodeRank):
     """Ranks nodes using Node Proximity Sensing (NPS) metric."""
