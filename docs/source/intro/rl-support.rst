@@ -5,9 +5,14 @@ Virne models NFV-RA solution construction as a sequential decision problem and
 provides reusable components for training and evaluating reinforcement learning
 (RL) solvers.
 
-.. image:: ../_static/virne-rl-support.png
+.. figure:: ../_static/virne-rl-support.png
    :width: 1000
    :alt: Unified reinforcement learning pipeline in Virne
+   :align: center
+   :figclass: virne-diagram
+
+   Virne's reusable RL pipeline connects environment interaction, rollout
+   collection, policy optimization, checkpointing, and evaluation.
 
 NFV-RA as an MDP
 ----------------

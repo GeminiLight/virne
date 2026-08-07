@@ -1,0 +1,63 @@
+/* Keep wide reference tables usable without compressing their contents. */
+[role="main"] .table-wrapper.container {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+table.solver-registry,
+table.evaluation-protocols {
+  min-width: 42rem;
+}
+
+table.solver-registry th:first-child,
+table.solver-registry td:first-child {
+  white-space: nowrap;
+}
+
+table.solver-registry td:nth-child(2) code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* Solver recommendations are repeated objects, so cards improve scanning. */
+.solver-choice-card {
+  height: 100%;
+  border-color: var(--color-card-border);
+  border-radius: 0.4rem;
+  box-shadow: none;
+}
+
+.solver-choice-card .sd-card-title code {
+  white-space: nowrap;
+}
+
+/* Give technical diagrams one consistent, quiet presentation. */
+figure.virne-diagram {
+  margin-block: 1.25rem 1.75rem;
+}
+
+figure.virne-diagram img {
+  border: 1px solid var(--color-background-border);
+  border-radius: 0.5rem;
+}
+
+figure.virne-diagram figcaption {
+  color: var(--color-foreground-secondary);
+  font-size: var(--font-size--small);
+  line-height: 1.5;
+  margin: 0.65rem auto 0;
+  max-width: 48rem;
+}
+
+@media (max-width: 46rem) {
+  table.solver-registry,
+  table.evaluation-protocols {
+    width: max-content;
+  }
+
+  figure.virne-diagram {
+    margin-block: 1rem 1.5rem;
+  }
+}

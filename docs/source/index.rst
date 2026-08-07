@@ -13,7 +13,7 @@ Start Here
 ----------
 
 * **New to Virne?** Follow the :doc:`installation <start/installation>` and
-  run the :doc:`5-minute quickstart <start/running>`.
+  run the :doc:`Quickstart <start/running>`.
 * **Studying or extending the benchmark?** Read the :doc:`problem formulation
   <intro/formulation>`, :doc:`architecture <intro/framework>`, and
   :doc:`solver registry <solver/overview>`.
@@ -61,9 +61,14 @@ Virne provides the following core capabilities:
 
 The overall architecture of Virne is illustrated below:
 
-.. image:: _static/virne-architecture.png
+.. figure:: _static/virne-architecture.png
   :width: 1000
   :alt: Overall Architecture of Virne
+  :align: center
+  :figclass: virne-diagram
+
+  Virne connects configurable simulations, shared feasibility checks, solver
+  families, and experiment recording.
 
 .. note::
   A Virne experiment has four steps: configure the simulation, launch the
@@ -72,9 +77,14 @@ The overall architecture of Virne is illustrated below:
 Virne also provides a unified environment and training pipeline for deep RL
 algorithms.
 
-.. image:: _static/virne-rl-support.png
+.. figure:: _static/virne-rl-support.png
   :width: 1000
-  :alt: Unified Gym-style Environment and RL Pipeline in Virne 
+  :alt: Unified Gym-style Environment and RL Pipeline in Virne
+  :align: center
+  :figclass: virne-diagram
+
+  A shared Gym-style environment connects observations, policies, rollouts,
+  training, and evaluation.
 
 Citations
 ---------
@@ -85,7 +95,7 @@ Citations
 Benchmark Paper
 ~~~~~~~~~~~~~~~
 
-**[ICLR, 2026] Virne Benchmark** (`paper <https://openreview.net/forum?id=jngvm9MGyv>`__ & `arXiv <https://arxiv.org/abs/2507.19234>`__ & `code <https://github.com/GeminiLight/virne>`__)
+**[ICLR, 2026] Virne Benchmark** (`paper <https://arxiv.org/abs/2507.19234>`__)
 
 ..  code-block:: bib
 
@@ -94,7 +104,6 @@ Benchmark Paper
       author={Wang, Tianfu and Deng, Liwei and Chen, Xi and Wang, Junyang and He, Huiguo and Hu, Zhengyu and Wu, Wei and Ding, Leilei and Fan, Qilin and Xiong, Hui},
       booktitle={The Fourteenth International Conference on Learning Representations},
       year={2026},
-      url={https://openreview.net/forum?id=jngvm9MGyv},
     }
 
 Algorithmic Papers

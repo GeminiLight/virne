@@ -48,4 +48,4 @@ repository root:
     python -c "import virne; print(virne.__version__)"
 
 The command should print the installed Virne version. You can then continue to
-the :doc:`5-minute quickstart <running>`.
+the :doc:`Quickstart <running>`.

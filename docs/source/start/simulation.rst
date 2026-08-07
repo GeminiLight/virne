@@ -6,12 +6,14 @@ Virne offers a highly customizable simulation framework. You can define diverse 
 This guide outlines the key aspects you can customize.
 
 
-.. image:: ../_static/virne-config-customization.png
-  :width: 1000
-  :alt: Virne Configuration Customization
+.. figure:: ../_static/virne-config-customization.png
+   :width: 1000
+   :alt: Virne configuration layers and extension points
+   :align: center
+   :figclass: virne-diagram
 
-.. note::
-   Figure 4: An example of basic configurations on both PN and VNs, along with their extensions. By adding specific settings on the levels of node, link, or graph, Virne can be easily extended to support emerging networks with additional awareness.
+   Configuration layers for PN/VN generation, network attributes, and
+   scenario-specific extensions.
 
 Configuration files typically manage settings for the Physical Network (PN) and parameters for generating Virtual Network (VN) requests.
 

@@ -1,5 +1,5 @@
-5-minute Quickstart
-===================
+Quickstart
+==========
 
 This example runs a small CPU simulation with a fast heuristic solver. It is a
 better first check than ``python main.py`` alone, because the default
