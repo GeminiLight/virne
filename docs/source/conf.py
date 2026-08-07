@@ -7,22 +7,21 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 
-import os
-import sys
 import pathlib
+import sys
 
 ROOT_DIR = pathlib.Path(__file__).absolute().parent.parent.parent
-# sys.path.insert(0, str(ROOT_DIR / 'virne'))
-sys.path.insert(0, os.path.abspath(str(ROOT_DIR)))
-sys.path.insert(0, str(ROOT_DIR / 'virne'))
+EXTENSION_DIR = pathlib.Path(__file__).absolute().parent / '_ext'
+sys.path.insert(0, str(ROOT_DIR))
+sys.path.insert(0, str(EXTENSION_DIR))
 
-# sys.path.insert(0, str(ROOT_DIR))
+from solver_registry import MOCK_IMPORTS
 
 
 project = 'virne'
-copyright = '2023, GeminiLight'
+copyright = '2023-2026, GeminiLight'
 author = 'GeminiLight'
-release = '0.1.0'
+release = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -42,18 +41,22 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.napoleon',
     'sphinx_design',
-    'sphinx_copybutton'
+    'sphinx_copybutton',
+    'solver_registry',
 ]
 
 myst_enable_extensions = ["colon_fence"]
 
 autosummary_generate = True
+autodoc_mock_imports = MOCK_IMPORTS
+autodoc_typehints = 'description'
+autodoc_preserve_defaults = True
 
 napoleon_use_ivar = True
 napoleon_use_admonition_for_references = True
 
 templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = ['_static/problem.rst']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

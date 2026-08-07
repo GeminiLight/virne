@@ -16,13 +16,17 @@ Create a new conda environment
     conda create -n virne python=3.10
     conda activate virne
 
-Install with script
--------------------
+Install with the script
+-----------------------
+
+The installation script currently targets Linux with Python 3.10. It supports a CPU-only environment or CUDA 12.4. Run it from the repository root after activating the Conda environment.
 
 .. code-block:: bash
 
-    # use cpu
-    bash install.sh -c 0
+    # CPU-only PyTorch and PyG
+    bash install.sh -c cpu
 
-    # use cuda (only support cuda=12.4 and torch=2.6.0)
+    # CUDA 12.4 with PyTorch 2.6.0
     bash install.sh -c 12.4
+
+If ``-c`` is omitted, the script detects an NVIDIA GPU and otherwise installs the CPU build.

@@ -50,8 +50,8 @@ check_nvcc_version() {
 
 
 
-# Supported CUDA versions (use "cpu" for no CUDA)
-supported_cuda_versions=("cpu" "10.2" "11.3" "11.6" "11.7" "12.0" "12.1" "12.2" "12.3" "12.4")
+# Supported accelerator targets (use "cpu" for no CUDA)
+supported_cuda_versions=("cpu" "12.4")
 cuda=""
 
 # Parse options
@@ -61,8 +61,8 @@ while getopts ":c:" opt; do
         if [[ " ${supported_cuda_versions[*]} " == *" ${OPTARG} "* ]]; then
             cuda="${OPTARG}"
         else
-            echo "Warning: Unsupported CUDA version '${OPTARG}'. Falling back to auto-detect."
-            cuda=""
+            echo "Unsupported accelerator target '${OPTARG}'. Supported values: ${supported_cuda_versions[*]}."
+            exit 1
         fi
         ;;
     :)
@@ -107,6 +107,7 @@ if [[ -z "$cuda" ]]; then
             print_step "CUDA < 12.4 or nvcc not found. Installing CUDA toolkit 12.4 via conda."
             conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit -y
             export CUDA_HOME=$CONDA_PREFIX
+            cuda="12.4"
             echo "INFO: CUDA 12.4 installed."
         fi
     else
@@ -115,21 +116,21 @@ if [[ -z "$cuda" ]]; then
     fi
 fi
 
-# always exit here
-
 print_step "Installing PyTorch..."
 pip install tensorboard higher
 if [[ "${cuda}" == "cpu" ]]; then
     echo "Installing PyTorch (CPU version)..."
-    pip install torch==2.6.0  --index-url https://download.pytorch.org/whl/cpu --force-reinstall
+    pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu --force-reinstall
+    pyg_wheel_tag="cpu"
 else
     echo "Installing PyTorch with CUDA ${cuda}..."
     pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
+    pyg_wheel_tag="cu124"
 fi
 
 print_step "Installing additional packages..."
 pip install torch_geometric
-pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.6.0+cu124.html
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f "https://data.pyg.org/whl/torch-2.6.0+${pyg_wheel_tag}.html"
 pip install gym==0.22.0
 pip install --force-reinstall scipy
 

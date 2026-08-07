@@ -47,8 +47,8 @@ HopfieldNetworkSolver
         :private-members:
 
 
-Reinfocement Learning-based Solver
-----------------------------------
+Reinforcement Learning-based Solver
+-----------------------------------
 
 
 MctsSolver
@@ -109,4 +109,3 @@ PgCnn2Solver
     .. autoclass:: PgCnn2Solver
         :members:
         :private-members:
-

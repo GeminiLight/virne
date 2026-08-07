@@ -28,24 +28,6 @@ class BaseNetwork(nx.Graph):
         node_attrs: Node attributes.
         link_attrs: Link attributes.
         graph_attrs: Graph attributes.
-    
-    Methods:
-        create_attrs_from_setting: Create node and link attribute dictionaries from their respective settings.
-        init_graph_attrs: Initialize graph attributes.
-        set_graph_attrs_data: Set graph attributes data.
-        get_graph_attrs_data: Get graph attributes data.
-        get_node_attrs: Get node attributes.
-        get_link_attrs: Get link attributes.
-        get_node_attrs_data: Get node attributes data.
-        get_link_attrs_data: Get link attributes data.
-        get_node_attr_data: Get node attribute data.
-        get_link_attr_data: Get link attribute data.
-        set_node_attrs_data: Set node attributes data.
-        set_link_attrs_data: Set link attributes data.
-        set_node_attr_data: Set node attribute data.
-        generate_topology: Generate the network topology.
-        check_attrs_existence: Check if all defined attributes exist in the graph.
-        write_setting: Write network setting to file.
     """
     def __init__(
             self, 

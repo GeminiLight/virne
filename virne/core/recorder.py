@@ -38,20 +38,6 @@ class Recorder:
         v_net_event_dict (dict): for querying the record of v_net.
         p_net_nodes_for_v_net_dict (dict): for querying the record of p_net.
         state (dict): the state of the environment.
-
-    Methods:
-        reset() -> None:
-            Reset the recorder, clear the memory and the current record.
-        update_state() -> None:
-            Update the state of the environment.
-        update_curr_record() -> None:
-            Update the current record.
-        save_record() -> None:
-            Save the current record.
-        save_summary() -> None:
-            Save the summary of the records.
-        save_records() -> None:
-            Save the records.
     """
     # def __init__(self, counter, summary_dir='save/', save_dir='save/', if_temp_save_records=True, config={}, **kwargs) -> None:
     def __init__(self, counter, config) -> None:

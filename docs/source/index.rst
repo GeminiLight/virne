@@ -82,15 +82,16 @@ Citations
 Benchmark Paper
 ~~~~~~~~~~~~~~~
 
-**Virne Benchmark** (`paper <https://arxiv.org/abs/2507.19234>`__ & `code <https://github.com/GeminiLight/virne>`__)
+**[ICLR, 2026] Virne Benchmark** (`paper <https://openreview.net/forum?id=jngvm9MGyv>`__ & `arXiv <https://arxiv.org/abs/2507.19234>`__ & `code <https://github.com/GeminiLight/virne>`__)
 
 ..  code-block:: bib
 
-    @article{tfwang-2025-virne,
-      title={Virne: A Comprehensive Benchmark for Deep RL-based Network Resource Allocation in NFV},
-      author={Wang, Tianfu and Deng, Liwei and Chen, Xi and Wang, Junyang and He, Huiguo and Ding, Leilei and Wu, Wei and Fan, Qilin and Xiong, Hui},
-      journal={arXiv preprint arXiv:2507.19234},
-      year={2025},
+    @inproceedings{tfwang-2026-virne,
+      title={Virne: A Comprehensive Benchmark for RL-based Network Resource Allocation in NFV},
+      author={Wang, Tianfu and Deng, Liwei and Chen, Xi and Wang, Junyang and He, Huiguo and Hu, Zhengyu and Wu, Wei and Ding, Leilei and Fan, Qilin and Xiong, Hui},
+      booktitle={The Fourteenth International Conference on Learning Representations},
+      year={2026},
+      url={https://openreview.net/forum?id=jngvm9MGyv},
     }
 
 Algorithmic Papers

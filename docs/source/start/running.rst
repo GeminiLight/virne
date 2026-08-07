@@ -27,7 +27,7 @@ Some examples of command line arguments are:
    python main.py solver.solver_name=nrm_rank
 
    # Run with a specific physical topology
-   python main.py p_net_setting.topology.file_path=../../datasets/topology/Geant.gml
+   python main.py +p_net_setting.topology.file_path=./datasets/topology/Geant.gml
 
    # Run with a specific network system
    python main.py system.if_offline_system=true

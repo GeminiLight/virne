@@ -64,18 +64,6 @@ class VirtualNetworkRequestSimulator(object):
         aver_lifetime (float): The average lifetime of virtual network requests.
         v_nets (list): A list of VirtualNetwork objects representing the virtual networks.
         events (list): A list of tuples representing the events in the simulation.
-
-    Methods:
-        from_setting: Create a VirtualNetworkRequestSimulator object from a setting file.
-
-        renew: Renew virtual networks and events.
-        renew_v_nets: Renew virtual networks.
-        renew_events: Renew events.
-        arrange_events: Arrange events in chronological order.
-        _construct_v2event_dict: Construct a dictionary for mapping virtual network id to event id.
-
-        save_dataset: Save the simulated virtual network requests to a directory.
-        load_dataset: Load the simulated virtual network requests from a directory.
     """
     # Use a dict to cache by dataset_dir (it is a unique identifier for the dataset)
     _cached_vnets_loads = {}

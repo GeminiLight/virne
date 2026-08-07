@@ -39,54 +39,6 @@ class Controller:
         reusable (bool): A boolean indicating if the resources can be reused.
         matching_mathod (str): A string indicating the matching method.
         shortest_method (str): A string indicating the shortest path method.
-
-    Methods:
-        ### --- Check constraints --- ### 
-        check_constraint_satisfiability: Check the attributes.
-        check_node_level_constraints: Check the node constraints.
-        check_link_level_constraints: Check the link constraints.
-        check_path_level_constraints: Check the path constraints.
-        check_graph_constraints: Check the graph constraints.
-
-        ### --- Update resources --- ###
-        update_node_resources: Update the node resources.
-        update_link_resources: Update the link resources.
-        update_path_resources: Update the path resources.
-
-        ### --- Place --- ###
-        place: Place the virtual network.
-        _safely_place: Place the virtual network, ensuring that the constraints are satisfied.
-        _unsafely_place: Place the virtual network without checking the constraints.
-        undo_place: Undo the placement.
-
-        ### --- Route --- ###
-        route: Route the virtual network.
-        _safely_route: Route the virtual network, ensuring that the constraints are satisfied.
-        _unsafely_route: Route the virtual network without checking the constraints.
-        undo_route: Undo the routing.
-
-        ### --- Place and route --- ###
-        place_and_route: Place and route the virtual network.
-        undo_place_and_route: Undo the placement and routing.
-
-        ### --- Node Mapping --- ###
-        node_mapping: Map the virtual nodes to the physical nodes.
-
-        ### --- Link Mapping --- ###
-        link_mapping: Map the virtual links to the physical links.
-
-        ### --- Deploy --- ###
-        deploy: Deploy the virtual network.
-        safely_deploy: Deploy the virtual network, ensuring that the constraints are satisfied.
-        unsafely_deploy: Deploy the virtual network without checking the constraints.
-        undo_deploy: Undo the deployment.
-        release: Release the virtual network.
-
-        deploy_with_node_slots: Deploy the virtual network with node slots.
-        safely_deploy_with_node_slots: Deploy the virtual network with node slots, ensuring that the constraints are satisfied.
-        unsafely_deploy_with_node_slots: Deploy the virtual network with node slots without checking the constraints.
-
-        bfs_deploy: Deploy the virtual network using BFS.
     """    
 
     def __init__(

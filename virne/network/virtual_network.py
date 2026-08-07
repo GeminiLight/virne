@@ -20,12 +20,6 @@ class VirtualNetwork(BaseNetwork):
     Attributes:
         incoming_graph_data: Data to initialize the graph.
         config: Configuration dictionary for the network.
-
-    Methods:
-        generate_topology: Generate a virtual network topology.
-        total_node_resource_demand: Get the total resource demand of all nodes.
-        total_link_resource_demand: Get the total resource demand of all links.
-        total_resource_demand: Get the total resource demand of all nodes and links.
     """
 
     id: int

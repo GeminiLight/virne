@@ -2,6 +2,8 @@ myst-parser
 sphinx-design
 sphinx
 sphinx-copybutton
+numpy
+PyYAML
 sphinx-press-theme
 sphinx-rtd-theme
 sphinx-markdown-tables
