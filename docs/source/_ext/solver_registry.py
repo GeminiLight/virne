@@ -18,7 +18,6 @@ MOCK_IMPORTS = [
     'gym',
     'matplotlib',
     'networkx',
-    'omegaconf',
     'ortools',
     'pandas',
     'pyg_lib',

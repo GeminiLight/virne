@@ -4,6 +4,7 @@ sphinx
 sphinx-copybutton
 numpy
 PyYAML
+omegaconf
 sphinx-press-theme
 sphinx-rtd-theme
 sphinx-markdown-tables
