@@ -1,116 +1,70 @@
-Background
-========================================
+Background & Concepts
+=====================
 
-.. card::
-    :class-card: sd-outline-info  sd-rounded-1
-    :class-body: sd-font-weight-bold
-    
-    #. Introduction on Network virtualization
-    #. Resource Allocation Problem in NFV
+What NFV Means
+--------------
 
-Network Function Virtualization
+**NFV** stands for **Network Functions Virtualisation**. It separates network
+functions from the dedicated hardware on which they traditionally run, so that
+functions such as firewalls, gateways, and traffic processors can be deployed
+and managed as software. This is the definition used by
+`ETSI NFV <https://www.etsi.org/technical-groups/nfv/>`_.
+
+NFV should not be confused with the broader term *network virtualization*,
+which abstracts network connectivity itself. The two technologies often work
+together, but the acronym NFV refers specifically to network **functions**
+virtualisation.
+
+The Resource Allocation Problem
 -------------------------------
 
-Network virtualization (NFV) emerges as a pioneering technology that facilitates dynamic management of Internet architecture.
-By decoupling the underlying infrastructure from its logical representation, NFV enables the dynamic allocation of network resources, enhancing flexibility, scalability, and efficiency.
+Virne studies how software-defined service requests are allocated to a shared
+physical infrastructure. It uses two attributed graphs:
 
-NFV technology is widely adopted across various network environments, including cloud computing, edge computing, Internet of Things (IoT), and 5G networks, facilitating advanced applications and services in each domain.
+* A **Physical Network (PN)** models servers, links, and their available
+  resources, such as CPU and bandwidth.
+* A **Virtual Network (VN) request** models the functions or service components
+  to deploy, their resource demands, and the connectivity between them.
 
-.. tab-set::
-
-    .. tab-item:: Cloud computing
-        :sync: key1
-
-        .. card::
-            :class-header: sd-bg-primary  sd-text-white sd-font-weight-bold
-            :class-card: sd-outline-primary  sd-rounded-1
-            :class-footer: sd-font-weight-bold
-
-            NFV-enabled Cloud computing
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-            Cloud computing environments are characterized by the vast, scalable resources provided on-demand over the internet. 
-            They support a wide range of services, including storage, computing power, and applications.
-
-            NFV in cloud computing allows for the efficient utilization of these scalable resources by dynamically allocating virtual networks based on demand. 
-            This leads to improved resource management, reduced operational costs, and enhanced service delivery, enabling cloud providers to offer flexible and cost-effective services.
-    
-    .. tab-item:: Edge computing
-        :sync: key2
-
-        .. card::
-            :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
-            :class-card: sd-outline-primary  sd-rounded-1
-            :class-footer: sd-font-weight-bold
-
-            NFV-enabled Edge computing
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            Edge computing involves processing data closer to the source of data generation rather than relying on a centralized data-processing warehouse. 
-            This reduces latency and bandwidth use, making it ideal for applications requiring real-time responses.
-
-            NFV enables edge computing by providing flexible network management closer to the data source. 
-            It minimizes latency, optimizes bandwidth usage, and ensures efficient resource distribution for edge devices and applications, thereby enhancing the performance and reliability of edge computing solutions.
-
-    .. tab-item:: Internet of Things
-        :sync: key3
-
-        .. card::
-            :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
-            :class-card: sd-outline-primary  sd-rounded-1
-            :class-footer: sd-font-weight-bold
-
-            NFV-enabled Internet of Things
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            The IoT consists of a network of physical devices that communicate and exchange data over the internet. 
-            These devices range from everyday household objects to sophisticated industrial tools, all equipped with sensors and software.
-
-            In IoT environments, NFV facilitates the seamless integration and management of numerous interconnected devices. 
-            It ensures efficient data transmission, real-time processing, and scalability to accommodate the growing number of IoT devices, thus enhancing the overall efficiency and effectiveness of IoT deployments.
-
-
-    .. tab-item:: 5G Networks
-        :sync: key4
-
-        .. card::
-            :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
-            :class-card: sd-outline-primary  sd-rounded-1
-            :class-footer: sd-font-weight-bold
-
-            NFV-enabled 5G Networks
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            5G networks are the next generation of mobile networks, offering significantly higher speeds, lower latency, and more reliable connections. 
-            They support a wide range of new applications, including autonomous vehicles, smart cities, and advanced mobile broadband services.
-
-            NFV plays a crucial role in 5G networks by enabling network slicing, which allows multiple virtual networks to operate on a single physical infrastructure.
-            This enhances network efficiency, supports diverse use cases, and ensures robust performance, thus fully leveraging the capabilities of 5G technology.
-
-
-Resource Allocation Problem
----------------------------
-
-Under the NFV paradigm, both the infrastructure and the services are abstracted into two distinct layers:
-
-- The user service requests are abstracted as **Virtual Network (VNs)** Requests
-- The underlying infrastructure is abstracted as a **Physical Network (PN)**.
-
-In practical network systems, users' service requests continuously arrive at the PN. 
-The network provider must allocate resources to these requests efficiently while ensuring that the Quality of Service (QoS) requirements are met.
-
-The embedding process of mapping VNs onto the PN is a crucial step in network function virtualization, commonly referred to as:
-
-- **Virtual Network Embedding (VNE)**
-- **Virtual Network Function Placement (VNF Placement)**
-- **Service Function Chain Deployment (SFC Deployment)**
-
-These processes are essential for optimal resource utilization and maintaining service quality in network environments.
-
-.. note::
-
-    This resource allocation process is characterized as a **NP-hard online combinatorial optimization problem**.
+An NFV-RA solver must place every virtual node on a feasible physical node and
+route every virtual link over a feasible physical path. Accepted requests
+consume resources for their lifetime; those resources are released when the
+requests depart.
 
 .. image:: ../_static/illustration-nv-ra.png
    :width: 1000
-   :alt: Resource Allocation Problem in Network Function Virtualization
+   :alt: Virtual network requests being embedded onto a physical network
    :align: center
 
-**Figure**: Resource Allocation Problem in Network Function Virtualization. (Source: `COMST'24 - A Survey of AI-powered VNE  <https://ieeexplore.ieee.org/document/10587211>`_)
+**Figure:** A virtual network request is mapped onto physical nodes and paths.
+(Source: `COMST'24 - A Survey of AI-powered VNE
+<https://ieeexplore.ieee.org/document/10587211>`_.)
+
+Related Problem Names
+---------------------
+
+The literature uses several overlapping names for this allocation process:
+
+* **Virtual Network Embedding (VNE)** emphasizes mapping a virtual graph.
+* **VNF placement** emphasizes locating individual virtual network functions.
+* **Service Function Chain (SFC) deployment** also considers the ordered
+  connectivity between functions.
+* **Network-slice resource allocation** applies related ideas to isolated
+  logical networks, especially in mobile systems.
+
+These problem families are not identical, but they share the same core
+placement, routing, and capacity decisions. Virne represents that shared core
+with configurable node, link, and graph attributes.
+
+Why It Is Difficult
+-------------------
+
+Node placement and link routing are coupled: a good node choice can make
+routing easier, while a poor one can make an otherwise feasible request fail.
+In an online setting, decisions must also be made without knowing future
+arrivals. This combination makes NFV-RA a constrained, NP-hard combinatorial
+optimization problem and motivates exact, heuristic, meta-heuristic, and
+learning-based solvers.
+
+Continue with the :doc:`formal problem definition <formulation>` or see how
+these concepts map to Virne's :doc:`software architecture <framework>`.

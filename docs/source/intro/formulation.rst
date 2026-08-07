@@ -6,22 +6,21 @@ Formulation
     :class-body: sd-font-weight-bold
 
     #. System Model: Physical Network and Virtual Network
-    #. Basic Formulation for Cost Optimization
+    #. Basic Embedding Formulation
     #. Extensions for Emerging Network Scenarios
 
 .. image:: ../_static/vne-example.png
    :width: 1000
-   :alt: An example of resource allocation problem in network function virtualization (source: `IJCAI'24 - FlagVNE<https://arxiv.org/abs/2404.12633>`_)
+   :alt: A virtual network request being mapped onto a physical network
    :align: center
 
 .. note::
    **Figure**: An example of a resource allocation problem in network function virtualization. It illustrates the mapping process of virtual network requests onto physical network resources. (Source: `IJCAI'24 - FlagVNE <https://arxiv.org/abs/2404.12633>`_)
 
-NFV-RA is a critical challenge in modern networking. It involves efficiently mapping service requests, modeled as Virtual Networks (VNs) composed of interconnected Virtual Network Functions (VNFs), onto a shared physical network (PN) infrastructure. 
-
-This process must satisfy various resource demands and constraints. NFV-RA is recognized as an NP-hard combinatorial optimization problem, necessitating sophisticated solution strategies.
-
-This page details the formal problem definition used within Virne, starting with a basic cost optimization model and then discussing common extensions.
+NFV-RA maps service requests, modeled as Virtual Networks (VNs), onto a
+shared Physical Network (PN). This page defines the graph model, feasibility
+constraints, and resource-efficiency objective used by Virne. It then gives
+several illustrative extensions for emerging network scenarios.
 
 System Model
 ------------
@@ -76,10 +75,11 @@ An NFV-RA problem instance :math:`I` is defined by the pair :math:`I = (\mathcal
 .. note::
    Figure 1 in our research paper provides a visual illustration of this NFV-RA problem model.
 
-Basic Formulation for Cost Optimization
----------------------------------------
+Basic Embedding Formulation
+---------------------------
 
-The core NFV-RA problem involves deciding how to embed incoming VNs onto the PN while optimizing certain objectives, typically related to resource efficiency.
+The core problem is to find a feasible embedding while using physical
+resources efficiently.
 
 .. card::
    :class-header: sd-bg-success sd-text-white sd-font-weight-bold
@@ -125,17 +125,23 @@ A VN request is successfully embedded if a feasible mapping solution is found th
       **1. VN Node Assignment**: Each virtual node must be mapped to exactly one physical node.
       
       .. math::
-         \sum_{n_{p}^{i} \in \mathcal{N}_p} x_{i}^{m} = 1, \quad \forall n_{v}^{m} \in \mathcal{N}_v \quad (3)
+         :label: eq-vn-node-assignment
+
+         \sum_{n_{p}^{i} \in \mathcal{N}_p} x_{i}^{m} = 1, \quad \forall n_{v}^{m} \in \mathcal{N}_v
 
       **2. PN Node Capacity**: Each physical node can host at most one virtual node *from the same incoming VN request*.
       
       .. math::
-         \sum_{n_{v}^{m} \in \mathcal{N}_v} x_{i}^{m} \le 1, \quad \forall n_{p}^{i} \in \mathcal{N}_p \quad (4)
+         :label: eq-pn-node-capacity
+
+         \sum_{n_{v}^{m} \in \mathcal{N}_v} x_{i}^{m} \le 1, \quad \forall n_{p}^{i} \in \mathcal{N}_p
 
       **3. Node Resource Availability**: The computing resources available at a physical node must meet or exceed the demands of the virtual node mapped to it.
       
       .. math::
-         x_{i}^{m} C(n_{v}^{m}) \le C(n_{p}^{i}), \quad \forall n_{v}^{m} \in \mathcal{N}_v, n_{p}^{i} \in \mathcal{N}_p \quad (5)
+         :label: eq-node-resource
+
+         x_{i}^{m} C(n_{v}^{m}) \le C(n_{p}^{i}), \quad \forall n_{v}^{m} \in \mathcal{N}_v, n_{p}^{i} \in \mathcal{N}_p
 
    .. grid-item-card::
       :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
@@ -147,12 +153,18 @@ A VN request is successfully embedded if a feasible mapping solution is found th
       **4. Flow Conservation**: For each virtual link, a valid path must be established in the PN between the physical nodes hosting its endpoints. Let :math:`\Omega(n_p^k)` be the set of neighbors of physical node :math:`n_p^k`.
       
       .. math::
-         \sum_{n_{p}^{j} \in \Omega(n_{p}^{k})} y_{k,j}^{m,w} - \sum_{n_{p}^{i} \in \Omega(n_{p}^{k})} y_{i,k}^{m,w} = x_{k}^{m} - x_{k}^{w}, \quad \forall l_{v}^{m,w} \in \mathcal{L}_v, n_{p}^{k} \in \mathcal{N}_p \quad (6)
+         :label: eq-flow-conservation
 
-      **5. Loop Prevention**: Virtual links should be routed acyclically.
+         \sum_{n_{p}^{j} \in \Omega(n_{p}^{k})} y_{k,j}^{m,w} - \sum_{n_{p}^{i} \in \Omega(n_{p}^{k})} y_{i,k}^{m,w} = x_{k}^{m} - x_{k}^{w}, \quad \forall l_{v}^{m,w} \in \mathcal{L}_v, n_{p}^{k} \in \mathcal{N}_p
+
+      **5. Opposite-direction Exclusion**: A virtual link cannot use both
+      orientations of the same physical link. Virne's path-based routing
+      constructs simple physical paths.
       
       .. math::
-         y_{i,j}^{m,w} + y_{j,w}^{m,w} \le 1, \quad \forall l_{m,w}^{v} \in \mathcal{L}_{v}, l_{i,j}^{p} \in \mathcal{L}_{p} \quad (7)
+         :label: eq-opposite-direction
+
+         y_{i,j}^{m,w} + y_{j,i}^{m,w} \le 1, \quad \forall l_{v}^{m,w} \in \mathcal{L}_{v}, l_{p}^{i,j} \in \mathcal{L}_{p}
 
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white sd-font-weight-bold
@@ -164,9 +176,14 @@ A VN request is successfully embedded if a feasible mapping solution is found th
       **6. Link Bandwidth Availability**: The sum of bandwidth demands of virtual links routed over a physical link must not exceed its available bandwidth.
       
       .. math::
-         \sum_{l_{v}^{m,w} \in \mathcal{L}_v} (y_{i,j}^{m,w} + y_{j,i}^{m,w}) B(l_{v}^{m,w}) \le B(l_{p}^{i,j}), \quad \forall l_{p}^{i,j} \in \mathcal{L}_p \quad (8)
+         :label: eq-link-resource
 
-Constraints (3), (4), and (5) cover node mapping, while (6), (7), and (8) cover link mapping.
+         \sum_{l_{v}^{m,w} \in \mathcal{L}_v} (y_{i,j}^{m,w} + y_{j,i}^{m,w}) B(l_{v}^{m,w}) \le B(l_{p}^{i,j}), \quad \forall l_{p}^{i,j} \in \mathcal{L}_p
+
+Equations :eq:`eq-vn-node-assignment`, :eq:`eq-pn-node-capacity`, and
+:eq:`eq-node-resource` cover node mapping. Equations
+:eq:`eq-flow-conservation`, :eq:`eq-opposite-direction`, and
+:eq:`eq-link-resource` cover link mapping.
 
 Optimization Objective
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -181,7 +198,9 @@ Optimization Objective
    The primary objective in NFV-RA, especially for online service requests, is often to maximize the overall resource utilization, which facilitates long-term resource profit and request acceptance. A widely used metric to assess solution quality (:math:`S`) for an instance :math:`I` is the **Revenue-to-Cost Ratio (R2C)**:
 
    .. math::
-      \text{maximize} \quad R2C(S) = \frac{\chi \cdot REV(S)}{COST(S)} \quad (1)
+      :label: eq-r2c-objective
+
+      \text{maximize} \quad R2C(S) = \frac{\chi \cdot REV(S)}{COST(S)}
 
    where:
 
@@ -196,7 +215,10 @@ Optimization Objective
      .. math::
         COST(S) = \sum_{n_v \in \mathcal{N}_v} C(n_v) + \sum_{l_v \in \mathcal{L}_v} (|f_{\mathcal{L}}(l_v)| \times B(l_v))
      
-     Here, $|f_{\mathcal{L}}(l_v)|$ quantifies the length (e.g., number of hops) of the physical path $\rho_p$ routing the virtual link $l_v$[cite: 58, 338].
+     Here, :math:`|f_{\mathcal{L}}(l_v)|` is the length, usually measured in
+     hops, of the physical path :math:`\rho_p` that carries virtual link
+     :math:`l_v`. This definition follows Appendix A.1 of the
+     `Virne benchmark paper <https://openreview.net/forum?id=jngvm9MGyv>`_.
 
 Extensions for Emerging Network Scenarios
 -----------------------------------------
@@ -209,7 +231,7 @@ Representative Scenarios
 Heterogeneous Resourcing Networks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In networks with diverse physical node capabilities (e.g., different types of CPUs, GPUs, memory amounts), the node resource constraint (5) must hold for *each type* of resource $C \in \mathcal{C}$.
+In networks with diverse physical node capabilities (e.g., different types of CPUs, GPUs, and memory), the node resource constraint :eq:`eq-node-resource` must hold for each resource type :math:`C \in \mathcal{C}`.
 
 .. card::
     :class-header: sd-bg-warning sd-text-white sd-font-weight-bold
@@ -225,7 +247,7 @@ In networks with diverse physical node capabilities (e.g., different types of CP
 Latency-aware Edge Networks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For time-sensitive services (e.g., in edge computing, 5G), virtual links $l_v$ may have maximum tolerable latency $D(l_v)$. The cumulative propagation delay $D(\rho_p)$ of the physical path $\rho_p$ routing $l_v$ must not exceed this:
+For time-sensitive services (e.g., in edge computing and 5G), a virtual link :math:`l_v` may have a maximum tolerable latency :math:`D(l_v)`. The cumulative propagation delay :math:`D(\rho_p)` of its physical path :math:`\rho_p` must not exceed this limit:
 
 
 .. card::
@@ -241,7 +263,7 @@ For time-sensitive services (e.g., in edge computing, 5G), virtual links $l_v$ m
 Energy Efficient Networks
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In green networking, minimizing energy consumption is crucial. The energy consumed by a physical node $n_p$, denoted $E(n_p)$, can depend on its status (idle/active) and workload. The optimization objective can be modified to a multi-objective function, e.g.:
+In green networking, the energy consumed by a physical node :math:`n_p`, denoted :math:`E(n_p)`, can depend on its status and workload. The optimization objective can incorporate both resource utilization and energy consumption, for example:
 
 
 .. card::
@@ -254,7 +276,7 @@ In green networking, minimizing energy consumption is crucial. The energy consum
     .. math::
         \text{maximize} \quad -w_a \sum_{n_p \in \mathcal{N}_p} E(n_p) + w_b \cdot R2C(S)
     
-    where $w_a$ and $w_b$ are weights for the different objectives.
+    where :math:`w_a` and :math:`w_b` weight the two objectives.
 
 .. note::
 

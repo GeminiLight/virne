@@ -1,18 +1,24 @@
-.. virne documentation master file, created by
-   sphinx-quickstart on Fri Feb 24 11:24:46 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Virne: An NFV-RA Benchmark
 ==========================
 
-**Virne** is a comprehensive simulator and benchmark designed to address **resource allocation (RA) problems in network function virtualization (NFV)**, with a highlight on supporting **reinforcement learning (RL)**-based algorithms.
+**Virne** is a simulator and benchmark for **resource allocation (RA) in
+Network Functions Virtualisation (NFV)**, with unified support for traditional
+and reinforcement learning (RL)-based algorithms.
 
 .. note::
 
   In the literature, RA in NFV is often termed Virtual Network Embedding (VNE), Virtual Network Function (VNF) placement, service function chain (SFC) deployment, or network slicing in 5G.
 
-Virne offers a unified and comprehensive framework for NFV-RA, with the following key features:
+Start Here
+----------
+
+* **New to Virne?** Follow the :doc:`installation <start/installation>` and
+  run the :doc:`5-minute quickstart <start/running>`.
+* **Studying or extending the benchmark?** Read the :doc:`problem formulation
+  <intro/formulation>`, :doc:`architecture <intro/framework>`, and
+  :doc:`solver registry <solver/overview>`.
+
+Virne provides the following core capabilities:
 
 .. grid:: 2 2 2 4
    :gutter: 3
@@ -33,7 +39,7 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 
       Extensive Algorithm Library
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      Implements 30+ NFV-RA algorithms (exact, heuristics, meta-heuristics, RL-based) in a modular, extensible architecture.
+      Registers exact, heuristic, meta-heuristic, and learning-based solvers behind a common interface.
 
    .. grid-item-card::
       :class-item: sd-font-weight-bold
@@ -60,18 +66,15 @@ The overall architecture of Virne is illustrated below:
   :alt: Overall Architecture of Virne
 
 .. note::
-  Virne offers a streamlined workflow for supporting comprehensive experimentation of NFV-RA algorithms. (a) customize simulation configurations (b) launch event-driven network system (c) process service requests (d) record results for analysis.
+  A Virne experiment has four steps: configure the simulation, launch the
+  event-driven system, process service requests, and record results.
 
-Particularly, Virne highlights the support for deep reinforcement learning (RL) algorithms, providing a unified Gym-style environment and RL pipeline.
+Virne also provides a unified environment and training pipeline for deep RL
+algorithms.
 
 .. image:: _static/virne-rl-support.png
   :width: 1000
   :alt: Unified Gym-style Environment and RL Pipeline in Virne 
-
-.. note::
-
-  The RL pipeline in Virne is designed to be flexible and extensible, allowing researchers to easily integrate their own RL algorithms and environments.
-
 
 Citations
 ---------
@@ -138,15 +141,6 @@ Algorithmic Papers
       doi={10.1109/ICC42927.2021.9500964}
     }
 
-
-Indices and tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
 .. toctree::
     :hidden:
     :maxdepth: 3
@@ -168,7 +162,7 @@ Indices and tables
 .. toctree::
     :hidden:
     :maxdepth: 3
-    :caption: Solver List
+    :caption: Algorithms
 
     solver/overview
     solver/exact
