@@ -107,7 +107,7 @@ Each run normally contains:
 * ``records/*.csv``: per-event state, solution, feasibility, resource, and
   reward fields.
 
-The :doc:`5-minute quickstart <../start/running>` shows the default output
+The :doc:`Quickstart <../start/running>` shows the default output
 layout. For fair comparisons, keep the PN/VN settings and seeds fixed, report
 whether ratios are lifetime weighted, and distinguish simulated time from
 wall-clock runtime.

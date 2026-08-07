@@ -5,9 +5,14 @@ Virne connects configuration, network simulation, solvers, and recording in a
 single experiment workflow. This page maps the conceptual architecture to the
 implementation so that readers can find the relevant code quickly.
 
-.. image:: ../_static/virne-architecture.png
+.. figure:: ../_static/virne-architecture.png
    :width: 1000
    :alt: Overall architecture of Virne
+   :align: center
+   :figclass: virne-diagram
+
+   Virne connects configuration and simulated requests with shared systems,
+   solver interfaces, feasibility checks, and experiment recording.
 
 Core Components
 ---------------
@@ -64,7 +69,7 @@ definitions.
 Where to Go Next
 ----------------
 
-* Run the complete workflow in the :doc:`5-minute quickstart
+* Run the complete workflow in the :doc:`Quickstart
   <../start/running>`.
 * Configure PN and VN generation in :doc:`simulation scenarios
   <../start/simulation>`.

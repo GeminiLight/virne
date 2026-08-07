@@ -1,76 +1,150 @@
-Aspects
-=======
+Evaluation Protocols
+====================
 
-Beyond standard quantitative performance metrics, Virne promotes a comprehensive assessment of Network Function Virtualization Resource Allocation (NFV-RA) algorithms by examining them from multiple **practicality perspectives**. These aspects help to understand the real-world viability, robustness, and adaptability of different approaches, guiding further development and deployment.
+Virne evaluates NFV-RA algorithms from three practicality perspectives:
+**solvability**, **generalization**, and **scalability**. A useful experiment
+must turn each perspective into a controlled comparison rather than changing
+several settings at once.
 
-Key Practicality Perspectives
------------------------------
+Shared Experimental Rules
+-------------------------
 
-Virne emphasizes three primary aspects to evaluate the practicality of NFV-RA algorithms:
+Apply these rules to every protocol:
 
-.. grid:: 1 1 1 3
-   :gutter: 3
+* Change **one evaluation axis at a time**. Keep the solver, PN/VN settings,
+  and decoding strategy fixed unless they are the variable being studied.
+* Use at least five independent evaluation seeds, for example
+  ``experiment.seed=0`` through ``experiment.seed=4``. Report the mean and
+  standard deviation across seeds.
+* Run separate seed values explicitly. ``experiment.num_simulations`` repeats
+  the simulation loop but does not create a new seed for each repetition.
+* For RL methods, train once and reuse the same checkpoint across the test
+  conditions. Set ``training.num_train_epochs=0`` during evaluation.
+* Keep each generated ``config.yaml`` together with ``summary.csv`` and the
+  per-event records. The resolved configuration is part of the result.
 
-   .. grid-item-card::
-      :class-header: sd-bg-info sd-text-white sd-font-weight-bold
-      :class-card: sd-outline-info sd-rounded-1
+.. list-table:: Protocol at a glance
+   :header-rows: 1
+   :widths: 19 28 27 26
+   :class: evaluation-protocols
 
-      Solvability
-      ^^^^^^^^^^^
+   * - Perspective
+     - Change
+     - Keep fixed
+     - Report
+   * - Solvability
+     - VN size or demand
+     - PN, load, solver, seeds
+     - Acceptance, failures, R2C
+   * - Generalization
+     - One unseen condition
+     - Checkpoint and inference settings
+     - Absolute and relative metric change
+   * - Scalability
+     - PN/VN size or request count
+     - Topology, workload, solver
+     - Quality, runtime, peak memory
 
-      **Solvability** refers to an algorithm's fundamental ability to find feasible solutions for NFV-RA instances. This perspective often involves:
+Solvability
+-----------
 
-      * Evaluating performance on static, offline instances to isolate algorithmic capability from dynamic network effects.
-      * Assessing how solution quality or success rate varies with problem complexity (e.g., VN size or constraint tightness).
+**Question:** How often can the solver find a feasible mapping as individual
+instances become harder?
 
-      Understanding solvability helps to distinguish between failures due to an algorithm's inherent limitations versus those caused by transient, unsolvable network states in online scenarios.
+Vary one source of difficulty, such as ``v_sim_setting.v_net_size.high``, while
+keeping the PN and resource distributions fixed. To reduce failures caused by
+competition between simultaneous requests, use a low arrival rate and short
+lifetime. The following is a low-contention proxy for an independent-instance
+study:
 
-   .. grid-item-card::
-      :class-header: sd-bg-primary sd-text-white sd-font-weight-bold
-      :class-card: sd-outline-primary sd-rounded-1
+.. code-block:: bash
 
-      Generalization
-      ^^^^^^^^^^^^^^
+   for max_v_nodes in 4 6 8 10; do
+     for eval_seed in 0 1 2 3 4; do
+       python main.py \
+         solver.solver_name=nrm_rank \
+         v_sim_setting.num_v_nets=100 \
+         v_sim_setting.v_net_size.high=${max_v_nodes} \
+         v_sim_setting.arrival_rate.rate=0.001 \
+         v_sim_setting.lifetime.scale=10 \
+         experiment.seed=${eval_seed} \
+         experiment.run_id=solvability-v${max_v_nodes}-s${eval_seed}
+     done
+   done
 
-      **Generalization** indicates an algorithm's ability to maintain reliable and effective performance across a variety of network conditions and problem instances different from those it might have been optimized or trained for. This involves evaluating:
+Report ``acceptance_rate``, ``place_failure_count``, ``route_failure_count``,
+and the relevant R2C field. The current CLI does not expose a dedicated batch
+of fully independent static instances, so describe this low-contention setup
+as a proxy rather than an exact offline solvability test.
 
-      * Performance under fluctuating traffic rates and loads.
-      * Adaptability to changes in the distribution of VN request characteristics (e.g., resource demands, VN sizes).
-      * Robustness when deployed in different Physical Network (PN) topologies or scales.
+Generalization
+--------------
 
-      Strong generalization is crucial for algorithms intended for real-world deployment where network conditions are dynamic and often unpredictable.
+**Question:** Does a fixed policy remain effective when the evaluation
+distribution differs from the training distribution?
 
-   .. grid-item-card::
-      :class-header: sd-bg-secondary sd-text-white sd-font-weight-bold
-      :class-card: sd-outline-secondary sd-rounded-1
+Start with an in-distribution test set, then change exactly one axis:
 
-      Scalability
-      ^^^^^^^^^^^
+* **Traffic load:** ``v_sim_setting.arrival_rate.rate``
+* **Request size:** ``v_sim_setting.v_net_size.low`` and ``high``
+* **Physical topology:** ``+p_net_setting.topology.file_path=...``
+* **Physical scale:** ``p_net_setting.topology.num_nodes``
 
-      **Scalability** measures how effectively an NFV-RA algorithm performs as the size and complexity of the problem increase. This is typically assessed by:
+For an RL solver, load the same checkpoint for every condition:
 
-      * Evaluating solution quality and resource efficiency on large-scale network topologies (both PN and VN).
-      * Analyzing the growth trend of the Average Solving Time (AST) as network sizes (number of physical or virtual nodes) increase.
+.. code-block:: bash
 
-      Good scalability ensures that an algorithm remains computationally feasible and effective when applied to extensive, real-world network infrastructures.
+   python main.py \
+     solver.solver_name=ppo_dual_gat+ \
+     training.num_train_epochs=0 \
+     solver.pretrained_model_path=/absolute/path/to/model.pkl \
+     v_sim_setting.arrival_rate.rate=0.08 \
+     experiment.seed=1 \
+     experiment.run_id=generalization-rate008-s1
 
-Evaluation Methodologies
-------------------------
+Do not retrain or tune the checkpoint on the shifted test condition. Report
+the absolute metrics and their relative change from the in-distribution
+baseline, using the same seed set for both conditions.
 
-.. card::
-   :class-header: sd-bg-success sd-text-white sd-font-weight-bold
-   :class-card: sd-outline-success sd-rounded-1
+Scalability
+-----------
 
-   Holistic Assessment Framework
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Question:** How do solution quality and resource requirements change as the
+problem grows?
 
-   By providing interfaces and methodologies to evaluate these practical aspects, Virne enables a more holistic understanding of each algorithm's strengths and weaknesses, offering data-driven guidance for future research directions and practical deployments in NFV environments.
+Choose one scale axis, such as PN nodes, maximum VN nodes, or number of VN
+requests. For algorithmic scaling, keep the number and distribution of VN
+requests fixed while increasing PN size. On Linux, ``/usr/bin/time -v`` can
+also record peak memory:
 
-   The framework supports systematic evaluation across different:
+.. code-block:: bash
 
-   * **Problem scales**: From small test instances to large-scale enterprise networks
-   * **Network conditions**: Varying traffic patterns, topology changes, and resource availability
-   * **Temporal scenarios**: Both static offline analysis and dynamic online deployment
+   for p_nodes in 50 100 200; do
+     /usr/bin/time -v python main.py \
+       solver.solver_name=nrm_rank \
+       p_net_setting.topology.num_nodes=${p_nodes} \
+       v_sim_setting.num_v_nets=100 \
+       experiment.seed=0 \
+       experiment.run_id=scalability-p${p_nodes}-s0
+   done
 
-.. note::
-   These practicality perspectives complement traditional performance metrics by providing insights into real-world deployment considerations that are often overlooked in purely algorithmic evaluations.
+Repeat the sweep for every evaluation seed. Report acceptance and R2C metrics,
+``clock_running_time``, and the maximum resident set size reported by
+``/usr/bin/time -v``. As explained in :doc:`metrics`,
+``clock_running_time`` is end-to-end runtime and is not solver-only Average
+Solving Time (AST).
+
+Reporting Checklist
+-------------------
+
+For each figure or table, state:
+
+* the exact solver command or checkpoint;
+* the controlled variable and all tested values;
+* the PN/VN configuration and evaluation seeds;
+* the number of requests per run;
+* mean and standard deviation for every reported metric;
+* whether runtime is solver-only or end-to-end; and
+* any timeout, failed run, or excluded result.
+
+Use :doc:`metrics` to map benchmark terminology to the actual CSV fields.

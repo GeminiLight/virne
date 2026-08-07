@@ -19,7 +19,7 @@
 
 
 <p align="center">
-  <a href="https://openreview.net/forum?id=jngvm9MGyv">✨ Benchmark Paper</a> &nbsp;&nbsp;•&nbsp;&nbsp;
+  <a href="https://arxiv.org/abs/2507.19234">✨ Benchmark Paper</a> &nbsp;&nbsp;•&nbsp;&nbsp;
   <a href="https://virne.readthedocs.io">Documentation</a> &nbsp;&nbsp;•&nbsp;&nbsp;
   <a href="https://github.com/GeminiLight/virne?tab=readme-ov-file#citations">Citations</a> &nbsp;&nbsp;•&nbsp;&nbsp;
   <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a>
@@ -28,19 +28,19 @@
 
 --------------------------------------------------------------------------------
 
-**Virne** is a simulator and benchmark designed to address **resource allocation (RA) problems in network function virtualization (NFV)**, with a highlight on supporting **reinforcement learning (RL)**-based algorithms.
+**Virne** is a simulator and benchmark for **resource allocation (RA) in Network Functions Virtualisation (NFV)**, with unified support for traditional and **reinforcement learning (RL)**-based algorithms.
 
 > In the literature, RA in NFV is often termed Virtual Network Embedding (VNE), Virtual Network Function (VNF) placement, service function chain (SFC) deployment, or network slicing in 5G.
 
 Virne offers a unified and comprehensive framework for NFV-RA, with the following key features:
 
 * 1️⃣ **Highly Customizable Simulations**: Simulates diverse network environments (e.g., cloud, edge, 5G), with user-defined topologies, resources, and service requirements.
-* 2️⃣ **Extensive Algorithm Suite**: Implements 30+ NFV-RA algorithms (including exact, heuristics, meta-heuristics, and RL-based methods) in a modular, extensible architecture.
+* 2️⃣ **Extensive Algorithm Suite**: Registers exact, heuristic, meta-heuristic, and learning-based solvers behind a common interface.
 * 3️⃣ **Reinforcement Learning Support**: Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
 * 4️⃣ **In-depth Evaluation Aspects**: Enables insightful analysis beyond effectiveness, covering multiple practicality perspectives (e.g., solvability, generalization, and scalability).
 
 > [!IMPORTANT]
-> 🎉 The [Virne benchmark paper](https://openreview.net/forum?id=jngvm9MGyv) has been accepted at ICLR 2026. Welcome to check it out!
+> 🎉 The [Virne benchmark paper](https://arxiv.org/abs/2507.19234) has been accepted at ICLR 2026. Welcome to check it out!
 >
 > ✨ If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
@@ -52,7 +52,7 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 
 #### Benchmark Paper
 
-**[ICLR, 2026] Virne** ([paper](https://openreview.net/forum?id=jngvm9MGyv) & [arXiv](https://arxiv.org/abs/2507.19234) & [code](https://github.com/GeminiLight/virne))
+**[ICLR, 2026] Virne** ([paper](https://arxiv.org/abs/2507.19234))
 
 ```bibtex
 @inproceedings{tfwang-2026-virne,
@@ -60,7 +60,6 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
   author={Wang, Tianfu and Deng, Liwei and Chen, Xi and Wang, Junyang and He, Huiguo and Hu, Zhengyu and Wu, Wei and Ding, Leilei and Fan, Qilin and Xiong, Hui},
   booktitle={The Fourteenth International Conference on Learning Representations},
   year={2026},
-  url={https://openreview.net/forum?id=jngvm9MGyv},
 }
 ```
 
@@ -105,27 +104,31 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 
 ### Table of Contents
 
-- [Quick Start](#quick-start)
+- [Quickstart](#quickstart)
   - [Installation](#installation)
-  - [Running Examples](#running-examples)
+  - [Run a Small Experiment](#run-a-small-experiment)
 - [Implemented Algorithms](#implemented-algorithms)
-  - [Exact Algorithms](#exact-algorithms)
-  - [Heuristic Algorithms](#heuristic-algorithms)
-  - [Meta-Heuristic Algorithms](#meta-heuristic-algorithms)
-  - [Learning-Based Algorithms](#learning-based-algorithms)
+  - [Learning-based Solvers](#learning-based-solvers)
+  - [Meta-heuristics Solvers](#meta-heuristics-solvers)
+  - [Heuristics-based Solvers](#heuristics-based-solvers)
+  - [Exact and Rounding Solvers](#exact-and-rounding-solvers)
+  - [Simple Baseline Solvers](#simple-baseline-solvers)
 
-## Quick Start
+## Quickstart
 
 ### Installation
 
-1. Create a new conda environment
+The installation script targets Linux and Python 3.10. Clone the repository,
+then create and activate a Conda environment:
 
 ```bash
+git clone https://github.com/GeminiLight/virne.git
+cd virne
 conda create -n virne python=3.10
 conda activate virne
 ```
 
-2. Install with script
+Install either the CPU or CUDA 12.4 build:
 
 ```bash
 # CPU-only PyTorch and PyG
@@ -135,39 +138,36 @@ bash install.sh -c cpu
 bash install.sh -c 12.4
 ```
 
-### Running Examples
-
-1. Run the default example
-
-Before running the example, you could update the configuration file in `settings/` directory to set the parameters on simulation and algorithm.
+Verify the installation from the repository root:
 
 ```bash
-python main.py
+python -c "import virne; print(virne.__version__)"
 ```
 
+### Run a Small Experiment
 
-2. Run with custom configuration
-
-
-Virne is built on [Hydra](https://hydra.cc/), which allows you to override configuration parameters directly from the command line.
+Use a fast heuristic and ten VN requests for the first run. Calling
+`python main.py` without overrides starts the larger default RL experiment.
 
 ```bash
-python main.py CONFIG_NAME=NEW_VALUE
+python main.py \
+  solver.solver_name=nrm_rank \
+  v_sim_setting.num_v_nets=10 \
+  training.use_cuda=false \
+  'logger.backends=[console]'
 ```
 
-Some examples of command line arguments are:
+The run finishes with `Complete` and writes its resolved configuration,
+summary, and per-event records under:
 
-```bash
-# Run with a specific nfv-ra algorithm
-python main.py solver.solver_name=nrm_rank
-
-# Run with a specific physical topology
-python main.py +p_net_setting.topology.file_path=./datasets/topology/Geant.gml
-
-# Run with a specific network system
-python main.py system.if_offline_system=true
+```text
+results/virne/nrm_rank/<run-id>/
 ```
 
+See the [Quickstart](https://virne.readthedocs.io/en/latest/start/running.html)
+for Hydra overrides and output details, and the
+[solver registry](https://virne.readthedocs.io/en/latest/solver/overview.html)
+for every valid solver command.
 
 ## Implemented Algorithms
 
