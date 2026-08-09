@@ -12,6 +12,11 @@ from virne.network.attribute import create_node_attrs_from_setting, create_link_
 from .solution import Solution
 
 
+def _safe_divide(numerator, denominator):
+    """Return a finite zero for ratios whose denominator is zero."""
+    return numerator / denominator if denominator else 0.0
+
+
 class Counter(object):
 
     # def __init__(self, config: DictConfig, node_attrs_setting, link_attrs_setting, **kwargs):
@@ -59,13 +64,14 @@ class Counter(object):
                     one_cost += sum([solution['link_paths_info'][(v_link, p_link)][l_attr.name] for l_attr in self.link_resource_attrs])
                 v_net_link_cost += one_cost
 
-        solution['v_net_node_revenue'] = v_net_node_revenue / self.num_node_resource_attrs  # normalize
+        normalized_node_revenue = v_net_node_revenue / self.num_node_resource_attrs
+        solution['v_net_node_revenue'] = normalized_node_revenue
         solution['v_net_link_revenue'] = v_net_link_revenue
 
-        solution['v_net_revenue'] = v_net_node_revenue + v_net_link_revenue
+        solution['v_net_revenue'] = normalized_node_revenue + v_net_link_revenue
         solution['v_net_link_cost'] = v_net_link_cost
         solution['v_net_path_cost'] = v_net_link_cost - v_net_link_revenue
-        solution['v_net_node_cost'] = v_net_node_revenue / self.num_node_resource_attrs  # normalize
+        solution['v_net_node_cost'] = normalized_node_revenue
         solution['v_net_cost'] = solution['v_net_node_cost'] + solution['v_net_link_cost']
         solution['v_net_r2c_ratio'] = solution['v_net_revenue'] / solution['v_net_cost'] if solution['v_net_cost'] != 0 else 0
         return solution.to_dict()
@@ -85,7 +91,7 @@ class Counter(object):
         solution['num_routed_links'] = len(solution.link_paths) 
         solution['v_net_node_demand'] = self.calculate_sum_node_resource(v_net) / self.num_node_resource_attrs  # normalize
         solution['v_net_link_demand'] = self.calculate_sum_link_resource(v_net)
-        solution['v_net_demand'] = solution['v_net_node_demand'] + solution['v_net_demand']
+        solution['v_net_demand'] = solution['v_net_node_demand'] + solution['v_net_link_demand']
         # Success
         if solution['result']:
             solution['place_result'] = True
@@ -104,6 +110,8 @@ class Counter(object):
             solution['v_net_node_revenue'] = 0
             solution['v_net_link_revenue'] = 0
             solution['v_net_revenue'] = 0
+            solution['v_net_node_cost'] = 0
+            solution['v_net_link_cost'] = 0
             solution['v_net_path_cost'] = 0
             solution['v_net_cost'] = 0
             solution['v_net_r2c_ratio'] = 0
@@ -111,7 +119,10 @@ class Counter(object):
             # solution['link_paths'] = {}
         solution['v_net_time_revenue'] = solution['v_net_revenue'] * v_net.lifetime
         solution['v_net_time_cost'] = solution['v_net_cost'] * v_net.lifetime
-        solution['v_net_time_rc_ratio'] = solution['v_net_r2c_ratio'] * v_net.lifetime
+        solution['v_net_time_rc_ratio'] = _safe_divide(
+            solution['v_net_time_revenue'],
+            solution['v_net_time_cost'],
+        )
         return solution.to_dict()
 
     def calculate_sum_network_resource(self, network: BaseNetwork, node: bool = True, link: bool = True):
@@ -167,7 +178,8 @@ class Counter(object):
                     sum_link_cost += solution['link_paths_info'][(v_link, p_link)][l_attr.name]
         return sum_link_cost
 
-    def summary_records(self, records: Union[list, pd.DataFrame]):
+    @staticmethod
+    def summary_records(records: Union[list, pd.DataFrame]):
         """
         Summarize the records.
 
@@ -184,26 +196,29 @@ class Counter(object):
         else:
             raise TypeError
         summary_info = {}
+        last_record = records.iloc[-1]
+        time_column = 'event_time' if 'event_time' in records.columns else 'v_net_arrival_time'
+        total_simulation_time = records[time_column].max()
         # key
-        summary_info['acceptance_rate'] = records.iloc[-1]['success_count'] / records.iloc[-1]['v_net_count']
+        summary_info['acceptance_rate'] = _safe_divide(last_record['success_count'], last_record['v_net_count'])
         summary_info['avg_r2c_ratio'] = records.loc[records['event_type']==1, 'v_net_r2c_ratio'].mean()
-        summary_info['long_term_time_r2c_ratio'] = records.iloc[-1]['total_time_revenue'] / records.iloc[-1]['total_time_cost']
-        summary_info['long_term_avg_time_revenue'] = records.iloc[-1]['total_time_revenue'] / records.iloc[-1]['v_net_arrival_time']
+        summary_info['long_term_time_r2c_ratio'] = _safe_divide(last_record['total_time_revenue'], last_record['total_time_cost'])
+        summary_info['long_term_avg_time_revenue'] = _safe_divide(last_record['total_time_revenue'], total_simulation_time)
         # ac rate
-        summary_info['success_count'] = records.iloc[-1]['success_count']
+        summary_info['success_count'] = last_record['success_count']
         summary_info['early_rejection_count'] = ((records['event_type']==1) & (records['early_rejection']==True)).sum()
         summary_info['place_failure_count'] = ((records['event_type']==1) & (records['place_result']==False)).sum()
         summary_info['route_failure_count'] = ((records['event_type']==1) & (records['route_result']==False)).sum()
         # rc ratio
-        summary_info['total_cost'] = records.iloc[-1]['total_cost']
-        summary_info['total_revenue'] = records.iloc[-1]['total_revenue']
-        summary_info['total_time_revenue'] = records.iloc[-1]['total_time_revenue']
-        summary_info['total_time_cost'] = records.iloc[-1]['total_time_cost']
-        summary_info['long_term_r2c_ratio'] = summary_info['total_revenue'] / summary_info['total_cost']
+        summary_info['total_cost'] = last_record['total_cost']
+        summary_info['total_revenue'] = last_record['total_revenue']
+        summary_info['total_time_revenue'] = last_record['total_time_revenue']
+        summary_info['total_time_cost'] = last_record['total_time_cost']
+        summary_info['long_term_r2c_ratio'] = _safe_divide(summary_info['total_revenue'], summary_info['total_cost'])
         # revenue / cost
-        summary_info['total_simulation_time'] = records.iloc[-1]['v_net_arrival_time']
-        summary_info['long_term_avg_revenue'] = summary_info['total_revenue'] / summary_info['total_simulation_time']
-        summary_info['long_term_avg_cost'] = summary_info['total_cost'] / summary_info['total_simulation_time']
+        summary_info['total_simulation_time'] = total_simulation_time
+        summary_info['long_term_avg_revenue'] = _safe_divide(summary_info['total_revenue'], total_simulation_time)
+        summary_info['long_term_avg_cost'] = _safe_divide(summary_info['total_cost'], total_simulation_time)
         # summary_info['long_term_weighted_avg_time_revenue'] = self.revenue_service_time_weight * summary_info['long_term_avg_time_revenue'] + self.revenue_start_price_weight * summary_info['long_term_avg_revenue']
         # summary_info['total_simulation_time'] = records[records['event_type']==1].iloc[-1]['arrival_time']
         # state
@@ -211,8 +226,9 @@ class Counter(object):
         summary_info['min_p_net_node_available_resource'] = records.loc[:, 'p_net_node_available_resource'].min()
         summary_info['min_p_net_link_available_resource'] = records.loc[:, 'p_net_link_available_resource'].min()
         summary_info['max_inservice_count'] = records.loc[:, 'inservice_count'].max()
-        summary_info['total_violation'] = records.loc[:, 'v_net_total_hard_constraint_violation'].sum()
-        summary_info['total_max_single_step_violation'] = records.loc[:, 'v_net_max_single_step_hard_constraint_violation'].sum()
+        arrival_records = records.loc[records['event_type'] == 1]
+        summary_info['total_violation'] = arrival_records.loc[:, 'v_net_total_hard_constraint_violation'].sum()
+        summary_info['total_max_single_step_violation'] = arrival_records.loc[:, 'v_net_max_single_step_hard_constraint_violation'].sum()
         # rl reward
         if 'v_net_reward' in records.columns:
             summary_info['avg_reward'] = records.loc[records['event_type']==1, 'v_net_reward'].mean()

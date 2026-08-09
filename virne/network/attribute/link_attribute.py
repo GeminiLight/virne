@@ -116,8 +116,25 @@ class LinkResourceAttribute(ResourceAttributeMethod, ConstraintAttributeMethod, 
         if len(path) <= 1:
             raise ValueError("Path must have at least two nodes.")
         links_list = path_to_links(path)
+        subtracting = method in ['-', 'sub']
         for link in links_list:
-            self.update(vl, p_net.links[link], method, safe=safe)
+            current_value = p_net.links[link][self.name]
+            if subtracting:
+                if safe and vl[self.name] > current_value:
+                    raise ValueError(
+                        f"{self.name}: (v = {vl[self.name]}) > "
+                        f"(p = {current_value}) on link {link}"
+                    )
+                _ = current_value - vl[self.name]
+            else:
+                _ = current_value + vl[self.name]
+        for link in links_list:
+            self.update(
+                vl,
+                p_net.links[link],
+                method,
+                safe=False if subtracting and safe else safe,
+            )
         return True
 
 

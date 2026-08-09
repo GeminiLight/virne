@@ -29,10 +29,10 @@ class BaseNodeRankSolver(Solver):
         """
         super(BaseNodeRankSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
         # node mapping
-        self.matching_mathod = kwargs.get('matching_mathod', 'greedy')
+        self.matching_mathod = kwargs.get('matching_mathod', self.matching_mathod)
         # link mapping
-        self.shortest_method = kwargs.get('shortest_method', 'k_shortest')
-        self.k_shortest = kwargs.get('k_shortest', 10)
+        self.shortest_method = kwargs.get('shortest_method', self.shortest_method)
+        self.k_shortest = kwargs.get('k_shortest', self.k_shortest)
     
     def solve(self, instance: dict) -> Solution:
         v_net, p_net  = instance['v_net'], instance['p_net']
@@ -48,9 +48,13 @@ class BaseNodeRankSolver(Solver):
             else:
                 # FAILURE
                 solution['route_result'] = False
+                for v_node_id in reversed(list(solution['node_slots'])):
+                    self.controller.node_mapper.undo_place(v_node_id, p_net, solution)
         else:
             # FAILURE
             solution['place_result'] = False
+            for v_node_id in reversed(list(solution['node_slots'])):
+                self.controller.node_mapper.undo_place(v_node_id, p_net, solution)
         solution['result'] = False
         return solution
 
@@ -185,29 +189,43 @@ class PLRankSolver(BaseNodeRankSolver):
         p_path_rank_values_dict = {}
         for p_path in p_paths:
             p_links = path_to_links(p_path)
-            p_links_bw_list = []
-            for p_link in p_links:
-                p_links_bw_list.append(sum(p_net.links[p_link][l_attr.name] for l_attr in link_resource_attrs))
+            if not p_links:
+                continue
+            p_links_bw_list = [
+                sum(p_net.links[p_link][l_attr.name] for l_attr in link_resource_attrs)
+                for p_link in p_links
+            ]
+            p_nodes_resource_list = [
+                sum(p_net.nodes[p_node][n_attr.name] for n_attr in node_resource_attrs)
+                for p_node in p_path[1:-1]
+            ]
 
-            p_nodes_resource_list = []
-            p_nodes = p_paths[1:-2]
-            for p_nodes in p_nodes:
-                p_nodes_resource_list.append(sum(p_net.node[p_link][n_attr.name] for n_attr in node_resource_attrs))
-
-            hop = len(p_path)
+            hop = len(p_links)
             min_bw = min(p_links_bw_list)
-            max_nr = max(p_nodes_resource_list)
+            max_nr = max(p_nodes_resource_list, default=0.0)
             p_path_rank = min_bw / (max_nr * hop + 1e-6)
-            p_path_rank_values_dict[p_path] = p_path_rank
+            p_path_rank_values_dict[tuple(p_path)] = p_path_rank
         p_path_ranks = sorted(p_path_rank_values_dict.items(), reverse=True, key=lambda x: x[1])
-        sorted_p_paths = [i for i, v in p_path_ranks]
+        sorted_p_paths = [list(path) for path, _ in p_path_ranks]
         return sorted_p_paths
+
+    def link_mapping(self, v_net, p_net, solution):
+        """Route links using PL's path comprehensive evaluation order."""
+        return self.controller.link_mapper.link_mapping(
+            v_net,
+            p_net,
+            solution=solution,
+            sorted_v_links=list(v_net.links),
+            shortest_method=self.shortest_method,
+            k=self.k_shortest,
+            inplace=True,
+            rank_path_func=self.rank_path,
+        )
 
     def node_mapping(self, v_net, p_net, solution):
         """Attempt to accommodate VNF in appropriate physical node."""
         v_net_rank = self.node_rank(v_net)
-        num_neighbors_list = [len(v_net.adj[i]) for i in range(v_net.num_nodes)]
-        v_bfs_root = num_neighbors_list.index(max(num_neighbors_list))
+        v_bfs_root = max(v_net.nodes, key=lambda node_id: len(v_net.adj[node_id]))
         hop_far_v_bfs_root = nx.single_source_dijkstra_path_length(v_net, v_bfs_root)
         v_ranked_value_list = []
         for v_node_id, hop_count in hop_far_v_bfs_root.items():
@@ -215,7 +233,6 @@ class PLRankSolver(BaseNodeRankSolver):
         v_ranked_value_list.sort(key=lambda x: (x[1], -x[2]))
 
         sorted_v_nodes = [v_rank_values[0] for v_rank_values in v_ranked_value_list]
-        sorted_v_nodes = list(v_net_rank)
 
         for v_node_id in sorted_v_nodes:
             selected_p_node_list = list(solution.node_slots.values())
@@ -236,8 +253,8 @@ class PLRankSolver(BaseNodeRankSolver):
                 p_node_rank_value = p_node_s_value / (p_node_t_value + 1e-6)
                 p_candidate_node_rank_values[p_node_id] = p_node_rank_value
             p_candidate_nodes_rank = sorted(p_candidate_node_rank_values.items(), reverse=True, key=lambda x: x[1])
-            sorted_v_nodes = [i for i, v in p_candidate_nodes_rank]
-            p_node_id = sorted_v_nodes[0]
+            sorted_p_candidates = [node_id for node_id, _ in p_candidate_nodes_rank]
+            p_node_id = sorted_p_candidates[0]
             place_result, place_info= self.controller.node_mapper.place(v_net, p_net, v_node_id, p_node_id, solution)
             if not place_result:
                 return False

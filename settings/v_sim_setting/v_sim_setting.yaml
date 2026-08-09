@@ -13,10 +13,9 @@ v_net_size:
   high: 10
 
 arrival_rate:
-  distribution: poisson
-  dtype: float
-  lam: 0.04
-  reciprocal: true
+  type: poisson
+  rate: 0.04
+  time_model: continuous
   
 lifetime:
   distribution: exponential

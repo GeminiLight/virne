@@ -16,15 +16,15 @@ class BfsSolver(Solver):
     
     def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs) -> None:
         super(BfsSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
-        self.max_visit = kwargs.get('max_visit', 50)
-        self.max_depth = kwargs.get('max_depth', 5)
+        self.max_visit = kwargs.get('max_visit', config.solver.get('max_visit', 50))
+        self.max_depth = kwargs.get('max_depth', config.solver.get('max_depth', 5))
         # ranking strategy
-        self.reusable = kwargs.get('reusable', False)
+        self.reusable = kwargs.get('reusable', self.reusable)
         # node mapping
-        self.matching_mathod = kwargs.get('matching_mathod', 'greedy')
+        self.matching_mathod = kwargs.get('matching_mathod', self.matching_mathod)
         # link mapping
-        self.shortest_method = kwargs.get('shortest_method', 'bfs_shortest')
-        self.k_shortest = kwargs.get('k_shortest', 10)
+        self.shortest_method = kwargs.get('shortest_method', self.shortest_method)
+        self.k_shortest = kwargs.get('k_shortest', self.k_shortest)
 
     def solve(self, instance: dict) -> Solution:
         raise NotImplementedError
@@ -48,7 +48,16 @@ class OrderRankBfsSolver(BfsSolver):
         sorted_p_nodes = list(p_net_rank)
 
         p_net_init_node = sorted_p_nodes[0]
-        solution = self.controller.bfs_deploy(v_net, p_net, sorted_v_nodes, p_net_init_node, shortest_method=self.shortest_method)
+        solution = self.controller.bfs_deploy(
+            v_net,
+            p_net,
+            sorted_v_nodes,
+            p_net_init_node,
+            self.max_visit,
+            self.max_depth,
+            shortest_method=self.shortest_method,
+            k=self.k_shortest,
+        )
         return solution
 
 

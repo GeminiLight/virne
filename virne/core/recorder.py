@@ -70,7 +70,8 @@ class Recorder:
         """Reset the recorder, clear the memory and the current record."""
         self.curr_record = {}
         self.memory = []
-        self.v_net_event_dict = {}  # for querying the record of v_net
+        self.v_net_event_dict = {}  # v_net_id -> arrival record position
+        self.event_record_dict = {}  # external event_id -> record position
         self.p_net_nodes_for_v_net_dict = defaultdict(list)
         self.state = {
             'v_net_count': 0, 
@@ -142,7 +143,10 @@ class Recorder:
         self.curr_record.update(record)
         self.curr_record.update(extra_info)
         self.curr_record.update(kwargs)
+        record_position = len(self.memory)
         self.memory.append(copy.deepcopy(self.curr_record))
+        if 'event_id' in self.curr_record:
+            self.event_record_dict[self.curr_record['event_id']] = record_position
         if self.if_temp_save_records: self.temp_save_record(self.curr_record)
         return self.curr_record
 
@@ -162,15 +166,16 @@ class Recorder:
         self.state['p_net_link_resource_utilization'] = 1. - (self.state['p_net_link_available_resource'] / self.init_p_net_info['p_net_link_available_resource'])
         # Leave event
         if self.state['event_type'] == 0:
-            if self.get_record(v_net_id=solution['v_net_id'])['result']:
+            deployment_record = self.get_record(v_net_id=solution['v_net_id'])
+            if deployment_record['result']:
                 self.state['inservice_count'] -= 1
                 v_net_id = solution['v_net_id']
-                for v_node_id, p_node_id in solution['node_slots'].items():
+                for v_node_id, p_node_id in deployment_record['node_slots'].items():
                     self.p_net_nodes_for_v_net_dict[p_node_id].remove(v_net_id)
                 self.state['num_running_p_net_nodes'] = len(self.get_running_p_net_nodes())
         # Enter event
         elif self.state['event_type'] == 1:
-            self.v_net_event_dict[solution['v_net_id']] = self.state['event_id']
+            self.v_net_event_dict[solution['v_net_id']] = len(self.memory)
             self.state['v_net_count'] += 1
             # Success
             if solution['result']:
@@ -217,10 +222,13 @@ class Recorder:
 
     def get_record(self, event_id: int = None, v_net_id: int = None):
         """Get the record of the service function chain `v_net_id`."""
-        if event_id is not None: event_id = event_id
-        elif v_net_id is not None: event_id = self.v_net_event_dict[v_net_id]
-        else: event_id = self.state['event_id']
-        return self.memory[int(event_id)]
+        if event_id is not None:
+            record_position = self.event_record_dict[event_id]
+        elif v_net_id is not None:
+            record_position = self.v_net_event_dict[v_net_id]
+        else:
+            record_position = self.event_record_dict[self.state['event_id']]
+        return self.memory[record_position]
 
     def display_record(
             self, 
@@ -269,11 +277,22 @@ class Recorder:
         """Save the summary to a csv file."""
         summary_path = os.path.join(self.summary_dir,  fname)
         def write_csv(path, data):
-            head = None if os.path.exists(path) else list(data.keys())
+            fieldnames = list(data.keys())
+            write_header = not os.path.exists(path) or os.path.getsize(path) == 0
+            if not write_header:
+                with open(path, 'r', newline='') as csv_file:
+                    existing_fieldnames = next(csv.reader(csv_file), [])
+                if set(existing_fieldnames) != set(fieldnames):
+                    raise ValueError(
+                        f'Summary schema mismatch for {path}: '
+                        f'{existing_fieldnames} != {fieldnames}'
+                    )
+                fieldnames = existing_fieldnames
             with open(path, 'a+', newline='') as csv_file:
-                writer = csv.writer(csv_file, dialect='excel', delimiter=',')
-                if head is not None: writer.writerow(head)
-                writer.writerow(list(data.values()))
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                if write_header:
+                    writer.writeheader()
+                writer.writerow(data)
         write_csv(summary_path, summary_info)
         #     if_use_node_status_flags: true
         #     if_use_aggregated_link_attrs: true
@@ -302,11 +321,15 @@ class Recorder:
         write_csv(summary_path, summary_info)
 
         global_summary_info = {
-            'solver_name': summary_info.pop('solver_name'),
-            'run_id': summary_info.pop('run_id'),
+            'solver_name': summary_info['solver_name'],
+            'run_id': summary_info['run_id'],
             'reward_calculator_name': reward_calculator_name,
             'feature_constructor_used_features': feature_constructor_used_features,
-            **summary_info
+            **{
+                key: value
+                for key, value in summary_info.items()
+                if key not in {'solver_name', 'run_id'}
+            },
         }
         solver_summary_path = os.path.join(self.save_root_dir, solver_name, f'solver_summary.csv')
         write_csv(solver_summary_path, global_summary_info)

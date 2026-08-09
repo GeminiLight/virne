@@ -73,10 +73,11 @@ class Controller:
         self.hard_constraint_attrs_names = [attr.name for attr in self.hard_constraint_attrs]
         self.soft_constraint_attrs_names = [attr.name for attr in self.soft_constraint_attrs]
         self.reusable = config.get('reusable', False)
+        solver_config = config.get('solver', {})
         # node mapping
-        self.matching_mathod = config.get('matching_mathod', 'greedy')
+        self.matching_mathod = solver_config.get('matching_mathod', config.get('matching_mathod', 'greedy'))
         # link mapping
-        self.shortest_method = config.get('shortest_method', 'k_shortest')
+        self.shortest_method = solver_config.get('shortest_method', config.get('shortest_method', 'k_shortest'))
         constraint_attr_names_checking_at_node = [n_attr.name for n_attr in self.node_constraint_attrs_checking_at_node]
         constraint_attr_names_checking_at_link = [l_attr.name for l_attr in self.link_constraint_attrs_checking_at_link]
         constraint_attr_names_checking_at_path = [l_attr.name for l_attr in self.link_constraint_attrs_checking_at_path]
@@ -171,12 +172,14 @@ class Controller:
             route_result, route_info = self.link_mapper.route_v_links_with_mcf(v_net, p_net, to_route_v_links, solution)
             if not route_result:
                 # FAILURE
+                self.node_mapper.undo_place(v_node_id, p_net, solution)
                 solution.update({'route_result': False, 'result': False})
                 return False, route_info
             return True, route_info
         # Case B: Use other shortest path methods to route the virtual links
         link_level_step_constraint_offset_list = []
         path_level_step_constraint_offset_list = []
+        routed_v_links = []
         for v_link in to_route_v_links:
             n_p_node_id = solution['node_slots'][v_link[1]]
             route_result, route_info = self.link_mapper.route(v_net, p_net, v_link, (p_node_id, n_p_node_id), solution, 
@@ -187,8 +190,13 @@ class Controller:
             if not route_result:
                 self._calculate_link_and_path_level_step_constraint_offset(solution, link_level_step_constraint_offset_list, path_level_step_constraint_offset_list)
                 self._calculate_max_single_step_constraint_violation(solution)
+                solution['link_paths'].pop(v_link, None)
+                for routed_v_link in reversed(routed_v_links):
+                    self.link_mapper.undo_route(routed_v_link, p_net, solution)
+                self.node_mapper.undo_place(v_node_id, p_net, solution)
                 solution.update({'route_result': False, 'result': False})
                 return False, route_info
+            routed_v_links.append(v_link)
         
         self._calculate_link_and_path_level_step_constraint_offset(solution, link_level_step_constraint_offset_list, path_level_step_constraint_offset_list)
         self._calculate_max_single_step_constraint_violation(solution)
@@ -299,10 +307,45 @@ class Controller:
         """
         if not solution['result']:
             return False
-        for (v_node_id, p_node_id), used_node_resources in solution['node_slots_info'].items():
-            self.resource_updator.update_node_resources(p_net, p_node_id, used_node_resources, operator='-')
-        for (v_link, p_link), used_link_resources in solution['link_paths_info'].items():
-            self.resource_updator.update_link_resources(p_net, p_link, used_link_resources, operator='-')
+        applied_updates = []
+        try:
+            for (v_node_id, p_node_id), used_node_resources in solution['node_slots_info'].items():
+                self.resource_updator.update_node_resources(
+                    p_net,
+                    p_node_id,
+                    used_node_resources,
+                    operator='-',
+                )
+                applied_updates.append(('node', p_node_id, used_node_resources))
+            for (v_link, p_link), used_link_resources in solution['link_paths_info'].items():
+                self.resource_updator.update_link_resources(
+                    p_net,
+                    p_link,
+                    used_link_resources,
+                    operator='-',
+                )
+                applied_updates.append(('link', p_link, used_link_resources))
+        except Exception:
+            # Each individual update is atomic. Roll back earlier successful
+            # updates so a failed deployment leaves the entire PNet unchanged.
+            for owner, element_id, used_resources in reversed(applied_updates):
+                if owner == 'node':
+                    self.resource_updator.update_node_resources(
+                        p_net,
+                        element_id,
+                        used_resources,
+                        operator='+',
+                        safe=False,
+                    )
+                else:
+                    self.resource_updator.update_link_resources(
+                        p_net,
+                        element_id,
+                        used_resources,
+                        operator='+',
+                        safe=False,
+                    )
+            raise
         return True
 
     def bfs_deploy(
@@ -339,9 +382,8 @@ class Controller:
         max_visit_at_every_depth = int(np.power(max_visit, 1 / max_depth))
         
         curr_depth = 0
-        visited = p_net.num_nodes * [False]
+        visited = {p_initial_node_id}
         queue = [(p_initial_node_id, curr_depth)]
-        visited[p_initial_node_id] = True
 
         num_placed_nodes = 0
         v_node_id = sorted_v_nodes[num_placed_nodes]
@@ -373,9 +415,12 @@ class Controller:
 
             for link in node_links:
                 dst = link[1]
-                if not visited[dst]:
+                if dst not in visited:
                     queue.append((dst, depth + 1))
-                    visited[dst] = True
+                    visited.add(dst)
+        for placed_v_node_id in reversed(list(solution['node_slots'])):
+            placed_p_node_id = solution['node_slots'][placed_v_node_id]
+            self.undo_place_and_route(v_net, p_net, placed_v_node_id, placed_p_node_id, solution)
         solution['num_attempt_times'] = num_attempt_times
         return solution
 
@@ -442,6 +487,8 @@ class Controller:
         
         
         if not link_mapping_result:
+            for v_node_id in reversed(list(solution['node_slots'])):
+                self.node_mapper.undo_place(v_node_id, p_net, solution)
             solution.update({'route_result': False, 'result': False})
             return
         # Success
@@ -475,21 +522,27 @@ class Controller:
                                                 list(node_slots.values()), 
                                                 solution,
                                                 reusable=False, 
-                                                inplace=False, 
-                                                matching_mathod='l2s2')
+                                                inplace=True,
+                                                matching_mathod='l2s2',
+                                                if_allow_constraint_violation=True)
         if not node_mapping_result:
             solution.update({'place_result': False, 'result': False})
             return
         # link mapping
-        link_mapping_result, route_check_info  = self.safely_link_mapping(v_net, p_net, 
-                                                                                            solution, 
-                                                                                            sorted_v_links=None,
-                                                                                            shortest_method=shortest_method, 
-                                                                                            k=k_shortest, 
-                                                                                            inplace=False, 
-                                                                                            pruning_ratio=pruning_ratio,
-                                                                                            if_allow_constraint_violation=True)
+        link_mapping_result = self.link_mapper.link_mapping(
+            v_net,
+            p_net,
+            solution,
+            sorted_v_links=None,
+            shortest_method=shortest_method,
+            k=k_shortest,
+            inplace=True,
+            pruning_ratio=pruning_ratio,
+            if_allow_constraint_violation=True,
+        )
         if not link_mapping_result:
+            for v_node_id in reversed(list(solution['node_slots'])):
+                self.node_mapper.undo_place(v_node_id, p_net, solution)
             solution.update({'route_result': False, 'result': False})
             return 
         # Success

@@ -1,3 +1,4 @@
+import copy
 import pytest
 import numpy as np
 import networkx as nx
@@ -157,6 +158,49 @@ class TestVirtualNetwork:
         
         mock_prepare_gml_graph.assert_called_once()
         mock_write_gml.assert_called_once_with(mock_gml_graph, test_path)
+
+    def test_gml_roundtrip_preserves_typed_metadata(self, tmp_path):
+        """Saved settings must retain bool and numeric types after loading."""
+        config = copy.deepcopy(self.basic_config)
+        config['graph_attrs_setting'] = {
+            'id': 7,
+            'arrival_time': 1.5,
+            'lifetime': 20.0,
+        }
+        original = VirtualNetwork(config=config)
+        original.generate_topology(num_nodes=4, type='path')
+        original.generate_attrs_data()
+        path = tmp_path / 'typed.gml'
+
+        original.to_gml(path)
+        loaded = VirtualNetwork.from_gml(path)
+
+        assert loaded.graph['node_attrs_setting'] == original.graph['node_attrs_setting']
+        assert loaded.graph['link_attrs_setting'] == original.graph['link_attrs_setting']
+        assert loaded.graph['topology'] == original.graph['topology']
+        assert loaded.graph['output'] == original.graph['output']
+        assert isinstance(loaded.node_attrs['cpu'].generative, bool)
+        assert isinstance(loaded.node_attrs['cpu'].low, int)
+        assert isinstance(loaded.node_attrs['cpu'].high, int)
+        loaded.generate_attrs_data()
+
+    def test_legacy_gml_metadata_is_type_normalized(self, tmp_path):
+        """GML files written before typed metadata existed must remain usable."""
+        original = VirtualNetwork(config=copy.deepcopy(self.basic_config))
+        original.generate_topology(num_nodes=4, type='path')
+        original.generate_attrs_data()
+        legacy_graph = original._prepare_gml_graph()
+        legacy_graph.graph.pop('virne_metadata_json', None)
+        path = tmp_path / 'legacy.gml'
+        nx.write_gml(legacy_graph, path)
+
+        loaded = VirtualNetwork.from_gml(path)
+
+        assert isinstance(loaded.node_attrs['cpu'].generative, bool)
+        assert isinstance(loaded.node_attrs['cpu'].low, int)
+        assert isinstance(loaded.node_attrs['cpu'].high, int)
+        assert isinstance(loaded.graph['topology']['random_prob'], float)
+        loaded.generate_attrs_data()
         
     def test_inheritance_properties(self):
         """Test that VirtualNetwork properly inherits from BaseNetwork."""

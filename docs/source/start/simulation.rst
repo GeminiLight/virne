@@ -71,8 +71,10 @@ Configure how Virtual Network requests arrive and behave over time.
 
 Arrival Process
 ~~~~~~~~~~~~~~~
-* **Modeling**: VN arrivals can be modeled using processes like a Poisson process, defined by an average rate (:math:`\lambda` or :math:`\eta`).
+* **Modeling**: VN arrivals can be modeled using a continuous-time Poisson process, defined by an average rate (:math:`\lambda` or :math:`\eta`). The number of arrivals in a time window is Poisson distributed, while consecutive interarrival times are exponentially distributed with mean :math:`1 / \lambda`.
 * **Adjustment**: This rate may need adjustment based on the PN topology's scale and density to ensure a reasonable load.
+* **Configuration**: Use ``type: poisson``, ``rate: <positive value>``, and ``time_model: continuous`` under ``arrival_rate``. Historical ``distribution: poisson`` and ``lam`` settings remain supported, but are normalized to the same continuous-time process; ``reciprocal`` is deprecated and ignored.
+* **Historical Datasets**: Corrected datasets use an ``arrival-...-v2`` directory identity and never automatically reuse datasets generated with Poisson-distributed intervals. To locate an existing pre-v2 dataset for an explicit historical comparison, call ``get_v_nets_dataset_dir_from_setting(..., legacy=True)`` and load that path directly.
 
 Lifetime
 ~~~~~~~~

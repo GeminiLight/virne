@@ -1,5 +1,6 @@
 import pytest
 import os
+import copy
 import tempfile
 from unittest.mock import Mock, patch, MagicMock
 from omegaconf import DictConfig, OmegaConf
@@ -174,6 +175,36 @@ class TestGenerator:
         config = {'other_setting': {}}
         with pytest.raises(AssertionError, match="config must contain 'v_sim_setting' key"):
             Generator.generate_v_nets_dataset_from_config(config)
+
+    def test_v_net_dataset_path_normalizes_arrival_config_schemas(self):
+        """Equivalent legacy and canonical configs should resolve to the same v2 dataset path."""
+        legacy_setting = copy.deepcopy(self.v_sim_setting)
+        canonical_setting = copy.deepcopy(self.v_sim_setting)
+        canonical_setting['arrival_rate'] = {
+            'type': 'poisson',
+            'rate': legacy_setting['arrival_rate']['lam'],
+            'time_model': 'continuous',
+        }
+
+        legacy_path = get_v_nets_dataset_dir_from_setting(legacy_setting, seed=7)
+        canonical_path = get_v_nets_dataset_dir_from_setting(canonical_setting, seed=7)
+
+        assert legacy_path == canonical_path
+        assert 'arrival-poisson-continuous-rate_0.04-v2' in legacy_path
+
+    def test_legacy_v_net_dataset_path_remains_addressable(self):
+        """Previously generated datasets should remain locatable without automatic reuse."""
+        current_path = get_v_nets_dataset_dir_from_setting(self.v_sim_setting, seed=7)
+        legacy_path = get_v_nets_dataset_dir_from_setting(
+            self.v_sim_setting,
+            seed=7,
+            legacy=True,
+        )
+
+        assert current_path != legacy_path
+        assert legacy_path.endswith(
+            '1000-[2-10]-random-500-0.04-cpu_[0-20]-bw_[0-50]-seed_7'
+        )
             
     @patch('virne.utils.dataset.set_seed')
     @patch('virne.network.virtual_network_request_simulator.VirtualNetworkRequestSimulator.from_setting')
