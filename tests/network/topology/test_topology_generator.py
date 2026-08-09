@@ -61,7 +61,7 @@ class TestTopologyGenerator:
         G = TopologyGenerator.generate('waxman', 5, wm_alpha=0.4, wm_beta=0.3)
         
         assert G == mock_graph
-        mock_waxman.assert_called_with(5, 0.4, 0.3)
+        mock_waxman.assert_called_with(5, alpha=0.4, beta=0.3)
         mock_is_connected.assert_called_with(mock_graph)
         
     @patch('networkx.waxman_graph')
@@ -74,7 +74,7 @@ class TestTopologyGenerator:
         
         G = TopologyGenerator.generate('waxman', 5)
         
-        mock_waxman.assert_called_with(5, 0.5, 0.2)  # default alpha=0.5, beta=0.2
+        mock_waxman.assert_called_with(5, alpha=0.5, beta=0.2)
         
     @patch('networkx.waxman_graph')
     @patch('networkx.is_connected')
@@ -130,6 +130,46 @@ class TestTopologyGenerator:
         
         assert G == mock_graph
         assert mock_erdos_renyi.call_count == 2
+        assert mock_is_connected.call_count == 2
+
+    @pytest.mark.parametrize('random_prob', [-0.1, 1.1])
+    def test_generate_random_graph_rejects_invalid_probability(self, random_prob):
+        with pytest.raises(ValueError, match='random_prob must be between 0 and 1'):
+            TopologyGenerator.generate('random', 5, random_prob=random_prob)
+
+    def test_generate_random_graph_rejects_impossible_connected_graph(self):
+        with pytest.raises(ValueError, match='cannot produce a connected graph'):
+            TopologyGenerator.generate('random', 5, random_prob=0.0)
+
+    @patch('networkx.erdos_renyi_graph')
+    @patch('networkx.is_connected', return_value=False)
+    def test_generate_random_graph_has_bounded_retries(self, mock_is_connected, mock_erdos_renyi):
+        mock_erdos_renyi.return_value = nx.empty_graph(5)
+
+        with pytest.raises(RuntimeError, match='after 3 attempts'):
+            TopologyGenerator.generate('random', 5, random_prob=0.1, max_attempts=3)
+
+        assert mock_erdos_renyi.call_count == 3
+        assert mock_is_connected.call_count == 3
+
+    @pytest.mark.parametrize(
+        ('name', 'value'),
+        [('wm_alpha', 0.0), ('wm_beta', 0.0), ('wm_beta', 1.1)],
+    )
+    def test_generate_waxman_graph_rejects_invalid_parameters(self, name, value):
+        kwargs = {'wm_alpha': 0.5, 'wm_beta': 0.2, name: value}
+        with pytest.raises(ValueError, match=name):
+            TopologyGenerator.generate('waxman', 5, **kwargs)
+
+    @patch('networkx.waxman_graph')
+    @patch('networkx.is_connected', return_value=False)
+    def test_generate_waxman_graph_has_bounded_retries(self, mock_is_connected, mock_waxman):
+        mock_waxman.return_value = nx.empty_graph(5)
+
+        with pytest.raises(RuntimeError, match='after 2 attempts'):
+            TopologyGenerator.generate('waxman', 5, max_attempts=2)
+
+        assert mock_waxman.call_count == 2
         assert mock_is_connected.call_count == 2
         
     def test_generate_invalid_num_nodes_zero(self):

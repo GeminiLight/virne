@@ -12,7 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from virne.utils import read_setting, write_setting, generate_data_with_distribution
 from virne.network.virtual_network import VirtualNetwork
-from virne.utils.dataset import set_seed
+from virne.utils.dataset import resolve_poisson_arrival_setting, set_seed
 
 
 @dataclass
@@ -70,15 +70,15 @@ class VirtualNetworkRequestSimulator(object):
 
     def __init__(
             self, 
-            v_nets: Sequence[VirtualNetwork] = [], 
-            events: Sequence[VirtualNetworkEvent] = [], 
-            v_sim_setting: dict = {}, 
+            v_nets: Optional[Sequence[VirtualNetwork]] = None,
+            events: Optional[Sequence[VirtualNetworkEvent]] = None,
+            v_sim_setting: Optional[dict] = None,
             **kwargs
         ):
         super(VirtualNetworkRequestSimulator, self).__init__()
-        self.v_nets = v_nets
-        self.events = events
-        self.v_sim_setting = copy.deepcopy(v_sim_setting)
+        self.v_nets = list(v_nets) if v_nets is not None else []
+        self.events = list(events) if events is not None else []
+        self.v_sim_setting = copy.deepcopy(v_sim_setting) if v_sim_setting is not None else {}
         self._construct_v2event_dict()
 
     @property
@@ -90,6 +90,29 @@ class VirtualNetworkRequestSimulator(object):
     def num_events(self):
         """Get the number of events"""
         return len(self.events)
+
+    @staticmethod
+    def _normalize_events(events: Sequence[VirtualNetworkEvent]) -> List[VirtualNetworkEvent]:
+        """Sort events by simulation semantics and assign positional IDs.
+
+        A request occupies resources on ``[arrival, departure)``. Therefore a
+        departure (type 0) must be processed before an arrival (type 1) when
+        their timestamps are equal. Reindexing keeps generated and legacy
+        datasets compatible with the environment's sequential event storage.
+        """
+        sorted_events = sorted(
+            events,
+            key=lambda event: (event.time, event.type, event.id),
+        )
+        return [
+            VirtualNetworkEvent(
+                id=event_id,
+                type=event.type,
+                v_net_id=event.v_net_id,
+                time=event.time,
+            )
+            for event_id, event in enumerate(sorted_events)
+        ]
 
     @staticmethod
     def from_setting(setting: Union[dict, DictConfig] , seed: Optional[int] = None):
@@ -151,11 +174,16 @@ class VirtualNetworkRequestSimulator(object):
         enter_list = [{'v_net_id': int(getattr(v_net, 'id', i)), 'time': float(getattr(v_net, 'arrival_time', 0.0)), 'type': 1} for i, v_net in enumerate(self.v_nets)]
         leave_list = [{'v_net_id': int(getattr(v_net, 'id', i)), 'time': float(getattr(v_net, 'arrival_time', 0.0) + getattr(v_net, 'lifetime', 0.0)), 'type': 0} for i, v_net in enumerate(self.v_nets)]
         event_list = enter_list + leave_list
-        event_list = sorted(event_list, key=lambda e: e['time'])
-        self.events = []
-        for i, e in enumerate(event_list):
-            v_net_event = VirtualNetworkEvent(v_net_id=e['v_net_id'], time=e['time'], type=e['type'], id=i)
-            self.events.append(v_net_event)
+        raw_events = [
+            VirtualNetworkEvent(
+                v_net_id=event['v_net_id'],
+                time=event['time'],
+                type=event['type'],
+                id=event_id,
+            )
+            for event_id, event in enumerate(event_list)
+        ]
+        self.events = self._normalize_events(raw_events)
         self._construct_v2event_dict()
         return self.events
 
@@ -173,11 +201,25 @@ class VirtualNetworkRequestSimulator(object):
         self.v_nets_size = generate_data_with_distribution(size=num_v_nets, **self.v_sim_setting['v_net_size'])
         # lifetime: exponential distribution
         self.v_nets_lifetime = generate_data_with_distribution(size=num_v_nets, **self.v_sim_setting['lifetime'])
-        # arrival_time: poisson distribution
-        arrival_time_interval = generate_data_with_distribution(size=num_v_nets, **self.v_sim_setting['arrival_rate'])
+        # A continuous-time Poisson process has exponentially distributed
+        # interarrival times. Historical non-Poisson interval distributions are
+        # still generated through the generic distribution helper.
+        arrival_setting = self.v_sim_setting['arrival_rate']
+        poisson_setting = resolve_poisson_arrival_setting(
+            arrival_setting,
+            warn_legacy=True,
+        )
+        if poisson_setting is not None:
+            arrival_time_interval = np.random.exponential(
+                scale=1.0 / poisson_setting['rate'],
+                size=num_v_nets,
+            )
+        else:
+            arrival_time_interval = generate_data_with_distribution(
+                size=num_v_nets,
+                **arrival_setting,
+            )
         self.v_nets_arrival_time = np.cumsum(arrival_time_interval)
-        # np.ceil(np.cumsum(np.array([-np.log(np.random.uniform()) / self.aver_arrival_rate for i in range(num_v_nets)]))).tolist()
-        # self.v_nets_arrival_time = np.cumsum(np.random.poisson(20, num_v_nets))
         if 'max_latency' in self.v_sim_setting:
             self.v_nets_max_latency = generate_data_with_distribution(size=num_v_nets, **self.v_sim_setting['max_latency'])
 
@@ -225,6 +267,7 @@ class VirtualNetworkRequestSimulator(object):
         for e in event_info_list:
             v_net_event = VirtualNetworkEvent(v_net_id=int(e['v_net_id']), time=float(e['time']), type=int(e['type']), id=int(e['id']))
             events.append(v_net_event)
+        events = VirtualNetworkRequestSimulator._normalize_events(events)
         # Load the virtual networks
         v_nets = []
         v_net_fnames_list = sorted(os.listdir(v_nets_dir))

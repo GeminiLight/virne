@@ -53,7 +53,15 @@ class TopologyAnalyzer:
             shortest_paths (list): The list of shortest paths.
         """
         source, target = p_pair
-        assert method in ['first_shortest', 'k_shortest', 'k_shortest_length', 'all_shortest', 'bfs_shortest', 'available_shortest']
+        assert method in [
+            'first_shortest',
+            'k_shortest',
+            'k_shortest_length',
+            'all_shortest',
+            'bfs_shortest',
+            'available_shortest',
+            'available_k_shortest',
+        ]
 
         # Get Latency Attribute
         # if self.link_latency_attrs:
@@ -61,6 +69,7 @@ class TopologyAnalyzer:
         # else:
         weight = None
 
+        shortest_paths = []
         try:
             # these three methods do not check any link constraints
             if method == 'first_shortest':
@@ -88,13 +97,10 @@ class TopologyAnalyzer:
                 shortest_paths = [nx.dijkstra_path(temp_p_net, source, target, weight=weight)]
             elif method == 'available_k_shortest':
                 temp_p_net = self.create_available_network(v_net, p_net, v_link)
-                shortest_paths = list(islice(nx.shortest_simple_paths(p_net, source, target, weight=weight), k))
-        except NotImplementedError as e:
-            print(e)
-        except Exception as e:
+                shortest_paths = list(islice(nx.shortest_simple_paths(temp_p_net, source, target, weight=weight), k))
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
             shortest_paths = []
-        if len(shortest_paths) and len(shortest_paths[0]) > max_hop: 
-            shortest_paths = []
+        shortest_paths = [path for path in shortest_paths if len(path) - 1 <= max_hop]
         return shortest_paths
 
     def create_available_network(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, v_link_pair):
@@ -156,30 +162,21 @@ class TopologyAnalyzer:
             list: A list of nodes in the shortest path from source to target. 
                 If no path exists, return None.
         """
-        visit_states = [0] * p_net.num_nodes
-        predecessors = {p_n_id: None for p_n_id in range(p_net.num_nodes)}
-        Q = deque()
-        Q.append((source, []))
-        found_target = False
-        while len(Q) and not found_target:
+        if source == target:
+            return [source]
+
+        visited = {source}
+        Q = deque([(source, [source])])
+        while Q:
             current_node, current_path = Q.popleft()
-            current_path.append(current_node)
             for neighbor in nx.neighbors(p_net, current_node):
                 check_result, check_info = self.constraint_checker.check_link_level_constraints(v_net, p_net, v_link, (current_node, neighbor))
                 if check_result:
-                    temp_current_path = copy.deepcopy(current_path)
-                    # found
+                    next_path = current_path + [neighbor]
                     if neighbor == target:
-                        found_target = True
-                        temp_current_path.append(neighbor)
-                        shortest_path = temp_current_path
-                        break
-                    # unvisited
-                    if not visit_states[neighbor]:
-                        visit_states[neighbor] = 1
-                        Q.append((neighbor, temp_current_path))
+                        return next_path
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        Q.append((neighbor, next_path))
 
-        if len(Q) and not found_target:
-            return None
-        else:
-            return shortest_path
+        return None

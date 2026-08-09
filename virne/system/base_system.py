@@ -287,8 +287,9 @@ class TimeWindowSystem(BaseSystem):
     TODO: Batch Processing
     """
     def __init__(self, env, solver, logger, counter, controller, recorder, config):
-        super(TimeWindowSystem, self).__init__(env, solver, logger, counter, controller, recorder, config)
-        self.time_window_size = config.get('time_window_size', 100)
+        raise NotImplementedError(
+            'TimeWindowSystem is not implemented safely; set system.if_time_window=false.'
+        )
 
     def reset(self):
         self.current_time_window = 0
@@ -353,4 +354,3 @@ class TimeWindowSystem(BaseSystem):
                     instance = next_instance
   
             if pbar is not None: pbar.close()
-

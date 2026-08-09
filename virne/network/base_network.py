@@ -3,12 +3,13 @@
 # ==============================================================================
 
 
+import ast
 import copy
+import json
 import numpy as np
 import networkx as nx
 
 from typing import Optional, Dict, List, Any, Union
-from functools import cached_property, lru_cache
 from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
 from networkx.classes.filters import no_filter
 from omegaconf import DictConfig
@@ -18,6 +19,23 @@ from virne.network.attribute import BaseAttribute, NodeAttribute, LinkAttribute,
 from virne.network.attribute import create_link_attrs_from_dict, create_node_attrs_from_dict
 from virne.network.topology import TopologyGenerator
 from virne.utils.config import resolve_config_to_dict
+
+
+GML_METADATA_KEY = 'virne_metadata_json'
+
+
+def _restore_gml_value(value):
+    """Restore primitive values stringified by the historical GML writer."""
+    if isinstance(value, str):
+        try:
+            return ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return value
+    if isinstance(value, list):
+        return [_restore_gml_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _restore_gml_value(item) for key, item in value.items()}
+    return value
 
 
 class BaseNetwork(nx.Graph):
@@ -122,8 +140,13 @@ class BaseNetwork(nx.Graph):
             NotImplementedError: If the graph type is not implemented.
         """
         G = TopologyGenerator.generate(type, num_nodes, **kwargs)
-        self.__dict__['_node'] = G.__dict__['_node']
-        self.__dict__['_adj'] = G.__dict__['_adj']
+        # Mutate through NetworkX's public API so its cached node, edge, and
+        # degree views are invalidated together. Replacing ``_node``/``_adj``
+        # directly leaves those views bound to the previous topology.
+        self.clear_edges()
+        self.remove_nodes_from(list(self.nodes))
+        self.add_nodes_from(G.nodes(data=True))
+        self.add_edges_from(G.edges(data=True))
 
     def generate_attrs_data(self, node=True, link=True):
         """Generate the data of network attributes based on attributes."""
@@ -147,22 +170,22 @@ class BaseNetwork(nx.Graph):
                     l_attr.set_data(self, attribute_data)
 
     ### Number ###
-    @cached_property
+    @property
     def num_nodes(self):
         """Get the number of nodes."""
         return self.number_of_nodes()
     
-    @cached_property
+    @property
     def num_links(self):
         """Get the number of links."""
         return self.number_of_edges()
 
-    @cached_property
+    @property
     def num_edges(self):
         """Get the number of links."""
         return self.number_of_edges()
 
-    @cached_property
+    @property
     def links(self):
         """Get the number of links."""
         return EdgeView(self)
@@ -400,22 +423,35 @@ class BaseNetwork(nx.Graph):
         gml_safe_graph.add_nodes_from(self.nodes(data=True))
         gml_safe_graph.add_edges_from(self.edges(data=True))
 
-        # Flatten and store structured attributes safely
+        # Keep the historical representation so older Virne versions can still
+        # read newly written files. Typed metadata below is authoritative for
+        # current readers.
         gml_safe_graph.graph["node_attrs_setting"] = flatten_dict_list_for_gml(
             self.graph.get("node_attrs_setting", [])
         )
         gml_safe_graph.graph["link_attrs_setting"] = flatten_dict_list_for_gml(
             self.graph.get("link_attrs_setting", [])
         )
-        # Store graph attributes safely by flattening dictionaries
+        structured_graph_attrs = {}
+        # Store graph attributes safely by flattening dictionaries for legacy
+        # readers while retaining their original types in JSON metadata.
         for key, value in self.graph.items():
-            if key in ["node_attrs_setting", "link_attrs_setting"]:
+            if key in ["node_attrs_setting", "link_attrs_setting", GML_METADATA_KEY]:
                 continue
             if isinstance(value, (dict, DictConfig)):
+                plain_value = resolve_config_to_dict(value) if isinstance(value, DictConfig) else copy.deepcopy(value)
+                structured_graph_attrs[key] = plain_value
                 for subk, subv in value.items():
                     gml_safe_graph.graph[f"{key}___{subk}"] = str(subv)
             else:
                 gml_safe_graph.graph[key] = value
+        metadata = {
+            'schema_version': 1,
+            'node_attrs_setting': copy.deepcopy(self.graph.get('node_attrs_setting', [])),
+            'link_attrs_setting': copy.deepcopy(self.graph.get('link_attrs_setting', [])),
+            'structured_graph_attrs': structured_graph_attrs,
+        }
+        gml_safe_graph.graph[GML_METADATA_KEY] = json.dumps(metadata, sort_keys=True)
         return gml_safe_graph
 
     @classmethod
@@ -430,23 +466,43 @@ class BaseNetwork(nx.Graph):
         gml_net = nx.read_gml(fpath, label=label)
         if not all(isinstance(node, int) for node in gml_net.nodes):
             gml_net = nx.convert_node_labels_to_integers(gml_net)
+        # Normalize settings before constructing attribute objects. This is the
+        # compatibility path for files written before typed metadata existed.
+        for setting_key in ['node_attrs_setting', 'link_attrs_setting']:
+            if setting_key in gml_net.graph:
+                gml_net.graph[setting_key] = _restore_gml_value(gml_net.graph[setting_key])
         net = cls(incoming_graph_data=gml_net)
         net.check_attrs_existence()
         # Restore graph attributes that were flattened
-        for key, value in gml_net.graph.items():
-            if key in ["node_attrs_setting", "link_attrs_setting"]:
+        for key, value in list(gml_net.graph.items()):
+            if key in ["node_attrs_setting", "link_attrs_setting", GML_METADATA_KEY]:
                 continue
             if '___' in key:
-                main_key, sub_key = key.split('___')
+                main_key, sub_key = key.split('___', 1)
                 if main_key not in net.graph:
                     net.graph[main_key] = {}
                 if not hasattr(net, main_key):
                     setattr(net, main_key, {})
-                net.graph[main_key][sub_key] = value
-                getattr(net, main_key)[sub_key] = value
+                restored_value = _restore_gml_value(value)
+                net.graph[main_key][sub_key] = restored_value
+                getattr(net, main_key)[sub_key] = restored_value
                 del net.graph[key]
             else:
                 setattr(net, key, value)
+
+        metadata_json = gml_net.graph.get(GML_METADATA_KEY)
+        if metadata_json is not None:
+            try:
+                metadata = json.loads(metadata_json)
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise ValueError(f"Invalid Virne GML metadata in {fpath}") from exc
+            net.graph['node_attrs_setting'] = metadata.get('node_attrs_setting', [])
+            net.graph['link_attrs_setting'] = metadata.get('link_attrs_setting', [])
+            for key, value in metadata.get('structured_graph_attrs', {}).items():
+                net.graph[key] = value
+                setattr(net, key, value)
+            net.create_attrs_from_setting()
+        net.graph.pop(GML_METADATA_KEY, None)
         return net
 
     def save_attrs_dict(self, fpath: str) -> None:

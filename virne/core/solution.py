@@ -127,8 +127,8 @@ class Solution(ClassDict):
             'path_level': {},
         }
         self.v_net_single_step_violation_list: list = []
-        self.v_net_single_step_hard_constraint_offset: float = float('-inf')
-        self.v_net_max_single_step_hard_constraint_violation: float = float('-inf')
+        self.v_net_single_step_hard_constraint_offset: float = 0.0
+        self.v_net_max_single_step_hard_constraint_violation: float = 0.0
         self.place_result: bool = True
         self.route_result: bool = True
         self.early_rejection: bool = False

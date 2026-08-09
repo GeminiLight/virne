@@ -66,6 +66,7 @@ class LinkMapper:
             shortest_method: str = 'bfs_shortest',
             k: int = 1, 
             rank_path_func: Callable = None, 
+            pruning_ratio: float = None,
             if_allow_constraint_violation: bool = False,
             if_record_constraint_violation: bool = True
         ) -> Tuple[bool, dict]:
@@ -102,7 +103,17 @@ class LinkMapper:
         if not if_allow_constraint_violation:
             check_result, check_info = self._safely_route(v_net, p_net, v_link, pl_pair, solution, shortest_method, k, rank_path_func)
         else:
-            check_result, check_info = self._unsafely_route(v_net, p_net, v_link, pl_pair, solution, shortest_method, k, rank_path_func)
+            check_result, check_info = self._unsafely_route(
+                v_net,
+                p_net,
+                v_link,
+                pl_pair,
+                solution,
+                shortest_method,
+                k,
+                rank_path_func,
+                pruning_ratio,
+            )
         
         if if_record_constraint_violation:
             # Record the constraint violations
@@ -147,8 +158,13 @@ class LinkMapper:
         violation_info = solution['v_net_constraint_violations']
         link_and_path_level_constraint_violations = {**violation_info['link_level'][v_link], **violation_info['path_level'][v_link]}
         hard_constraint_violation_value_list = [value for attr_name, value in link_and_path_level_constraint_violations.items() if attr_name in self.hard_constraint_attrs_names]
-        max_violation_value = max(hard_constraint_violation_value_list)
+        max_violation_value = max(hard_constraint_violation_value_list, default=0.0)
         solution['v_net_total_hard_constraint_violation'] += max_violation_value
+        solution['v_net_single_step_hard_constraint_offset'] = max_violation_value
+        solution['v_net_max_single_step_hard_constraint_violation'] = max(
+            solution['v_net_max_single_step_hard_constraint_violation'],
+            max_violation_value,
+        )
         # print('v_net_total_hard_constraint_violation in route: ', solution['v_net_total_hard_constraint_violation'])
 
     def _safely_route(
@@ -205,15 +221,28 @@ class LinkMapper:
         """
         Attempt to route the virtual link `v_link` in the physical network path `pl_pair`, without checking the feasibility of the solution.
         """
-        # currently, only first_shortest, k_shortest and all_shortest support unsafe routing mode
-        assert shortest_method in ['k_shortest', 'all_shortest', 'k_shortest_length']
+        supported_methods = ['first_shortest', 'k_shortest', 'all_shortest', 'k_shortest_length']
+        if shortest_method in ['bfs_shortest', 'available_shortest']:
+            search_method = 'first_shortest'
+        elif shortest_method == 'available_k_shortest':
+            search_method = 'k_shortest'
+        else:
+            search_method = shortest_method
+        assert search_method in supported_methods
         if v_link in solution['link_paths']:
             for p_link in solution['link_paths'][v_link]:
                 solution['link_paths_info'].pop((v_link, p_link), None)
         solution['link_paths'][v_link] = []
 
         pruned_p_net = p_net if pruning_ratio is None else self.topology_analyzer.create_pruned_network(v_net, p_net, v_link_pair=v_link, ratio=pruning_ratio, div=0)
-        shortest_paths = self.topology_analyzer.find_shortest_paths(v_net, pruned_p_net, v_link, pl_pair, method=shortest_method, k=k)
+        shortest_paths = self.topology_analyzer.find_shortest_paths(
+            v_net,
+            pruned_p_net,
+            v_link,
+            pl_pair,
+            method=search_method,
+            k=k,
+        )
         # Case A: No available shortest path
         if len(shortest_paths) == 0:
             # logging.warning(f"Find no available shortest path for virtual link {v_link} between physical nodes {pl_pair} in the virtual network {v_net.id}.")
@@ -297,7 +326,9 @@ class LinkMapper:
             shortest_method: str = 'bfs_shortest',
             k: int = 10,
             inplace: bool = True,
-            if_allow_constraint_violation: bool = False
+            if_allow_constraint_violation: bool = False,
+            rank_path_func: Callable = None,
+            pruning_ratio: float = None,
         ) -> bool:
         """
         Map all virtual links to physical paths using the given shorest path method.
@@ -316,9 +347,34 @@ class LinkMapper:
             bool: True if the mapping was successful, False otherwise.
         """
         if not if_allow_constraint_violation:
-            return self._safely_link_mapping(v_net, p_net, solution, sorted_v_links, shortest_method, k, inplace)
+            return self._safely_link_mapping(
+                v_net,
+                p_net,
+                solution,
+                sorted_v_links,
+                shortest_method,
+                k,
+                inplace,
+                rank_path_func,
+            )
         else:
-            return self._unsafely_link_mapping(v_net, p_net, solution, sorted_v_links, shortest_method, k, inplace)
+            return self._unsafely_link_mapping(
+                v_net,
+                p_net,
+                solution,
+                sorted_v_links,
+                shortest_method,
+                k,
+                inplace,
+                pruning_ratio,
+                rank_path_func,
+            )
+
+    def _rollback_link_mapping(self, p_net: PhysicalNetwork, solution: Solution, routed_v_links: list) -> None:
+        """Restore resources allocated by the current bulk routing attempt."""
+        for v_link in reversed(routed_v_links):
+            if v_link in solution['link_paths']:
+                self.undo_route(v_link, p_net, solution)
 
     def _safely_link_mapping(
             self, 
@@ -328,7 +384,8 @@ class LinkMapper:
             sorted_v_links: list = None, 
             shortest_method: str = 'bfs_shortest', 
             k: int = 10, 
-            inplace: bool = True
+            inplace: bool = True,
+            rank_path_func: Callable = None,
         ) -> bool:
         """
         Map all virtual links to physical paths using the given shorest path method, ensuring all constraints are satisfied.
@@ -340,20 +397,36 @@ class LinkMapper:
         sorted_v_links = sorted_v_links if sorted_v_links is not None else list(v_net.links)
         node_slots = solution['node_slots']
 
-        if shortest_method == 'mcf':
-            route_result, route_info = self.route_v_links_with_mcf(v_net, p_net, sorted_v_links, solution)
-            if not route_result:
-                # FAILURE
-                solution.update({'route_result': False, 'result': False})
-                return False
-        else:
-            for v_link in sorted_v_links:
-                p_pair = (node_slots[v_link[0]], node_slots[v_link[1]])
-                route_result, route_info = self.route(v_net, p_net, v_link, p_pair, solution, shortest_method=shortest_method, k=k)
+        routed_v_links = []
+        try:
+            if shortest_method == 'mcf':
+                route_result, route_info = self.route_v_links_with_mcf(v_net, p_net, sorted_v_links, solution)
                 if not route_result:
-                    # FAILURE
                     solution.update({'route_result': False, 'result': False})
                     return False
+            else:
+                for v_link in sorted_v_links:
+                    p_pair = (node_slots[v_link[0]], node_slots[v_link[1]])
+                    route_result, route_info = self.route(
+                        v_net,
+                        p_net,
+                        v_link,
+                        p_pair,
+                        solution,
+                        shortest_method=shortest_method,
+                        k=k,
+                        rank_path_func=rank_path_func,
+                    )
+                    if not route_result:
+                        solution['link_paths'].pop(v_link, None)
+                        self._rollback_link_mapping(p_net, solution, routed_v_links)
+                        solution.update({'route_result': False, 'result': False})
+                        return False
+                    routed_v_links.append(v_link)
+        except Exception:
+            self._rollback_link_mapping(p_net, solution, routed_v_links)
+            solution.update({'route_result': False, 'result': False})
+            raise
 
         # SUCCESS
         assert len(solution['link_paths']) == v_net.num_links, f"Number of total links: {v_net.num_links}, Number of routed links: {len(solution['link_paths'])}"
@@ -368,32 +441,42 @@ class LinkMapper:
             shortest_method: str = 'bfs_shortest', 
             k: int = 10, 
             inplace: bool = True,
-            pruning_ratio: float = None
+            pruning_ratio: float = None,
+            rank_path_func: Callable = None,
         ) -> bool:
         """
         Map all virtual links to physical paths using the given shorest path method, without ensuring all constraints are satisfied.
         """
+        solution['link_paths'] = {}
+        solution['link_paths_info'] = {}
+
         p_net = p_net if inplace else copy.deepcopy(p_net)
         sorted_v_links = sorted_v_links if sorted_v_links is not None else list(v_net.links)
         node_slots = solution['node_slots']
-        route_check_info_dict = {}
-        violation_value_dict = {}
-        sum_violation_value = 0
+        routed_v_links = []
         for v_link_pair in sorted_v_links:
             p_path_pair = (node_slots[v_link_pair[0]], node_slots[v_link_pair[1]])
-            route_result, route_check_info = self.route(v_net, p_net, v_link_pair, p_path_pair, solution, shortest_method=shortest_method, k=k, pruning_ratio=pruning_ratio, if_allow_constraint_violation=True)
-            violation_value = solution['v_net_single_step_constraint_offset']
-            sum_violation_value += violation_value, 0
-            route_check_info_dict[v_link_pair] = route_check_info_dict
-            violation_value_dict[v_link_pair] = violation_value
+            route_result, route_check_info = self.route(
+                v_net,
+                p_net,
+                v_link_pair,
+                p_path_pair,
+                solution,
+                shortest_method=shortest_method,
+                k=k,
+                rank_path_func=rank_path_func,
+                pruning_ratio=pruning_ratio,
+                if_allow_constraint_violation=True,
+            )
             if not route_result:
-                # FAILURE
+                solution['link_paths'].pop(v_link_pair, None)
+                self._rollback_link_mapping(p_net, solution, routed_v_links)
                 solution.update({'route_result': False, 'result': False})
-                return False, route_check_info_dict, 0
-        # SUCCESS
+                return False
+            routed_v_links.append(v_link_pair)
+
         assert len(solution['link_paths']) == v_net.num_links
-        solution['v_net_total_hard_constraint_violation'] = sum_violation_value
-        return True, route_check_info_dict
+        return True
 
 
     def route_v_links_with_mcf(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, v_link_list: list, solution: Solution):
@@ -512,4 +595,3 @@ class LinkMapper:
             return True, {}
         else:
             return False, {}
-        
