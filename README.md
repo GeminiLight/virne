@@ -1,30 +1,19 @@
 <div align="center">
-<img src="resources/figures/virne-logo-text.png" width="200px"
-     alt="Virne Logo"
- /> 
+  <img src="resources/figures/virne-logo-text.png" width="200" alt="Virne logo">
+  <h2>A Comprehensive Simulator & Benchmark for NFV-RA</h2>
+  <p>
+    <a href="https://deepwiki.com/GeminiLight/virne"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+    <a href="https://github.com/GeminiLight/virne/releases"><img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Virne version 1.0.0"></a>
+    <a href="https://pypi.org/project/virne/"><img src="https://img.shields.io/pypi/v/virne?label=pypi" alt="Virne on PyPI"></a>
+    <a href="https://github.com/GeminiLight/virne/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="Apache 2.0 license"></a>
+  </p>
+  <p>
+    <a href="https://arxiv.org/abs/2507.19234">✨ Benchmark Paper</a> &nbsp;&nbsp;•&nbsp;&nbsp;
+    <a href="https://virne.readthedocs.io">Documentation</a> &nbsp;&nbsp;•&nbsp;&nbsp;
+    <a href="https://github.com/GeminiLight/virne?tab=readme-ov-file#citations">Citations</a> &nbsp;&nbsp;•&nbsp;&nbsp;
+    <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a>
+  </p>
 </div>
-<div align="center">
-<h2 align="center">A Comprehensive Simulator & Benchmark for NFV-RA</h2>
-</div>
-
-<div align="center">
-<a href="https://deepwiki.com/GeminiLight/virne"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
-<img src="https://img.shields.io/badge/version-1.0.0-blue" /> 
-<img src="https://img.shields.io/pypi/v/virne?label=pypi" />
-<img src="https://img.shields.io/badge/license-Apache--2.0-green" />
-</div>
-<div align="center">
-
-</div>
-
-
-<p align="center">
-  <a href="https://arxiv.org/abs/2507.19234">✨ Benchmark Paper</a> &nbsp;&nbsp;•&nbsp;&nbsp;
-  <a href="https://virne.readthedocs.io">Documentation</a> &nbsp;&nbsp;•&nbsp;&nbsp;
-  <a href="https://github.com/GeminiLight/virne?tab=readme-ov-file#citations">Citations</a> &nbsp;&nbsp;•&nbsp;&nbsp;
-  <a href="https://github.com/GeminiLight/sdn-nfv-papers">SDN-NFV Papers</a>
-</p>
-
 
 --------------------------------------------------------------------------------
 
@@ -44,7 +33,7 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 >
 > ✨ If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
-![](resources/figures/virne-architecture.png)
+![Virne architecture: simulation, solver, environment, and evaluation components](resources/figures/virne-architecture.png)
 
 ### Citations
 
@@ -101,13 +90,6 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
   pages={1-6},
 }
 ```
-
-### Table of Contents
-
-- [Quickstart](#quickstart)
-  - [Installation](#installation)
-  - [Run a Small Experiment](#run-a-small-experiment)
-- [Choose a Solver](#choose-a-solver)
 
 ## Quickstart
 
