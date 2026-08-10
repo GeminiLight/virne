@@ -379,6 +379,13 @@ class Controller:
         """
         solution = Solution.from_v_net(v_net)
 
+        if (
+            len(sorted_v_nodes) != v_net.num_nodes
+            or set(sorted_v_nodes) != set(v_net.nodes)
+        ):
+            solution.update({'place_result': False, 'result': False})
+            return solution
+
         max_visit_at_every_depth = int(np.power(max_visit, 1 / max_depth))
         
         curr_depth = 0
@@ -570,8 +577,8 @@ class Controller:
             self, 
             v_net: VirtualNetwork, 
             p_net: PhysicalNetwork, 
-            v_node_id: int, 
-            filter: list = [], 
+            v_node_id: Any,
+            filter: Optional[list] = None,
             check_node_constraint: bool = True,
             check_link_constraint: bool = True):
         """
@@ -580,34 +587,80 @@ class Controller:
         Args:
             v_net (VirtualNetwork): The virtual network object.
             p_net (PhysicalNetwork): The physical network object.
-            v_node_id (int): The virtual node id.
-            filter (list, optional): The list of filtered nodes. Defaults to [].
+            v_node_id (Any): The virtual node identifier.
+            filter (list, optional): Physical nodes to exclude. Defaults to None.
             check_node_constraint (bool, optional): Whether to check node constraints. Defaults to True.
             check_link_constraint (bool, optional): Whether to check link constraints. Defaults to True.
 
         Returns:
             candidate_nodes (list): The list of candidate nodes.
         """
-        all_p_nodes = np.array(list(p_net.nodes))
+        if v_node_id not in v_net.nodes:
+            raise KeyError(f'Unknown virtual node ID: {v_node_id!r}')
+
+        all_p_nodes = list(p_net.nodes)
+        filtered_nodes = set(filter or [])
         if check_node_constraint:
-            suitable_nodes = [p_node_id for p_node_id in all_p_nodes if self.constraint_checker.check_node_level_constraints(v_net, p_net, v_node_id, p_node_id)[0]]
-            candidate_nodes = list(set(suitable_nodes).difference(set(filter)))
+            candidate_nodes = [
+                p_node_id
+                for p_node_id in all_p_nodes
+                if p_node_id not in filtered_nodes
+                and self.constraint_checker.check_node_level_constraints(
+                    v_net,
+                    p_net,
+                    v_node_id,
+                    p_node_id,
+                )[0]
+            ]
         else:
-            candidate_nodes = []
+            candidate_nodes = [
+                p_node_id for p_node_id in all_p_nodes
+                if p_node_id not in filtered_nodes
+            ]
         if check_link_constraint:
             aggr_method = 'sum' if self.shortest_method == 'mcf' else 'max'
-            # checked_nodes = candidate_nodes_with_node_constraint if check_node_constraint else list(p_net.nodes)
-            v_node_degrees = np.array(list(dict(v_net.degree()).values()))
-            p_node_degrees = np.array(list(dict(p_net.degree()).values()))
-            v_link_aggr_resource = np.array(v_net.get_aggregation_attrs_data(self.link_resource_attrs, aggr=aggr_method))
-            p_link_aggr_resource = np.array(p_net.get_aggregation_attrs_data(self.link_resource_attrs, aggr=aggr_method))
-            degrees_comparison = p_node_degrees[:] >= v_node_degrees[v_node_id]
-            resource_comparison = np.all(v_link_aggr_resource[:, [v_node_id]] <= p_link_aggr_resource[:, :], axis=0)
-            suitable_nodes = all_p_nodes[np.logical_and(degrees_comparison, resource_comparison)]
-            new_filter = set(all_p_nodes) - set(candidate_nodes)
-            candidate_nodes = list(set(candidate_nodes).difference(new_filter))
-        else:
-            candidate_nodes = candidate_nodes
+            v_node_degree = v_net.degree[v_node_id]
+            p_node_degrees = dict(p_net.degree())
+
+            if self.link_resource_attrs:
+                v_node_positions = {
+                    node_id: position for position, node_id in enumerate(v_net.nodes)
+                }
+                p_node_positions = {
+                    node_id: position for position, node_id in enumerate(p_net.nodes)
+                }
+                v_link_aggr_resource = np.asarray(
+                    v_net.get_aggregation_attrs_data(
+                        self.link_resource_attrs,
+                        aggr=aggr_method,
+                    )
+                )
+                p_link_aggr_resource = np.asarray(
+                    p_net.get_aggregation_attrs_data(
+                        self.link_resource_attrs,
+                        aggr=aggr_method,
+                    )
+                )
+                v_node_request = v_link_aggr_resource[
+                    :,
+                    v_node_positions[v_node_id],
+                ]
+
+                candidate_nodes = [
+                    p_node_id
+                    for p_node_id in candidate_nodes
+                    if p_node_degrees[p_node_id] >= v_node_degree
+                    and np.all(
+                        v_node_request
+                        <= p_link_aggr_resource[:, p_node_positions[p_node_id]]
+                    )
+                ]
+            else:
+                candidate_nodes = [
+                    p_node_id
+                    for p_node_id in candidate_nodes
+                    if p_node_degrees[p_node_id] >= v_node_degree
+                ]
         return candidate_nodes
 
     def find_feasible_nodes(self, v_net: VirtualNetwork, p_net: PhysicalNetwork, v_node_id, node_slots):
@@ -628,7 +681,12 @@ class Controller:
             check_result, check_info = self.constraint_checker.check_node_level_constraints(v_net, p_net, v_node_id, p_node_id)
             if check_result:
                 node_constraints_feasible_nodes.append(p_node_id)
-        node_constraints_feasible_nodes = list(set(node_constraints_feasible_nodes).difference(set(list(node_slots.values()))))
+        selected_p_nodes = set(node_slots.values())
+        node_constraints_feasible_nodes = [
+            p_node_id
+            for p_node_id in node_constraints_feasible_nodes
+            if p_node_id not in selected_p_nodes
+        ]
         feasible_nodes = copy.deepcopy(node_constraints_feasible_nodes)
         for v_neighbor_id, p_neighbor_id in node_slots.items():
             if v_neighbor_id not in v_net.adj[v_node_id]:

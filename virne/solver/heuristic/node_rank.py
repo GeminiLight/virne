@@ -39,7 +39,11 @@ class BaseNodeRankSolver(Solver):
 
         solution = Solution.from_v_net(v_net)
         node_mapping_result = self.node_mapping(v_net, p_net, solution)
-        if node_mapping_result:
+        node_mapping_complete = (
+            node_mapping_result
+            and set(solution['node_slots']) == set(v_net.nodes)
+        )
+        if node_mapping_complete:
             link_mapping_result = self.link_mapping(v_net, p_net, solution)
             if link_mapping_result:
                 # SUCCESS
@@ -225,12 +229,29 @@ class PLRankSolver(BaseNodeRankSolver):
     def node_mapping(self, v_net, p_net, solution):
         """Attempt to accommodate VNF in appropriate physical node."""
         v_net_rank = self.node_rank(v_net)
-        v_bfs_root = max(v_net.nodes, key=lambda node_id: len(v_net.adj[node_id]))
-        hop_far_v_bfs_root = nx.single_source_dijkstra_path_length(v_net, v_bfs_root)
         v_ranked_value_list = []
-        for v_node_id, hop_count in hop_far_v_bfs_root.items():
-            v_ranked_value_list.append([v_node_id, hop_count, v_net_rank[v_node_id]])
-        v_ranked_value_list.sort(key=lambda x: (x[1], -x[2]))
+        remaining_v_nodes = list(v_net.nodes)
+        while remaining_v_nodes:
+            v_bfs_root = max(
+                remaining_v_nodes,
+                key=lambda node_id: len(v_net.adj[node_id]),
+            )
+            hop_from_root = nx.single_source_shortest_path_length(
+                v_net,
+                v_bfs_root,
+            )
+            component_values = [
+                [v_node_id, hop_from_root[v_node_id], v_net_rank[v_node_id]]
+                for v_node_id in remaining_v_nodes
+                if v_node_id in hop_from_root
+            ]
+            component_values.sort(key=lambda value: (value[1], -value[2]))
+            v_ranked_value_list.extend(component_values)
+            component_nodes = {value[0] for value in component_values}
+            remaining_v_nodes = [
+                v_node_id for v_node_id in remaining_v_nodes
+                if v_node_id not in component_nodes
+            ]
 
         sorted_v_nodes = [v_rank_values[0] for v_rank_values in v_ranked_value_list]
 
@@ -249,11 +270,22 @@ class PLRankSolver(BaseNodeRankSolver):
                     p_node_t_value = 0
                 else:
                     p_net_hop_far_p_node_id = nx.single_source_dijkstra_path_length(p_net, p_node_id)
-                    p_node_t_value = sum(p_net_hop_far_p_node_id[select_p_node_id] for select_p_node_id in selected_p_node_list)
+                    if any(
+                        selected_p_node_id not in p_net_hop_far_p_node_id
+                        for selected_p_node_id in selected_p_node_list
+                    ):
+                        continue
+                    p_node_t_value = sum(
+                        p_net_hop_far_p_node_id[selected_p_node_id]
+                        for selected_p_node_id in selected_p_node_list
+                    )
                 p_node_rank_value = p_node_s_value / (p_node_t_value + 1e-6)
                 p_candidate_node_rank_values[p_node_id] = p_node_rank_value
             p_candidate_nodes_rank = sorted(p_candidate_node_rank_values.items(), reverse=True, key=lambda x: x[1])
             sorted_p_candidates = [node_id for node_id, _ in p_candidate_nodes_rank]
+            if not sorted_p_candidates:
+                solution['place_result'] = False
+                return False
             p_node_id = sorted_p_candidates[0]
             place_result, place_info= self.controller.node_mapper.place(v_net, p_net, v_node_id, p_node_id, solution)
             if not place_result:
@@ -288,15 +320,23 @@ class NEARankSolver(BaseNodeRankSolver):
                 solution['place_result'] = False
                 return False
 
-            shortest_path_length_dict = dict(nx.shortest_path_length(p_net))
-            shortest_path_dict = nx.shortest_path(p_net)
+            shortest_path_length_dict = dict(nx.all_pairs_shortest_path_length(p_net))
+            shortest_path_dict = dict(nx.all_pairs_shortest_path(p_net))
             # node essentiality assessment
             p_net_dr_rank = self.node_rank(p_net)
             p_candidate_node_rank_values = {}
             # p_aggr_link_resources = p_net.get_aggregation_attrs_data(p_net.get_link_attrs(['resource']), aggr='sum')
             p_adj_link_resources = p_net.get_adjacency_attrs_data(p_net.get_link_attrs(['resource']))
+            p_node_positions = {
+                node_id: position for position, node_id in enumerate(p_net.nodes)
+            }
             for p_node_id in p_candidate_nodes:
                 selected_p_node_list = list(solution.node_slots.values())
+                if any(
+                    selected_p_node_id not in shortest_path_length_dict[p_node_id]
+                    for selected_p_node_id in selected_p_node_list
+                ):
+                    continue
                 p_node_dr_value = p_node_degree_dict[p_node_id]
                 p_node_hn_value = sum([shortest_path_length_dict[p_node_id][selected_p_node_id] 
                                        for selected_p_node_id in selected_p_node_list])
@@ -310,7 +350,10 @@ class NEARankSolver(BaseNodeRankSolver):
                     else:
                         p_path_free_resource_list = []
                         for adj_link_resource in p_adj_link_resources:
-                            one_link_attr_resource = sum([adj_link_resource[i][j] for i, j in shortest_link_list])
+                            one_link_attr_resource = sum(
+                                adj_link_resource[p_node_positions[i]][p_node_positions[j]]
+                                for i, j in shortest_link_list
+                            )
                             p_path_free_resource_list.append(one_link_attr_resource)
                         shortest_path_free_resource = sum(p_path_free_resource_list)
                     p_node_sc_value_list.append(shortest_path_free_resource / (shortest_path_length + 1e-6))
@@ -318,8 +361,11 @@ class NEARankSolver(BaseNodeRankSolver):
                 p_node_rank_value = p_node_dr_value / (1 + p_node_hn_value) * (1 + p_node_sc_value)
                 p_candidate_node_rank_values[p_node_id] = p_node_rank_value
             p_candidate_nodes_rank = sorted(p_candidate_node_rank_values.items(), reverse=True, key=lambda x: x[1])
-            sorted_v_nodes = [i for i, v in p_candidate_nodes_rank]
-            p_node_id = sorted_v_nodes[0]
+            sorted_p_candidates = [node_id for node_id, _ in p_candidate_nodes_rank]
+            if not sorted_p_candidates:
+                solution['place_result'] = False
+                return False
+            p_node_id = sorted_p_candidates[0]
             place_result, place_info= self.controller.node_mapper.place(v_net, p_net, v_node_id, p_node_id, solution)
             if not place_result:
                 return False

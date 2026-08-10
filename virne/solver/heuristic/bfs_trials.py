@@ -12,6 +12,28 @@ from ..base_solver import Solver
 from ..rank.node_rank import RWNodeRank, OrderNodeRank, RandomNodeRank
 
 
+def _ranked_component_bfs_order(network, node_ranking):
+    """Order every connected component without changing connected-graph behavior."""
+    ordered_nodes = []
+    visited_nodes = set()
+    for root_node_id in node_ranking:
+        if root_node_id in visited_nodes:
+            continue
+        node_levels = nx.single_source_shortest_path_length(network, root_node_id)
+        component_nodes = [
+            {
+                'node': node_id,
+                'level': level,
+                'rank': node_ranking[node_id],
+            }
+            for node_id, level in node_levels.items()
+        ]
+        component_nodes.sort(key=lambda item: (item['level'], -item['rank']))
+        ordered_nodes.extend(item['node'] for item in component_nodes)
+        visited_nodes.update(item['node'] for item in component_nodes)
+    return ordered_nodes
+
+
 class BfsSolver(Solver):
     
     def __init__(self, controller: Controller, recorder: Recorder, counter: Counter, logger: Logger, config, **kwargs) -> None:
@@ -104,14 +126,7 @@ class RandomWalkRankBfsSolver(BfsSolver):
         
         v_net_nodes_rank = self.node_rank.rank(v_net)
         p_net_nodes_rank = self.node_rank.rank(p_net)
-        largest_rank_vid = list(v_net_nodes_rank.keys())[0]
-        v_net_node_level = nx.single_source_shortest_path_length(v_net, largest_rank_vid)
-        v_net_node_level_rank_list = []
-        for node, level in v_net_node_level.items():
-            v_net_node_level_rank_list.append({'node': node, 'level': level, 'rank': v_net_nodes_rank[node]})
-        sorted_v_net_node = sorted(v_net_node_level_rank_list, key=lambda r: (r['level'], -r['rank']))
-
-        sorted_v_nodes = [n['node'] for n in sorted_v_net_node]
+        sorted_v_nodes = _ranked_component_bfs_order(v_net, v_net_nodes_rank)
         sorted_p_nodes = [n for n in p_net_nodes_rank]
         p_net_init_node = sorted_p_nodes[0]
         solution = self.controller.bfs_deploy(v_net, p_net, sorted_v_nodes, p_net_init_node, 

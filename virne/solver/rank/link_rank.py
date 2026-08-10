@@ -64,8 +64,8 @@ class OrderLinkRank(LinkRank):
         super().__init__(**kwargs)
 
     def rank(self, network: BaseNetwork, sort: bool = True) -> Dict[Any, float]:
-        link_rank_vector = list(range(len(network.links)))
-        return self.to_dict(link_rank_vector, network, sort=sort)
+        rank_value = 1.0 / len(network.links) if network.links else 0.0
+        return {link: rank_value for link in network.links}
 
 
 class FFDLinkRank(LinkRank):
