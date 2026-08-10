@@ -2,13 +2,15 @@ import copy
 import math
 from unittest.mock import Mock
 
+import pytest
 from omegaconf import OmegaConf
 
 from virne.core.controller.controller import Controller
 from virne.core.solution import Solution
 from virne.network import PhysicalNetwork, VirtualNetwork
-from virne.solver.heuristic.bfs_trials import OrderRankBfsSolver
-from virne.solver.heuristic.node_rank import OrderRankSolver, PLRankSolver
+from virne.solver.base_solver import SolverRegistry
+from virne.solver.heuristic.bfs_trials import OrderRankBfsSolver, RandomWalkRankBfsSolver
+from virne.solver.heuristic.node_rank import NEARankSolver, OrderRankSolver, PLRankSolver
 
 
 HARD_NODE_ATTRS = [
@@ -391,3 +393,86 @@ def test_bulk_solution_violation_metrics_are_finite():
     assert solution.v_net_single_step_hard_constraint_offset == 0.0
     assert solution.v_net_max_single_step_hard_constraint_violation == 0.0
     assert math.isfinite(solution.v_net_max_single_step_hard_constraint_violation)
+
+
+def test_candidate_nodes_use_node_identity_and_preserve_network_order():
+    controller = make_controller()
+    p_net = make_p_net(
+        [(30, 10), (10, 10), (20, 10)],
+        [(30, 10, 10), (10, 20, 10), (20, 30, 10)],
+    )
+    v_net = make_v_net([(10, 1), (20, 1)], [(10, 20, 1)])
+
+    candidates = controller.find_candidate_nodes(v_net, p_net, 10)
+
+    assert candidates == [30, 10, 20]
+    solver = make_solver(NEARankSolver, make_solver_config('nea_rank'), controller)
+    solution = solver.solve({'p_net': copy.deepcopy(p_net), 'v_net': v_net})
+    assert solution.result is True
+    assert set(solution.node_slots) == {10, 20}
+
+
+@pytest.mark.parametrize(
+    'solver_cls, solver_name',
+    [
+        (PLRankSolver, 'pl_rank'),
+        (RandomWalkRankBfsSolver, 'rw_rank_bfs'),
+    ],
+)
+def test_component_aware_heuristics_map_disconnected_virtual_network(
+    solver_cls,
+    solver_name,
+):
+    p_net = make_p_net(
+        [(0, 10), (1, 10), (2, 10)],
+        [(0, 1, 10), (1, 2, 10), (0, 2, 10)],
+    )
+    v_net = make_v_net([(0, 1), (1, 1), (2, 1)], [(0, 1, 1)])
+    solver = make_solver(solver_cls, make_solver_config(solver_name))
+
+    solution = solver.solve({'p_net': p_net, 'v_net': v_net})
+
+    assert solution.result is True
+    assert set(solution.node_slots) == set(v_net.nodes)
+    assert {frozenset(link) for link in solution.link_paths} == {
+        frozenset(link) for link in v_net.links
+    }
+
+
+@pytest.mark.parametrize(
+    'solver_name',
+    [
+        'order_rank_bfs',
+        'random_rank_bfs',
+        'rw_rank_bfs',
+        'order_rank',
+        'random_rank',
+        'grc_rank',
+        'ffd_rank',
+        'nrm_rank',
+        'pl_rank',
+        'nea_rank',
+        'rw_rank',
+    ],
+)
+def test_registered_heuristics_support_grid_tuple_node_ids(solver_name):
+    p_net = PhysicalNetwork(
+        config={
+            'node_attrs_setting': HARD_NODE_ATTRS,
+            'link_attrs_setting': HARD_LINK_ATTRS,
+        }
+    )
+    p_net.generate_topology(num_nodes=4, type='grid_2d', m=2, n=2)
+    for p_node_id in p_net.nodes:
+        p_net.nodes[p_node_id]['cpu'] = 10.0
+    for p_link in p_net.links:
+        p_net.links[p_link]['bw'] = 10.0
+    v_net = make_v_net([(0, 1), (1, 1)], [(0, 1, 1)])
+    config = make_solver_config(solver_name)
+    controller = make_controller(config=config)
+    solver = make_solver(SolverRegistry.get(solver_name), config, controller)
+
+    solution = solver.solve({'p_net': p_net, 'v_net': v_net})
+
+    assert solution.result is True
+    assert set(solution.node_slots) == set(v_net.nodes)

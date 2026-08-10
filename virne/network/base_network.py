@@ -383,12 +383,11 @@ class BaseNetwork(nx.Graph):
     ### Internal ###
     def __getitem__(self, key):
         """Gets the data of the attribute key."""
-        if isinstance(key, int):
+        if key in self._node:
             return super().__getitem__(key)
-        elif isinstance(key, str):
+        if isinstance(key, str):
             return getattr(self, key, None)
-        else:
-            return TypeError
+        return super().__getitem__(key)
 
     def __repr__(self):
         net_info = {
