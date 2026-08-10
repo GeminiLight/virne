@@ -127,7 +127,10 @@ class InstanceAgent(object):
             instance_obs = next_instance_obs
 
         solution = instance_env.solution
-        last_value = self.estimate_value(self.preprocess_obs(next_instance_obs, self.device))
+        # Every per-instance rollout ends at a terminal state, whose bootstrap
+        # value is zero. Evaluating a terminal observation is unnecessary and
+        # can propagate invalid terminal-only features into the rollout.
+        last_value = 0.0
         return solution, instance_buffer, last_value
 
     def merge_instance_experience(self, instance, solution, instance_buffer, last_value):

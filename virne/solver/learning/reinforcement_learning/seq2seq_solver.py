@@ -125,7 +125,7 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
 
             instance_obs = next_instance_obs
 
-        last_value = self.estimate_value(self.preprocess_obs(next_instance_obs, self.device)) if hasattr(self.policy, 'evaluate') else None
+        last_value = 0.0 if hasattr(self.policy, 'evaluate') else None
         solution = sub_env.solution
         return solution, sub_buffer, last_value
 

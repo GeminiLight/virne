@@ -76,7 +76,7 @@ class SafeInstanceAgent(InstanceAgent):
                     if instance_done:
                         break
                     instance_obs = next_instance_obs
-                last_value = self.estimate_value(self.preprocess_obs(next_instance_obs, self.device)) if hasattr(self.policy, 'evaluate') else None
+                last_value = 0.0 if hasattr(self.policy, 'evaluate') else None
                 solution = instance_env.solution
                 # print(f'{v_net.num_nodes:2d}', f'{sum(sub_buffer.costs):2.2f}', f'{sum(sub_buffer.costs)/ v_net.num_nodes:2.2f}', sub_buffer.costs)
                 epoch_logprobs += sub_buffer.logprobs

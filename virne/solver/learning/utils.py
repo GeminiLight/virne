@@ -346,7 +346,13 @@ def get_all_possible_link_pairs(G):
 
 def get_unexistent_link_pairs(G, existent_link_pairs=None):
     if existent_link_pairs is None:
-        existent_link_pairs = np.array(list(G.edges()))
+        node_id_to_index = {
+            node_id: index for index, node_id in enumerate(G.nodes)
+        }
+        existent_link_pairs = np.array([
+            sorted((node_id_to_index[source], node_id_to_index[target]))
+            for source, target in G.edges()
+        ])
     all_possible_link_pairs = get_all_possible_link_pairs(G)
     unexistent_link_pairs = set(map(tuple, all_possible_link_pairs)) - set(map(tuple, existent_link_pairs))
     unexistent_link_pairs = np.array(list(unexistent_link_pairs))

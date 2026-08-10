@@ -30,16 +30,28 @@ class RLBaseEnv(gym.Env):
     def __init__(self, allow_rejection=False, allow_revocable=False, **kwargs):
         super(RLBaseEnv, self).__init__()
         self.obs_handler = ObservationHandler()
+        self._refresh_node_indices()
         self.allow_rejection = allow_rejection
         self.allow_revocable = allow_revocable
-        self.rejection_action = self.p_net.num_nodes - 1 + int(self.allow_rejection) if allow_rejection else None
-        self.revocable_action = self.p_net.num_nodes - 1 + int(self.allow_revocable) + int(self.allow_rejection) if allow_revocable else None
+        self.rejection_action = self.p_net.num_nodes if allow_rejection else None
+        self.revocable_action = self.p_net.num_nodes + int(allow_rejection) if allow_revocable else None
         self.num_actions = self.p_net.num_nodes + int(allow_rejection) + int(allow_revocable)
         self.action_space = spaces.Discrete(self.num_actions)
         # for revocable action
         self.if_allow_constraint_violation = kwargs.get('if_allow_constraint_violation', False)
         self.revoked_actions_dict = defaultdict(list)
         self.extra_info_dict = {}
+        self._no_feasible_action = False
+
+    def _refresh_node_indices(self):
+        self.p_node_ids = list(self.p_net.nodes)
+        self.p_node_id_to_action = {
+            node_id: action for action, node_id in enumerate(self.p_node_ids)
+        }
+        self.v_node_ids = list(self.v_net.nodes) if hasattr(self, 'v_net') else []
+        self.v_node_id_to_index = {
+            node_id: index for index, node_id in enumerate(self.v_node_ids)
+        }
 
     def reset(self):
         self.extra_info_dict = {}
@@ -50,7 +62,7 @@ class RLBaseEnv(gym.Env):
         return self.allow_rejection and action == self.rejection_action
 
     def if_revocable(self, action):
-        return self.revocable_action and action == self.revocable_action
+        return bool(self.allow_revocable and action == self.revocable_action)
 
     def step(self, action):
        raise NotImplementedError
@@ -84,21 +96,53 @@ class RLBaseEnv(gym.Env):
         return load_balance
 
     def generate_action_mask(self):
-        candidate_nodes = self.controller.find_candidate_nodes(self.v_net, self.p_net, self.curr_v_node_id, filter=self.selected_p_net_nodes)
+        candidate_nodes = list(self.controller.find_candidate_nodes(
+            self.v_net,
+            self.p_net,
+            self.curr_v_node_id,
+            filter=self.selected_p_net_nodes,
+        ))
         # candidate_nodes = self.controller.find_feasible_nodes(self.p_net, self.v_net, self.curr_v_node_id, self.solution['node_slots'])
         mask = np.zeros(self.num_actions, dtype=bool)
+        self._no_feasible_action = False
+        if self.allow_revocable:
+            revoked_actions = self.revoked_actions_dict[
+                (str(self.solution.node_slots), self.curr_v_node_id)
+            ]
+            candidate_nodes = [
+                node_id for node_id in candidate_nodes
+                if node_id not in revoked_actions
+            ]
+
+        try:
+            candidate_actions = [
+                self.p_node_id_to_action[node_id] for node_id in candidate_nodes
+            ]
+        except KeyError as exc:
+            raise ValueError(
+                f'Controller returned unknown physical node ID: {exc.args[0]!r}'
+            ) from exc
+
         # add special actions
         if self.allow_rejection:
-            candidate_nodes.append(self.rejection_action)
-        if self.allow_revocable:
-            if self.num_placed_v_net_nodes != 0:
-                candidate_nodes.append(self.revocable_action)
-            revoked_actions = self.revoked_actions_dict[(str(self.solution.node_slots), self.curr_v_node_id)]
-            [candidate_nodes.remove(a_id) for a_id in revoked_actions if a_id in revoked_actions]
-        mask[candidate_nodes] = True
-        # if mask.sum() == 0: 
-            # mask[0] = True
+            candidate_actions.append(self.rejection_action)
+        if self.allow_revocable and self.num_placed_v_net_nodes != 0:
+            candidate_actions.append(self.revocable_action)
+        if candidate_actions:
+            mask[candidate_actions] = True
+        else:
+            # Categorical policies cannot represent an empty action set. Expose a
+            # deterministic sentinel action and terminate it in the environment
+            # before invoking the controller.
+            mask[0] = True
+            self._no_feasible_action = True
         return mask
+
+    def action_to_p_node_id(self, action):
+        action = int(action)
+        if action < 0 or action >= self.p_net.num_nodes:
+            raise ValueError(f'Action {action} is not a physical-node action')
+        return self.p_node_ids[action]
 
     def action_masks(self):
         return self.generate_action_mask()
@@ -125,5 +169,13 @@ class RLBaseEnv(gym.Env):
     @property
     def curr_v_node_id(self):
         if self.num_placed_v_net_nodes == self.v_net.num_nodes:
-            return 0
-        return self.v_net.ranked_nodes[self.num_placed_v_net_nodes]
+            return self.v_node_ids[0]
+        if hasattr(self.v_net, 'node_ranking'):
+            ranked_nodes = list(self.v_net.node_ranking)
+        else:
+            ranked_nodes = list(self.v_net.ranked_nodes)
+        return ranked_nodes[self.num_placed_v_net_nodes]
+
+    @property
+    def curr_v_node_index(self):
+        return self.v_node_id_to_index[self.curr_v_node_id]

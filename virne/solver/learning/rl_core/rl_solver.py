@@ -7,7 +7,8 @@ import os
 import csv
 import copy
 import time
-from omegaconf import open_dict
+from collections.abc import Mapping
+from omegaconf import OmegaConf, open_dict
 from sympy import im
 import tqdm
 import pprint
@@ -35,6 +36,12 @@ class RLSolver(Solver):
     """General Reinforcement Learning Solve"""
     def __init__(self, controller, recorder, counter, logger, config, make_policy, obs_as_tensor, **kwargs):
         super(RLSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
+        if self.allow_rejection or self.allow_revocable:
+            raise NotImplementedError(
+                'RL policies currently emit one logit per physical node, so '
+                'solver.allow_rejection and solver.allow_revocable are not '
+                'supported. Keep both options false.'
+            )
         self.rank = 0
         # baseline
         self.if_use_baseline_solver = self.config.rl.if_use_baseline_solver
@@ -271,6 +278,17 @@ class RLSolver(Solver):
         checkpoint_fname = os.path.join(self.model_dir, checkpoint_fname)
         # torch.save(self.policy.state_dict(), checkpoint_fname)
         torch.save({
+            'checkpoint_version': 2,
+            'feature_schema_version': int(OmegaConf.select(
+                self.config,
+                'rl.feature_constructor.schema_version',
+                default=1,
+            )),
+            'solver_name': self.config.solver.solver_name,
+            'p_net_num_nodes': OmegaConf.select(
+                self.config,
+                'simulation.p_net_setting_num_nodes',
+            ),
             'policy': self.policy.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             # 'lr_scheduler_state_dict': self.lr_scheduler.state_dict()
@@ -280,15 +298,52 @@ class RLSolver(Solver):
     def load_model(self, checkpoint_path):
         print('Attempting to load the pretrained model')
         try:
-            checkpoint = torch.load(checkpoint_path)
-            if 'policy' not in checkpoint:
-                self.policy.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))
+            checkpoint = torch.load(
+                checkpoint_path,
+                map_location=self.device,
+                weights_only=True,
+            )
+            if not isinstance(checkpoint, Mapping):
+                raise TypeError(
+                    f'Expected a state-dict checkpoint, got {type(checkpoint).__name__}'
+                )
+
+            if 'policy' in checkpoint:
+                policy_state = checkpoint['policy']
+                optimizer_state = checkpoint.get('optimizer')
+                feature_schema_version = checkpoint.get('feature_schema_version')
             else:
-                self.policy.load_state_dict(checkpoint['policy'])
-                self.optimizer.load_state_dict(checkpoint['optimizer'])
+                policy_state = checkpoint
+                optimizer_state = None
+                feature_schema_version = None
+
+            self.policy.load_state_dict(policy_state, strict=True)
+            if optimizer_state is not None:
+                self.optimizer.load_state_dict(optimizer_state)
+
+            if feature_schema_version is None:
+                feature_schema_version = 1
+                self.logger.warning(
+                    'Checkpoint has no feature schema metadata; using legacy '
+                    'feature schema v1 for compatibility.'
+                )
+            if int(feature_schema_version) not in (1, 2):
+                raise ValueError(
+                    'Unsupported checkpoint feature schema version: '
+                    f'{feature_schema_version}'
+                )
+            with open_dict(self.config):
+                self.config.rl.feature_constructor.schema_version = int(
+                    feature_schema_version
+                )
             self.logger.critical(f'Parameter Initialization: Loaded pretrained model from {checkpoint_path}')
         except Exception as e:
-            self.logger.critical(f'Parameter Initialization: Load pretrained failed from {checkpoint_path}\n{e}\nInitilized with random parameters')
+            message = (
+                f'Parameter Initialization: Load pretrained failed from '
+                f'{checkpoint_path}\n{e}'
+            )
+            self.logger.critical(message)
+            raise RuntimeError(message) from e
 
     def train(self):
         """Set the mode to train"""

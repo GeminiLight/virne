@@ -37,6 +37,7 @@ rl:
     intermediate_reward: 0.1
   # feature constructor
   feature_constructor:
+    schema_version: 2
     name: "p_net_v_node"
     extracted_attr_types: ["resource"]
     if_use_node_status_flags: true

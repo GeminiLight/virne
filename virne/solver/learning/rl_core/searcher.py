@@ -31,8 +31,8 @@ def get_searcher(decode_strategy, policy, preprocess_obs_func, k, device, mask_a
         SearcherClass = SampleSearcher
     elif decode_strategy in [2, 'beam', 'beam_search']:
         SearcherClass = BeamSearcher
-    elif decode_strategy in [3, 'recovable']:
-        SearcherClass = RecovableSearcher
+    elif decode_strategy in [3, 'recoverable', 'recovable']:
+        SearcherClass = RecoverableSearcher
     else:
         raise NotImplementedError
     searcher = SearcherClass(policy=policy, 
@@ -194,7 +194,7 @@ class Searcher:
             candidate_action_dist = Categorical(probs=candidate_action_probs)
         else:
             candidate_action_probs = F.softmax(action_logits / self.softmax_temp, dim=-1)
-            candidate_action_dist = Categorical(probs=candidate_action_dist)
+            candidate_action_dist = Categorical(probs=candidate_action_probs)
 
         if sample:
             action = candidate_action_dist.sample()
@@ -287,8 +287,10 @@ class SampleSearcher(Searcher):
 
     def __init__(self, policy, preprocess_obs_func, make_policy_func, k, device=None, mask_actions=True, maskable_policy=True, parallel_searching=True):
         super(SampleSearcher, self).__init__(policy, preprocess_obs_func, make_policy_func, k, device, mask_actions, maskable_policy, parallel_searching)
-        self.parallel_searching = True
-        self.policy.share_memory()
+        if self.device.type != 'cpu':
+            self.parallel_searching = False
+        if self.parallel_searching:
+            self.policy.share_memory()
         # self.policy_list = [copy.deepcopy(policy).to('cuda') for i in range(k)]
         # self.device = torch.device('cpu')
 
@@ -303,14 +305,26 @@ class SampleSearcher(Searcher):
         instance_env_list = [copy.deepcopy(instance_env) for i in range(self.k)]
 
         num_processes = min(multiprocessing.cpu_count(), self.k)
-        mp_pool = mp.Pool(processes=num_processes, maxtasksperchild=num_processes * 100)
-        args_list = [(self.policy, instance_env_list[i], self.preprocess_obs_func, self.make_policy_func, self.device, False, \
-                self.softmax_temp, self.mask_actions, self.maskable_policy) for i in range(self.k)]
-        solutions = []
-        for result in mp_pool.starmap(sample_search_solution, args_list):
-            solutions.append(result)
-        mp_pool.close()
-        instance_env.logger = logger
+        args_list = [(
+            self.policy,
+            instance_env_list[i],
+            self.preprocess_obs_func,
+            self.device,
+            self.softmax_temp,
+            self.mask_actions,
+            self.maskable_policy,
+        ) for i in range(self.k)]
+        try:
+            if self.parallel_searching:
+                with mp.Pool(
+                    processes=num_processes,
+                    maxtasksperchild=num_processes * 100,
+                ) as mp_pool:
+                    solutions = mp_pool.starmap(sample_search_solution, args_list)
+            else:
+                solutions = [sample_search_solution(*args) for args in args_list]
+        finally:
+            instance_env.logger = logger
         # solutions = []
         # for i in range(self.k):
         #     solution = search_one_solution(self.policy_list[0], instance_env_list[i], self.preprocess_obs_func, self.device, sample=False, 
@@ -324,97 +338,118 @@ class SampleSearcher(Searcher):
 
 class BeamSearcher(Searcher):
     
-    def __init__(self, policy, preprocess_obs_func, k, device=None, mask_actions=True, maskable_policy=True, parallel_searching=True):
-        super(BeamSearcher, self).__init__(policy, preprocess_obs_func, k, device, mask_actions, maskable_policy)
+    def __init__(self, policy, preprocess_obs_func, make_policy_func, k, device=None, mask_actions=True, maskable_policy=True, parallel_searching=True):
+        super(BeamSearcher, self).__init__(
+            policy,
+            preprocess_obs_func,
+            make_policy_func,
+            k,
+            device,
+            mask_actions,
+            maskable_policy,
+            parallel_searching,
+        )
 
     def find_solution(self, instance_env):
-        if self.parallel_searching: self.set_mp_pool()
-        
-        env_list = [copy.deepcopy(instance_env) for i in range(self.k)]
-        obs_list = [env.get_observation() for env in env_list]
-        done_list = [False] * self.k
-        global_conditional_prob_list = [1.] * self.k
-        first_flag = True
-        while not sum(done_list):
-            t1 = time.time()
-            mask = np.array([env.generate_action_mask() for env in env_list])
-            tensor_obs_list = self.preprocess_obs_func(obs_list, device=self.device)
-            candidate_action_probs_list = get_action_distribution(
-                self.policy, tensor_obs_list, softmax_temp=self.softmax_temp, mask=mask, mask_actions=self.mask_actions)
+        # Each item is (environment, observation, cumulative log probability,
+        # done). Completed beams are retained while live beams are expanded.
+        # Keeping these fields together prevents parent/observation/done state
+        # from drifting apart after branching.
+        initial_env = copy.deepcopy(instance_env)
+        beams = [(initial_env, initial_env.get_observation(), 0.0, False)]
+        max_steps = max(1, 10 * instance_env.v_net.num_nodes + 1)
 
-            # update selected conditional probs
-            current_step_prob_dict = {}
-            for env_id in range(self.k):
-                probs, indices = torch.topk(candidate_action_probs_list[env_id], self.k)
-                for prob_id in range(self.k):
-                    current_step_prob_dict[(env_id, int(indices[prob_id]))] = global_conditional_prob_list[env_id] * probs[prob_id] * (not done_list[env_id])
-            if first_flag:
-                for e_p, prob in current_step_prob_dict.items():
-                    if e_p[0] != 0:
-                        current_step_prob_dict[e_p] *= 0
-                first_flag = False
-            
-            # select top-k (env_id, action)
-            sorted_list = list(sorted(current_step_prob_dict.items(), key=lambda item: item[1], reverse=True))
-            topk_probs = sorted_list[:self.k]
-            env_id_list = [topk_probs[i][0][0] for i in range(self.k)]
-            env_list = [copy.deepcopy(env_list[topk_probs[i][0][0]]) for i in range(self.k)]
-            actions = [topk_probs[i][0][1] for i in range(self.k)]
-            global_conditional_prob_list = [topk_probs[i][1] for i in range(self.k)]
-            
-            t1 = time.time()
-            if self.parallel_searching:
-                need_stepped_env_id_list = [i for i in range(self.k) if not done_list[i]]
-                need_stepped_env_list = [env_list[i] for i in range(self.k) if not done_list[i]]
-                need_stepped_action_list = [actions[i] for i in range(self.k) if not done_list[i]]
-                results = self.mp_pool.map(env_step, list(zip(need_stepped_env_list, need_stepped_action_list)))
-                for i, result in enumerate(results):
-                    env_id = need_stepped_env_id_list[i]
-                    env, (obs, reward, done, info) = result
-                    env_list[env_id] = env
-                    obs_list[env_id] = obs
-                    done_list[env_id] = done
-            else:
-                for i, env in enumerate(env_list):
-                    # continue do
-                    if not done_list[i]:
-                        obs, reward, done, info = env.step(actions[i])
-                        obs_list[i] = obs
-                        done_list[i] = done
-            t2 = time.time()
-            # print(t2- t1)
-            
-            if sum(done_list) == self.k:
+        for _ in range(max_steps):
+            expanded_beams = []
+            for env, observation, cumulative_log_prob, done in beams:
+                if done:
+                    expanded_beams.append(
+                        (env, observation, cumulative_log_prob, True)
+                    )
+                    continue
+
+                mask = env.generate_action_mask()
+                feasible_actions = (
+                    np.flatnonzero(mask)
+                    if self.mask_actions
+                    else np.arange(env.num_actions)
+                )
+                if feasible_actions.size == 0:
+                    raise RuntimeError('Beam search received an empty action mask')
+                tensor_obs = self.preprocess_obs_func(
+                    observation,
+                    device=self.device,
+                )
+                action_probs = get_action_distribution(
+                    self.policy,
+                    tensor_obs,
+                    softmax_temp=self.softmax_temp,
+                    mask=np.expand_dims(mask, axis=0),
+                    mask_actions=self.mask_actions,
+                ).reshape(-1)
+                action_probs = action_probs.detach().cpu().numpy()
+                ranked_actions = sorted(
+                    feasible_actions,
+                    key=lambda action: action_probs[action],
+                    reverse=True,
+                )[:self.k]
+
+                for action in ranked_actions:
+                    child_env = copy.deepcopy(env)
+                    child_obs, _, child_done, _ = child_env.step(int(action))
+                    child_log_prob = cumulative_log_prob + float(
+                        np.log(max(action_probs[action], np.finfo(np.float32).tiny))
+                    )
+                    expanded_beams.append(
+                        (child_env, child_obs, child_log_prob, child_done)
+                    )
+
+            if not expanded_beams:
+                raise RuntimeError('Beam search produced no successor states')
+            beams = sorted(
+                expanded_beams,
+                key=lambda item: item[2],
+                reverse=True,
+            )[:self.k]
+            if all(item[3] for item in beams):
                 break
-        score_list = [env.solution.v_net_r2c_ratio if env.solution.result and env.solution.violation <= 0 else 0. for env in env_list]
-        # violation_list = [env.solution.violation for env in env_list]
+        else:
+            raise RuntimeError('Beam search exceeded the environment step limit')
+
+        env_list = [item[0] for item in beams]
+        global_log_prob_list = [item[2] for item in beams]
+        score_list = [
+            env.solution.v_net_r2c_ratio if env.solution.is_feasible() else 0.
+            for env in env_list
+        ]
         solution_list = [str(list(env.solution['node_slots'].items())) for env in env_list]
-        
-        # print(score_list)
-        # print(global_conditional_prob_list)
         best_index = score_list.index(max(score_list))
-        greedy_index = global_conditional_prob_list.index(max(global_conditional_prob_list))
-        print(f'num_solutions: {len(set(solution_list))}, \
-                num_scores: {len(set(score_list))}, \
-                best_score: {score_list[best_index]:.4f}, \
-                best_index: {best_index}, \
-                greedy_index: {greedy_index}')
+        greedy_index = global_log_prob_list.index(max(global_log_prob_list))
 
         best_solution = env_list[best_index].solution
         best_solution.num_feasible_solutions = sum(1 if s != 0 else 0 for s in score_list)
         best_solution.num_various_solutions = len(set(score_list))
         best_solution.best_solution_index = best_index
-        best_solution.best_solution_prob = float(global_conditional_prob_list[best_index])
+        best_solution.best_solution_prob = float(np.exp(global_log_prob_list[best_index]))
         best_solution.best_solution_score = float(score_list[best_index])
-        best_solution.greedy_solution_prob  = float(global_conditional_prob_list[greedy_index])
+        best_solution.greedy_solution_prob = float(np.exp(global_log_prob_list[greedy_index]))
         best_solution.greedy_solution_score = float(score_list[greedy_index])
         return best_solution
 
 
-class RecovableSearcher(Searcher):
+class RecoverableSearcher(Searcher):
     
-    def __init__(self, policy, preprocess_obs_func, k, device=None, mask_actions=True, maskable_policy=True, parallel_searching=True):
-        super(RecovableSearcher, self).__init__(policy, preprocess_obs_func, k, device, mask_actions, maskable_policy)
+    def __init__(self, policy, preprocess_obs_func, make_policy_func, k, device=None, mask_actions=True, maskable_policy=True, parallel_searching=True):
+        super(RecoverableSearcher, self).__init__(
+            policy,
+            preprocess_obs_func,
+            make_policy_func,
+            k,
+            device,
+            mask_actions,
+            maskable_policy,
+            parallel_searching,
+        )
         # if parallel_searching:
         #     self.mp_pool = mp.Pool(processes= min(multiprocessing.cpu_count(), k))
 
@@ -423,7 +458,10 @@ class RecovableSearcher(Searcher):
         done = False
         max_retry_times = self.k
         # every_v_node_retry_times = [int(np.power(max_retry_times, 1 / (instance_env.v_net.num_nodes - i))) for i in range(instance_env.v_net.num_nodes)]
-        each_v_node_retry_times = int(max_retry_times / instance_env.v_net.num_nodes)
+        each_v_node_retry_times = max(
+            1,
+            int(max_retry_times / instance_env.v_net.num_nodes),
+        )
         num_retry_times = 0
         failed_actions_dict = defaultdict(list)
         
@@ -431,10 +469,34 @@ class RecovableSearcher(Searcher):
             backup_instance_env = copy.deepcopy(instance_env)
             mask = instance_env.generate_action_mask()
             mask[failed_actions_dict[str(instance_env.solution.node_slots), instance_env.curr_v_node_id]] = False
+            if not mask.any():
+                if len(instance_env.solution.node_slots):
+                    last_v_node_id = instance_env.placed_v_net_nodes[-1]
+                    paired_p_node_id = instance_env.selected_p_net_nodes[-1]
+                    instance_env.revoke()
+                    failed_actions_dict[
+                        str(instance_env.solution.node_slots), last_v_node_id
+                    ].append(instance_env.p_node_id_to_action[paired_p_node_id])
+                    obs = instance_env.get_observation()
+                    num_retry_times += 1
+                    if num_retry_times >= max_retry_times:
+                        return instance_env.solution
+                    continue
+                instance_env._no_feasible_action = True
+                instance_env.fail_no_feasible_action()
+                instance_env.solution['num_retry_times'] = num_retry_times
+                return instance_env.solution
             mask = np.expand_dims(mask, axis=0)
             tensor_obs_list = self.preprocess_obs_func(obs, device=self.device)
-            action, action_logprob = self.select_action(
-                tensor_obs_list, sample=False, softmax_temp=self.softmax_temp, mask_actions=self.mask_actions, maskable_policy=self.maskable_policy)
+            action, action_logprob = select_action(
+                self.policy,
+                tensor_obs_list,
+                mask=mask,
+                sample=False,
+                softmax_temp=self.softmax_temp,
+                mask_actions=self.mask_actions,
+                maskable_policy=self.maskable_policy,
+            )
             obs, reward, done, info = instance_env.step(action)
 
             if done:
@@ -461,11 +523,23 @@ class RecovableSearcher(Searcher):
                             last_v_node_id = instance_env.placed_v_net_nodes[-1]
                             paired_p_node_id = instance_env.selected_p_net_nodes[-1]
                             instance_env.revoke()
-                            failed_actions_dict[str(instance_env.solution.node_slots), last_v_node_id].append(paired_p_node_id)
+                            failed_actions_dict[
+                                str(instance_env.solution.node_slots),
+                                last_v_node_id,
+                            ].append(
+                                instance_env.p_node_id_to_action[paired_p_node_id]
+                            )
                         else:
-                            failed_actions_dict[str(instance_env.solution.node_slots), instance_env.curr_v_node_id].append(paired_p_node_id)
+                            failed_actions_dict[
+                                str(instance_env.solution.node_slots),
+                                instance_env.curr_v_node_id,
+                            ].append(int(action))
                         done = False
                         num_retry_times += 1
+
+
+# Keep the historical misspelling import-compatible.
+RecovableSearcher = RecoverableSearcher
 
 
 def env_step(env_action):

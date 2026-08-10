@@ -37,7 +37,10 @@ class InstanceRLEnv(JointPRStepInstanceRLEnv):
         vp_mapping_edge_index = []
         vp_mapping_edge_attr = []
         for v_node_id, p_node_id in self.solution['node_slots'].items():
-            vp_mapping_edge_index.append([v_node_id, p_node_id])
+            vp_mapping_edge_index.append([
+                self.v_node_id_to_index[v_node_id],
+                self.p_node_id_to_action[p_node_id],
+            ])
             vp_mapping_edge_attr.append([1.])
         vp_mapping_edge_index = np.array(vp_mapping_edge_index).astype(np.int64).reshape(-1, 2).T
         vp_mapping_edge_attr = np.array(vp_mapping_edge_attr) if len(vp_mapping_edge_attr) != 0 else np.array([[]])
@@ -52,7 +55,10 @@ class InstanceRLEnv(JointPRStepInstanceRLEnv):
         vp_imaginary_edge_attr = []
         for p_node_id in self.init_candidates_dict[self.curr_v_node_id]:
             if p_node_id not in self.selected_p_net_nodes:
-                vp_imaginary_edge_index.append([self.curr_v_node_id, p_node_id])
+                vp_imaginary_edge_index.append([
+                    self.curr_v_node_index,
+                    self.p_node_id_to_action[p_node_id],
+                ])
                 vp_imaginary_edge_attr.append([1.])
         vp_imaginary_edge_index = np.array(vp_imaginary_edge_index).astype(np.int64).reshape(-1, 2).T
         vp_imaginary_edge_attr = np.array(vp_imaginary_edge_attr) if len(vp_imaginary_edge_attr) != 0 else np.array([[]])

@@ -153,14 +153,30 @@ class ObservationHandler:
         Returns:
             link_index: its shape is [2, num_links].
         """
-        link_pairs = np.array(list(network.links), dtype=np.int64)
+        links = list(network.links)
+        if not links:
+            return np.empty((0, 2), dtype=np.int64)
+        node_id_to_index = {
+            node_id: index for index, node_id in enumerate(network.nodes)
+        }
+        link_pairs = np.array(
+            [
+                [node_id_to_index[source], node_id_to_index[target]]
+                for source, target in links
+            ],
+            dtype=np.int64,
+        )
         link_pairs = np.concatenate([link_pairs, link_pairs[:, [1,0]]], axis=0)
         return link_pairs
 
     def get_selected_node_mask(self, network: BaseNetwork, selected_nodes):
         selected_node_mask = np.zeros(network.num_nodes, dtype=np.float32)
-        selected_node_mask[selected_nodes] = 1.
-        return np.array([selected_node_mask], dtype=np.float32, normalization=True)
+        node_id_to_index = {
+            node_id: index for index, node_id in enumerate(network.nodes)
+        }
+        selected_indices = [node_id_to_index[node_id] for node_id in selected_nodes]
+        selected_node_mask[selected_indices] = 1.
+        return np.array([selected_node_mask], dtype=np.float32)
 
     def get_average_distance(self, network: BaseNetwork, nodes_slots, normalization=True):
         # avg_dst
@@ -173,7 +189,7 @@ class ObservationHandler:
         else:
             distance_dict = dict(nx.shortest_path_length(network))
             avg_distance = []
-            for u in range(network.num_nodes):
+            for u in network.nodes:
                 sum_dst = 0
                 for v in selected_p_nodes:
                     sum_dst += distance_dict[u][v]
@@ -181,10 +197,12 @@ class ObservationHandler:
                 avg_distance.append(sum_dst)
             avg_distance = np.array(avg_distance)
         if normalization:
-            if np.max(avg_distance) == 0:
-                 avg_distance = avg_distance
+            min_distance = np.min(avg_distance)
+            max_distance = np.max(avg_distance)
+            if max_distance == min_distance:
+                avg_distance = np.zeros_like(avg_distance)
             else:
-                avg_distance = (avg_distance - np.min(avg_distance)) / (np.max(avg_distance) - np.min(avg_distance))
+                avg_distance = (avg_distance - min_distance) / (max_distance - min_distance)
         return np.array([avg_distance], dtype=np.float32).T
 
     def get_average_distance_for_v_node(self, p_net, v_net, nodes_slot, v_node_id=None, normalization=True):
@@ -224,7 +242,13 @@ class ObservationHandler:
         return v2p_node_link_demands
 
 
-    def get_v_node_status(self, v_net, v_node_id, p_net_num_nodes):
+    def get_v_node_status(
+            self,
+            v_net,
+            v_node_id,
+            p_net_num_nodes,
+            v_node_position=None,
+            schema_version=1):
         """Get the embedding status of virtual network.
 
         Args:
@@ -237,8 +261,16 @@ class ObservationHandler:
             v_net_status: The embedding status of virtual network with a shape of [3, ].
         """
         norm_all_nodes = v_net.num_nodes / p_net_num_nodes
-        norm_unplaced = (v_net.num_nodes - (v_node_id + 1)) / v_net.num_nodes
-        norm_curr_vid = v_node_id + 1 / p_net_num_nodes
+        if schema_version >= 2:
+            if v_node_position is None:
+                v_node_position = list(v_net.nodes).index(v_node_id)
+            norm_unplaced = (
+                v_net.num_nodes - (v_node_position + 1)
+            ) / v_net.num_nodes
+            norm_curr_vid = (v_node_position + 1) / v_net.num_nodes
+        else:
+            norm_unplaced = (v_net.num_nodes - (v_node_id + 1)) / v_net.num_nodes
+            norm_curr_vid = v_node_id + 1 / p_net_num_nodes
         return np.array([norm_unplaced, norm_all_nodes, norm_curr_vid], dtype=np.float32)
 
     def get_v_node_demand(self, v_net, v_node_id, node_attr_types=['resource'], node_attr_benchmarks: Optional[Dict[str, float]] = None):
@@ -280,7 +312,9 @@ class ObservationHandler:
         link_demands = []
         for l_attr in link_attrs:
             link_demand = [v_net.links[(n, v_node_id)][l_attr.name] for n in v_net.adj[v_node_id]]
-            if aggr == 'sum':
+            if not link_demand:
+                link_demand = 0.0
+            elif aggr == 'sum':
                 link_demand = sum(link_demand)
             elif aggr == 'mean':
                 link_demand = sum(link_demand) / len(link_demand)
@@ -329,9 +363,15 @@ class ObservationHandler:
         """
         status_dim = 1 if v_node_id is None else 2
         p_nodes_status = np.zeros((p_net.num_nodes, status_dim), dtype=np.float32)
+        p_node_id_to_index = {
+            node_id: index for index, node_id in enumerate(p_net.nodes)
+        }
         # set the selection flags of selected p nodes to 1
         selected_p_nodes = list(node_slots.values())
-        p_nodes_status[selected_p_nodes, 0] = 1.
+        selected_p_node_indices = [
+            p_node_id_to_index[node_id] for node_id in selected_p_nodes
+        ]
+        p_nodes_status[selected_p_node_indices, 0] = 1.
         if v_node_id is None:
             return p_nodes_status
         # set the neighbor flags of corresponding p neighbors to 1
@@ -340,7 +380,10 @@ class ObservationHandler:
         for v_neighbor in list(v_net.adj[v_node_id].keys()):
             if v_neighbor in placed_v_nodes:
                 placed_p_neighbors.append(node_slots[v_neighbor])
-        p_nodes_status[placed_p_neighbors, 1] = 1.
+        placed_p_neighbor_indices = [
+            p_node_id_to_index[node_id] for node_id in placed_p_neighbors
+        ]
+        p_nodes_status[placed_p_neighbor_indices, 1] = 1.
         return p_nodes_status
 
     def get_v_node_neighbor_flags(self, v_net, node_slots, v_node_id):
@@ -350,11 +393,15 @@ class ObservationHandler:
             v_nodes_status: with shape [num_v_nodes, status_dim]
         """
         v_node_neighbor_flags = np.zeros((v_net.num_nodes, v_net.num_nodes), dtype=np.float32)
+        v_node_id_to_index = {
+            node_id: index for index, node_id in enumerate(v_net.nodes)
+        }
         placed_v_nodes = list(node_slots.keys())
         # set the neighbor flags of corresponding v neighbors to 1
         for v_neighbor in list(v_net.adj[v_node_id].keys()):
             if v_neighbor in placed_v_nodes:
-                v_node_neighbor_flags[v_neighbor, v_neighbor] = 1.
+                v_neighbor_index = v_node_id_to_index[v_neighbor]
+                v_node_neighbor_flags[v_neighbor_index, v_neighbor_index] = 1.
         return v_node_neighbor_flags
 
     def get_v_net_nodes_status(self, v_net, node_slots, v_node_id=None, consist_decision=True, neighbor_flags=False):
@@ -365,23 +412,30 @@ class ObservationHandler:
         """
         status_dim = 1 if v_node_id is None else 2
         v_nodes_status = np.zeros((v_net.num_nodes, status_dim), dtype=np.float32)
+        v_node_id_to_index = {
+            node_id: index for index, node_id in enumerate(v_net.nodes)
+        }
         placed_v_nodes = list(node_slots.keys())
         # set the placement flags of placed v nodes to 1
-        v_nodes_status[placed_v_nodes, 0] = 1.
+        placed_v_node_indices = [
+            v_node_id_to_index[node_id] for node_id in placed_v_nodes
+        ]
+        v_nodes_status[placed_v_node_indices, 0] = 1.
         if v_node_id is None:
             return v_nodes_status
         # set the decision flag of the current decided v node to 1
-        if v_node_id < v_net.num_nodes:
+        if v_node_id in v_node_id_to_index:
+            v_node_index = v_node_id_to_index[v_node_id]
             if consist_decision:
-                v_nodes_status[v_node_id, 1] = 1.
+                v_nodes_status[v_node_index, 1] = 1.
             else:
-                v_nodes_status[v_node_id, 1] = -1.
+                v_nodes_status[v_node_index, 1] = -1.
         if neighbor_flags:
             # set the neighbor flags of corresponding v neighbors to 1
             v_node_neighbor_flags = np.zeros((v_net.num_nodes, 1), dtype=np.float32)
             for v_neighbor in list(v_net.adj[v_node_id].keys()):
                 if v_neighbor in placed_v_nodes:
-                    v_node_neighbor_flags[v_neighbor] = 1.
+                    v_node_neighbor_flags[v_node_id_to_index[v_neighbor]] = 1.
             # concat 
             v_nodes_status = np.concatenate([v_nodes_status, v_node_neighbor_flags], axis=1)
         return v_nodes_status

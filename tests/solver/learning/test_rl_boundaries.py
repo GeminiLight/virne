@@ -1,0 +1,487 @@
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import numpy as np
+import pytest
+import torch
+from omegaconf import OmegaConf
+
+from virne.core import Solution
+from virne.network import (
+    AttributeBenchmarkManager,
+    AttributeBenchmarks,
+    PhysicalNetwork,
+    TopologicalMetricCalculator,
+    VirtualNetwork,
+)
+from virne.solver.learning.obs_handler import ObservationHandler
+from virne.solver.learning.utils import get_unexistent_link_pairs
+from virne.solver.learning.rl_core.feature_constructor import FeatureConstructorRegistry
+from virne.solver.learning.rl_core.instance_agent import InstanceAgent
+from virne.solver.learning.rl_core.instance_rl_environment import (
+    InstanceRLEnv,
+    JointPRStepInstanceRLEnv,
+    NodePairStepInstanceRLEnv,
+    NodeSlotsStepInstanceRLEnv,
+)
+from virne.solver.learning.rl_core.rl_enviroment_base import RLBaseEnv
+from virne.solver.learning.rl_core.rl_solver import RLSolver
+
+
+NODE_ATTRS = [
+    {
+        'name': 'cpu',
+        'type': 'resource',
+        'owner': 'node',
+        'generative': False,
+    },
+]
+LINK_ATTRS = [
+    {
+        'name': 'bw',
+        'type': 'resource',
+        'owner': 'link',
+        'generative': False,
+    },
+]
+
+
+def make_p_net(node_ids=(0, 1)):
+    p_net = PhysicalNetwork(
+        config={
+            'node_attrs_setting': NODE_ATTRS,
+            'link_attrs_setting': LINK_ATTRS,
+        }
+    )
+    p_net.add_nodes_from((node_id, {'cpu': 10.0}) for node_id in node_ids)
+    if len(node_ids) > 1:
+        p_net.add_edge(node_ids[0], node_ids[1], bw=10.0)
+    return p_net
+
+
+def make_v_net(node_ids=(0,)):
+    v_net = VirtualNetwork(
+        config={
+            'node_attrs_setting': NODE_ATTRS,
+            'link_attrs_setting': LINK_ATTRS,
+            'graph_attrs_setting': {
+                'id': 0,
+                'arrival_time': 0.0,
+                'lifetime': 1.0,
+            },
+        }
+    )
+    v_net.add_nodes_from((node_id, {'cpu': 1.0}) for node_id in node_ids)
+    if len(node_ids) > 1:
+        v_net.add_edge(node_ids[0], node_ids[1], bw=1.0)
+    v_net.ranked_nodes = list(node_ids)
+    return v_net
+
+
+class MinimalJointEnv(JointPRStepInstanceRLEnv):
+    def get_observation(self):
+        return {'action_mask': self.generate_action_mask()}
+
+    def compute_reward(self, *args, **kwargs):
+        return 0.0
+
+
+def make_minimal_joint_env(candidate_nodes, p_node_ids=(0, 1), v_node_ids=(0,)):
+    env = MinimalJointEnv.__new__(MinimalJointEnv)
+    env.p_net = make_p_net(p_node_ids)
+    env.v_net = make_v_net(v_node_ids)
+    env.controller = Mock()
+    env.controller.find_candidate_nodes.return_value = list(candidate_nodes)
+    env.counter = Mock()
+    env.counter.count_solution.side_effect = lambda _v_net, solution: solution.to_dict()
+    env.solution = Solution.from_v_net(env.v_net)
+    env.reusable = False
+    env.shortest_method = 'k_shortest'
+    env.k_shortest = 10
+    RLBaseEnv.__init__(env)
+    return env
+
+
+def make_feature_config(schema_version, feature_name='p_net_v_node'):
+    return OmegaConf.create({
+        'rl': {
+            'feature_constructor': {
+                'schema_version': schema_version,
+                'name': feature_name,
+                'extracted_attr_types': ['resource'],
+                'if_use_node_status_flags': True,
+                'if_use_aggregated_link_attrs': True,
+                'if_use_degree_metric': False,
+                'if_use_more_topological_metrics': False,
+            },
+        },
+    })
+
+
+def cache_test_benchmarks():
+    AttributeBenchmarkManager.clear_cache()
+    AttributeBenchmarkManager.add_to_cache(
+        'p_net',
+        AttributeBenchmarks(
+            node_attr_benchmarks={'cpu': 10.0},
+            link_attr_benchmarks={'bw': 10.0},
+            link_sum_attr_benchmarks={'bw': 10.0},
+        ),
+    )
+
+
+def test_no_feasible_action_terminates_without_controller_mutation():
+    env = make_minimal_joint_env(candidate_nodes=[])
+
+    observation = env.get_observation()
+    assert observation['action_mask'].sum() == 1
+
+    _, _, done, info = env.step(int(np.flatnonzero(observation['action_mask'])[0]))
+
+    assert done is True
+    assert env.solution.place_result is False
+    assert info['description'] == 'No feasible physical node'
+    env.controller.place_and_route.assert_not_called()
+
+
+def test_revoked_action_filter_ignores_actions_not_in_current_candidates():
+    env = make_minimal_joint_env(candidate_nodes=[0])
+    env.allow_revocable = True
+    env.revocable_action = env.p_net.num_nodes
+    env.num_actions = env.p_net.num_nodes + 1
+    env.revoked_actions_dict[(str(env.solution.node_slots), env.curr_v_node_id)].append(1)
+
+    mask = env.generate_action_mask()
+
+    assert mask.tolist() == [True, False, False]
+
+
+def test_first_failed_action_does_not_try_to_revoke_empty_solution():
+    env = make_minimal_joint_env(candidate_nodes=[0])
+    env.allow_revocable = True
+    env.revocable_action = env.p_net.num_nodes
+    env.num_actions = env.p_net.num_nodes + 1
+    env.controller.place_and_route.return_value = (False, {})
+
+    _, _, done, _ = env.step(0)
+
+    assert done is True
+    assert env.solution.revoke_times == 0
+
+
+def test_empty_link_index_has_pyg_compatible_shape():
+    link_index = ObservationHandler().get_link_index_obs(make_v_net())
+
+    assert link_index.shape == (2, 0)
+    assert link_index.dtype == np.int64
+
+
+def test_isolated_v_node_link_aggregations_are_zero():
+    v_net = make_v_net()
+    handler = ObservationHandler()
+
+    for aggregation in ('sum', 'mean', 'max', 'min'):
+        values = handler.get_v_node_aggr_link_demands(
+            v_net,
+            0,
+            aggr=aggregation,
+            link_attr_types=['resource'],
+        )
+        np.testing.assert_array_equal(values, np.zeros(1, dtype=np.float32))
+
+
+def test_equal_average_distances_normalize_to_finite_zeros():
+    p_net = make_p_net()
+
+    values = ObservationHandler().get_average_distance(
+        p_net,
+        nodes_slots={0: 0, 1: 1},
+        normalization=True,
+    )
+
+    np.testing.assert_array_equal(values, np.zeros((2, 1), dtype=np.float32))
+    assert np.isfinite(values).all()
+
+
+def test_non_contiguous_node_ids_are_encoded_as_tensor_row_indices():
+    p_net = make_p_net((10, 20))
+    handler = ObservationHandler()
+
+    np.testing.assert_array_equal(
+        handler.get_link_index_obs(p_net),
+        np.array([[0, 1], [1, 0]], dtype=np.int64),
+    )
+    np.testing.assert_array_equal(
+        handler.get_p_net_nodes_status(p_net, make_v_net(), {0: 20}),
+        np.array([[0.0], [1.0]], dtype=np.float32),
+    )
+    assert get_unexistent_link_pairs(p_net).size == 0
+
+
+def test_non_contiguous_physical_ids_use_dense_actions_and_real_node_ids():
+    env = make_minimal_joint_env(candidate_nodes=[20], p_node_ids=(10, 20))
+    def place_and_route(_v_net, _p_net, v_node_id, p_node_id, solution, **kwargs):
+        solution.node_slots[v_node_id] = p_node_id
+        return True, {}
+
+    env.controller.place_and_route.side_effect = place_and_route
+
+    mask = env.get_observation()['action_mask']
+    assert mask.tolist() == [False, True]
+
+    env.step(1)
+
+    assert env.solution.selected_actions == [20]
+    assert env.controller.place_and_route.call_args.args[3] == 20
+
+
+def test_tuple_node_ids_use_dense_actions_and_tensor_indices():
+    p_node_ids = ((0, 0), (0, 1))
+    v_node_ids = (('left', 0), ('right', 1))
+    env = make_minimal_joint_env(
+        candidate_nodes=[p_node_ids[1]],
+        p_node_ids=p_node_ids,
+        v_node_ids=v_node_ids,
+    )
+    def place_and_route(_v_net, _p_net, v_node_id, p_node_id, solution, **kwargs):
+        solution.node_slots[v_node_id] = p_node_id
+        return True, {}
+
+    env.controller.place_and_route.side_effect = place_and_route
+
+    mask = env.get_observation()['action_mask']
+    env.step(1)
+
+    assert mask.tolist() == [False, True]
+    assert env.curr_v_node_index == 1
+    assert env.controller.place_and_route.call_args.args[2] == v_node_ids[0]
+    assert env.controller.place_and_route.call_args.args[3] == p_node_ids[1]
+
+
+def test_tuple_node_ids_construct_dense_dual_graph_features():
+    p_net = make_p_net(((0, 0), (0, 1)))
+    v_net = make_v_net((('left', 0), ('right', 1)))
+    solution = Solution.from_v_net(v_net)
+    cache_test_benchmarks()
+    TopologicalMetricCalculator.clear_cache()
+    config = make_feature_config(2, 'p_net_v_net')
+    constructor = FeatureConstructorRegistry.get('p_net_v_net')(
+        p_net,
+        v_net,
+        config,
+    )
+
+    observation = constructor.construct(p_net, v_net, solution, ('left', 0))
+
+    np.testing.assert_array_equal(
+        observation['p_net_edge_index'],
+        np.array([[0, 1], [1, 0]], dtype=np.int64),
+    )
+    np.testing.assert_array_equal(
+        observation['v_net_edge_index'],
+        np.array([[0, 1], [1, 0]], dtype=np.int64),
+    )
+
+
+def test_rl_solver_rejects_special_actions_unsupported_by_policy_head(tmp_path):
+    config = OmegaConf.create({
+        'experiment': {
+            'seed': 0,
+            'run_id': 'unsupported-actions',
+            'save_root_dir': str(tmp_path),
+        },
+        'solver': {
+            'solver_name': 'test',
+            'reusable': False,
+            'node_ranking_method': 'order',
+            'link_ranking_method': 'order',
+            'matching_mathod': 'greedy',
+            'shortest_method': 'k_shortest',
+            'k_shortest': 10,
+            'allow_rejection': True,
+            'allow_revocable': False,
+        },
+    })
+
+    with pytest.raises(NotImplementedError, match='one logit per physical node'):
+        RLSolver(
+            Mock(),
+            Mock(),
+            Mock(),
+            Mock(),
+            config,
+            make_policy=Mock(),
+            obs_as_tensor=Mock(),
+        )
+
+
+def test_incomplete_composite_action_environments_fail_clearly():
+    for env_cls in (NodePairStepInstanceRLEnv, NodeSlotsStepInstanceRLEnv):
+        with pytest.raises(NotImplementedError, match='action head'):
+            env_cls(None, None, None, None, None, None, None)
+
+
+def test_terminal_rollout_uses_zero_bootstrap_without_evaluating_terminal_obs():
+    class TerminalEnv:
+        def __init__(self, p_net, v_net, *args):
+            self.solution = Solution.from_v_net(v_net)
+            self.curr_v_node_id = list(v_net.nodes)[0]
+
+        def reset(self):
+            return {'value': 1.0}
+
+        def step(self, action):
+            return {'value': np.nan}, 0.0, True, {}
+
+    agent = InstanceAgent(TerminalEnv)
+    agent.controller = Mock()
+    agent.recorder = Mock()
+    agent.counter = Mock()
+    agent.logger = Mock()
+    agent.config = OmegaConf.create({})
+    agent.device = torch.device('cpu')
+    agent.preprocess_obs = Mock(side_effect=lambda observation, device: observation)
+    agent.select_action = Mock(return_value=(0, np.array(0.0)))
+    agent.estimate_value = Mock(return_value=1.0)
+    p_net = make_p_net()
+    v_net = make_v_net()
+
+    _, _, last_value = agent.learn_with_instance({'p_net': p_net, 'v_net': v_net})
+
+    assert last_value == 0.0
+    agent.estimate_value.assert_called_once_with({'value': 1.0})
+
+
+def test_single_node_v_net_features_have_valid_empty_edges():
+    p_net = make_p_net()
+    v_net = make_v_net()
+    solution = Solution.from_v_net(v_net)
+    cache_test_benchmarks()
+    TopologicalMetricCalculator.clear_cache()
+
+    for feature_name in ('p_net_v_node', 'p_net_v_net'):
+        config = make_feature_config(2, feature_name)
+        constructor = FeatureConstructorRegistry.get(feature_name)(p_net, v_net, config)
+
+        observation = constructor.construct(p_net, v_net, solution, 0)
+
+        assert np.isfinite(observation['p_net_x']).all()
+        if feature_name == 'p_net_v_net':
+            assert observation['v_net_edge_index'].shape == (2, 0)
+            assert observation['v_net_edge_attr'].shape == (0, 1)
+
+
+def test_feature_schema_v2_corrects_mean_link_normalization():
+    p_net = make_p_net()
+    v_net = make_v_net((0, 1))
+    solution = Solution.from_v_net(v_net)
+
+    means = {}
+    for schema_version in (1, 2):
+        cache_test_benchmarks()
+        TopologicalMetricCalculator.clear_cache()
+        config = make_feature_config(schema_version)
+        config.rl.feature_constructor.if_use_node_status_flags = False
+        constructor = FeatureConstructorRegistry.get('p_net_v_node')(
+            p_net,
+            v_net,
+            config,
+        )
+        observation = constructor.construct(p_net, v_net, solution, 0)
+        # node resource, then min/mean/max/sum aggregated link resources
+        means[schema_version] = observation['p_net_x'][:, 2]
+
+    np.testing.assert_array_equal(means[1], np.array([5.0, 5.0]))
+    np.testing.assert_array_equal(means[2], np.array([0.5, 0.5]))
+
+
+def test_feature_schema_v2_uses_decision_progress_not_raw_virtual_id():
+    v_net = make_v_net((5, 9))
+
+    status = ObservationHandler().get_v_node_status(
+        v_net,
+        v_node_id=9,
+        p_net_num_nodes=10,
+        v_node_position=0,
+        schema_version=2,
+    )
+
+    np.testing.assert_allclose(status, np.array([0.5, 0.2, 0.5], dtype=np.float32))
+
+
+def test_instance_observation_uses_scalar_v_net_size_and_dense_v_node_index():
+    env = InstanceRLEnv.__new__(InstanceRLEnv)
+    env.p_net = make_p_net()
+    env.v_net = make_v_net((5, 9))
+    env.solution = Solution.from_v_net(env.v_net)
+    env.feature_constructor = Mock()
+    env.feature_constructor.construct.return_value = {}
+    env.v_node_ids = list(env.v_net.nodes)
+    env.v_node_id_to_index = {5: 0, 9: 1}
+    env.p_node_ids = list(env.p_net.nodes)
+    env.p_node_id_to_action = {0: 0, 1: 1}
+    env.num_actions = 2
+    env.allow_rejection = False
+    env.allow_revocable = False
+    env.revoked_actions_dict = {}
+    env.controller = Mock()
+    env.controller.find_candidate_nodes.return_value = [0, 1]
+
+    observation = InstanceRLEnv.get_observation(env)
+
+    assert observation['curr_v_node_id'] == 0
+    assert observation['v_net_size'] == 2
+    assert isinstance(observation['v_net_size'], int)
+
+
+def make_checkpoint_solver(schema_version=2):
+    solver = RLSolver.__new__(RLSolver)
+    solver.policy = torch.nn.Linear(2, 1)
+    solver.optimizer = torch.optim.Adam(solver.policy.parameters(), lr=0.01)
+    solver.device = torch.device('cpu')
+    solver.logger = Mock()
+    solver.config = OmegaConf.create({
+        'rl': {'feature_constructor': {'schema_version': schema_version}},
+    })
+    return solver
+
+
+def test_legacy_checkpoint_selects_feature_schema_v1(tmp_path):
+    source = make_checkpoint_solver()
+    checkpoint_path = tmp_path / 'legacy.pkl'
+    torch.save({
+        'policy': source.policy.state_dict(),
+        'optimizer': source.optimizer.state_dict(),
+    }, checkpoint_path)
+    target = make_checkpoint_solver(schema_version=2)
+
+    target.load_model(checkpoint_path)
+
+    assert target.config.rl.feature_constructor.schema_version == 1
+    target.logger.warning.assert_called_once()
+
+
+def test_versioned_checkpoint_restores_its_feature_schema(tmp_path):
+    source = make_checkpoint_solver(schema_version=2)
+    checkpoint_path = tmp_path / 'versioned.pkl'
+    torch.save({
+        'checkpoint_version': 2,
+        'feature_schema_version': 2,
+        'policy': source.policy.state_dict(),
+        'optimizer': source.optimizer.state_dict(),
+    }, checkpoint_path)
+    target = make_checkpoint_solver(schema_version=1)
+
+    target.load_model(checkpoint_path)
+
+    assert target.config.rl.feature_constructor.schema_version == 2
+    target.logger.warning.assert_not_called()
+
+
+def test_incompatible_checkpoint_raises_instead_of_using_random_weights(tmp_path):
+    checkpoint_path = tmp_path / 'invalid.pkl'
+    torch.save({'unexpected': torch.ones(1)}, checkpoint_path)
+    solver = make_checkpoint_solver()
+
+    with pytest.raises(RuntimeError, match='Load pretrained failed'):
+        solver.load_model(checkpoint_path)
