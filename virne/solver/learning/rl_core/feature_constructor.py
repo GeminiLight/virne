@@ -1,6 +1,6 @@
 import numpy as np
 from gym import spaces
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from typing import Any, Dict, Optional, Type
 
 from virne.network import VirtualNetwork, PhysicalNetwork
@@ -22,6 +22,15 @@ class BaseFeatureConstructor:
         ):
         self.obs_handler = ObservationHandler()
         self.config = config
+        self.schema_version = int(OmegaConf.select(
+            config,
+            'rl.feature_constructor.schema_version',
+            default=1,
+        ))
+        if self.schema_version not in (1, 2):
+            raise ValueError(
+                f'Unsupported RL feature schema version: {self.schema_version}'
+            )
         self.p_net = p_net
         self.v_net = v_net
         p_net_attribute_benchmarks = AttributeBenchmarkManager.get_from_cache('p_net')
@@ -80,7 +89,23 @@ class BaseFeatureConstructor:
         # Node Data 3: Link Aggregated Attributes
         if self.config.rl.feature_constructor.if_use_aggregated_link_attrs:
             p_node_link_min_data = self.obs_handler.get_link_aggr_attrs_obs(p_net, link_attr_types=self.extracted_attr_types, aggr='min', link_attr_benchmarks=self.link_attr_benchmarks)
-            p_node_link_mean_data = self.obs_handler.get_link_aggr_attrs_obs(p_net, link_attr_types=self.extracted_attr_types, aggr='mean', link_sum_attr_benchmarks=self.link_attr_benchmarks)
+            if self.schema_version >= 2:
+                p_node_link_mean_data = self.obs_handler.get_link_aggr_attrs_obs(
+                    p_net,
+                    link_attr_types=self.extracted_attr_types,
+                    aggr='mean',
+                    link_attr_benchmarks=self.link_attr_benchmarks,
+                )
+            else:
+                # Schema v1 passed the benchmark under the wrong keyword, so
+                # mean link features were left unnormalized. Preserve that
+                # input scale for checkpoints trained before schema metadata.
+                p_node_link_mean_data = self.obs_handler.get_link_aggr_attrs_obs(
+                    p_net,
+                    link_attr_types=self.extracted_attr_types,
+                    aggr='mean',
+                    link_sum_attr_benchmarks=self.link_attr_benchmarks,
+                )
             p_node_link_max_data = self.obs_handler.get_link_aggr_attrs_obs(p_net, link_attr_types=self.extracted_attr_types, aggr='max', link_attr_benchmarks=self.link_attr_benchmarks)
             p_node_link_sum_data = self.obs_handler.get_link_aggr_attrs_obs(p_net, link_attr_types=self.extracted_attr_types, aggr='sum', link_sum_attr_benchmarks=self.link_sum_attr_benchmarks)
             node_link_aggr_attrs_data = np.concatenate((p_node_link_min_data, p_node_link_mean_data, p_node_link_max_data, p_node_link_sum_data), axis=-1)
@@ -122,14 +147,20 @@ class BaseFeatureConstructor:
         return p_net_obs
 
     def _construct_v_node_features(self, p_net: PhysicalNetwork, v_net: VirtualNetwork, solution: Solution, curr_v_node_id: int) -> Dict[str, Any]:
-        if curr_v_node_id  >= v_net.num_nodes:
+        if curr_v_node_id not in v_net.nodes:
             return {'x': np.array([], dtype=np.float32)}
         # ====== Node Data of Virtual Node ======
         # Node Data 1: Node Attributes
         v_node_demand = self.obs_handler.get_v_node_demand(v_net, curr_v_node_id, node_attr_types=self.extracted_attr_types, node_attr_benchmarks=self.node_attr_benchmarks)
         # Node Data 2: Node Status
         if self.config.rl.feature_constructor.if_use_node_status_flags:
-            v_net_status = self.obs_handler.get_v_node_status(v_net, curr_v_node_id, p_net.num_nodes)
+            v_net_status = self.obs_handler.get_v_node_status(
+                v_net,
+                curr_v_node_id,
+                p_net.num_nodes,
+                v_node_position=len(solution['node_slots']),
+                schema_version=self.schema_version,
+            )
         else:
             v_net_status = np.zeros((0, ), dtype=np.float32)
         # Node Data 3: Link Aggregated Attributes
@@ -170,7 +201,17 @@ class BaseFeatureConstructor:
             v_node_link_min_resource = self.obs_handler.get_link_aggr_attrs_obs(v_net, link_attr_types=self.extracted_attr_types, aggr='min', link_attr_benchmarks=self.link_attr_benchmarks)
             v_node_link_max_resource = self.obs_handler.get_link_aggr_attrs_obs(v_net, link_attr_types=self.extracted_attr_types, aggr='max', link_attr_benchmarks=self.link_attr_benchmarks)
             v_node_link_sum_resource = self.obs_handler.get_link_aggr_attrs_obs(v_net, link_attr_types=self.extracted_attr_types, aggr='sum', link_sum_attr_benchmarks=self.link_sum_attr_benchmarks)
-            v_node_link_mean_resource = self.obs_handler.get_link_aggr_attrs_obs(v_net, link_attr_types=self.extracted_attr_types, aggr='mean', link_sum_attr_benchmarks=self.link_attr_benchmarks)
+            mean_benchmark_kwargs = (
+                {'link_attr_benchmarks': self.link_attr_benchmarks}
+                if self.schema_version >= 2
+                else {'link_sum_attr_benchmarks': self.link_attr_benchmarks}
+            )
+            v_node_link_mean_resource = self.obs_handler.get_link_aggr_attrs_obs(
+                v_net,
+                link_attr_types=self.extracted_attr_types,
+                aggr='mean',
+                **mean_benchmark_kwargs,
+            )
             v_node_aggr_attrs_data = np.concatenate((v_node_link_min_resource, v_node_link_max_resource, v_node_link_sum_resource, v_node_link_mean_resource), axis=-1)
         else:
             v_node_aggr_attrs_data = np.zeros((v_net.num_nodes, 0), dtype=np.float32)

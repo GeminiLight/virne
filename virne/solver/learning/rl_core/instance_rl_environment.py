@@ -74,9 +74,20 @@ class InstanceRLEnv(RLBaseEnv):
     def get_observation(self, *args, **kwargs) -> Dict[str, Any]:
         obs = self.feature_constructor.construct(self.p_net, self.v_net, self.solution, self.curr_v_node_id)
         obs['action_mask'] = self.generate_action_mask()
-        obs['curr_v_node_id'] = self.curr_v_node_id
-        obs['v_net_size'] = self.v_net.num_nodes,
+        obs['curr_v_node_id'] = self.curr_v_node_index
+        obs['v_net_size'] = self.v_net.num_nodes
         return obs
+
+    def fail_no_feasible_action(self):
+        self.solution['place_result'] = False
+        self.solution['description'] = 'No feasible physical node'
+        solution_info = self.counter.count_solution(self.v_net, self.solution)
+        return (
+            self.get_observation(),
+            self.compute_reward(self.solution),
+            True,
+            self.get_info(solution_info),
+        )
 
     def reject(self):
         self.solution['early_rejection'] = True
@@ -135,16 +146,18 @@ class PlaceStepInstanceRLEnv(InstanceRLEnv):
             Completed Success: (Node Mapping & Link Mapping)
             Falilure: (not Node place, not Link mapping)
         """
-        p_node_id = int(action)
         done = True
+        if self._no_feasible_action:
+            return self.fail_no_feasible_action()
         # Case: Reject
         if self.if_rejection(action):
             return self.reject()
         # Case: Revoke
         if self.if_revocable(action):
             return self.revoke()
+        p_node_id = self.action_to_p_node_id(action)
         # Case: Place in one same node
-        elif not self.reusable and p_node_id in self.selected_p_net_nodes:
+        if not self.reusable and p_node_id in self.selected_p_net_nodes:
             self.solution['place_result'] = False
             solution_info = self.solution.to_dict()
         # Case: Try to Place
@@ -202,8 +215,8 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
             Falilure: (Node place failed or Link route failed)
         """
         self.solution['num_interactions'] += 1
-        p_node_id = int(action)
-        self.solution.selected_actions.append(p_node_id)
+        if self._no_feasible_action:
+            return self.fail_no_feasible_action()
         if self.solution['num_interactions'] > 10 * self.v_net.num_nodes:
             # self.solution['description'] += 'Too Many Revokable Actions'
             return self.reject()
@@ -213,8 +226,10 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
         # Case: Revoke
         if self.if_revocable(action):
             return self.revoke()
+        p_node_id = self.action_to_p_node_id(action)
+        self.solution.selected_actions.append(p_node_id)
         # Case: reusable = False and place in one same node
-        elif not self.reusable and (p_node_id in self.selected_p_net_nodes):
+        if not self.reusable and (p_node_id in self.selected_p_net_nodes):
             self.solution['place_result'] = False
             solution_info = self.counter.count_solution(self.v_net, self.solution)
             done = True
@@ -233,7 +248,11 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
                                                                                 if_allow_constraint_violation=self.if_allow_constraint_violation)
             # Step Failure
             if not place_and_route_result:
-                if self.allow_revocable and self.solution['num_interactions'] <= self.v_net.num_nodes * 10:
+                if (
+                    self.allow_revocable
+                    and self.num_placed_v_net_nodes > 0
+                    and self.solution['num_interactions'] <= self.v_net.num_nodes * 10
+                ):
                     self.solution['selected_actions'].append(self.revocable_action)
                     return self.revoke()
                 else:
@@ -290,84 +309,18 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
 
 
 class NodePairStepInstanceRLEnv(JointPRStepInstanceRLEnv):
-    
+
     def __init__(self, p_net, v_net, controller, recorder, counter, logger, config, **kwargs):
-        super(JointPRStepInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
-        self._curr_v_node_id = 0
-        self.candidates_dict = self.controller.construct_candidates_dict(self.v_net, self.p_net)
-
-    @property
-    def curr_v_node_id(self):
-        return self._curr_v_node_id
-
-    def generate_action_mask(self):
-        mask = np.zeros([self.v_net.num_nodes, self.p_net.num_nodes])
-        for v_node_id, p_candidates in self.candidates_dict.items():
-            mask[v_node_id][p_candidates] = 1
-        # Each virtual node only can be changed once
-        for v_node_id, p_id in self.solution['node_slots'].items():
-            mask[:, p_id] = 0
-            mask[v_node_id, :] = 0
-        if mask.sum() == 0:
-            mask[0][0] = 1
-        return mask
-
-    def step(self, action):
-        """
-        Joint Place and Route with action p_net node.
-
-        All possible case
-            Uncompleted Success: (Node place and Link route successfully)
-            Completed Success: (Node Mapping & Link Mapping)
-            Falilure: (Node place failed or Link route failed)
-        """
-        # The action is sampled from a heatmap with the shape of [p_net.num_nodes, v_net.num_nodes]
-        p_node_id = action // self.v_net.num_nodes
-        v_node_id = action % self.v_net.num_nodes
-
-        self._curr_v_node_id = v_node_id
-        # print(f'action ({action}) - v_node_id: {v_node_id}, p_node_id: {p_node_id}')
-        if v_node_id in self.solution['node_slots']:
-            print(f'v_node_id {v_node_id} has been placed') if v_node_id != 0 else None
-            self.solution['place_result'] = False
-            solution_info = self.counter.count_solution(self.v_net, self.solution)
-            done = True
-            return self.get_observation(), self.compute_reward(self.solution), done, self.get_info(solution_info)
-        return super().step(p_node_id)
+        raise NotImplementedError(
+            'NodePairStepInstanceRLEnv requires a P*V action head and is not '
+            'supported by the current per-physical-node RL policies.'
+        )
 
 
 class NodeSlotsStepInstanceRLEnv(InstanceRLEnv):
-    
+
     def __init__(self, p_net, v_net, controller, recorder, counter, logger, config, **kwargs):
-        super(NodeSlotsStepInstanceRLEnv, self).__init__(p_net, v_net, controller, recorder, counter, logger, config, **kwargs)
-        self.candidates_dict = self.controller.construct_candidates_dict(self.v_net, self.p_net)
-
-    def step(self, node_slots):
-        if len(node_slots) == self.v_net.num_nodes:
-            self.controller.deploy_with_node_slots(
-                self.v_net, self.p_net, 
-                node_slots, self.solution, 
-                inplace=True, 
-                shortest_method=self.shortest_method, 
-                k_shortest=self.k_shortest,
-                if_allow_constraint_violation=self.if_allow_constraint_violation
-            )
-            self.counter.count_solution(self.v_net, self.solution)
-            # Success
-            if self.solution['result']:
-                self.solution['description'] = 'Success'
-            # Failure
-            # else:
-            #     self.solution = Solution.from_v_net(self.v_net)
-        else:
-            self.solution['description'] = 'Uncompleted solution'
-        return self.get_observation(), self.compute_reward(self.solution), True, self.get_info(self.solution.to_dict())
-
-    def generate_action_mask(self):
-        mask = np.zeros([self.v_net.num_nodes, self.p_net.num_nodes])
-        for v_node_id, p_candidates in self.candidates_dict.items():
-            mask[v_node_id][p_candidates] = 1
-        if mask.sum() == 0:
-            mask[0][0] = 1
-        mask = mask.T
-        return mask.flatten()
+        raise NotImplementedError(
+            'NodeSlotsStepInstanceRLEnv requires a composite node-slot action '
+            'head and is not supported by the current discrete RL policies.'
+        )
