@@ -26,8 +26,8 @@ Core Components
      - Main implementation
    * - Configuration
      - Defines the experiment, system, solver, training, PN, and VN settings.
-     - ``settings/main.yaml``, ``settings/learning.yaml``, and the PN/VN files
-       under ``settings/``
+     - ``virne/configs/main.yaml``, ``virne/configs/learning.yaml``, and the
+       PN/VN files under ``virne/configs/``
    * - Network model
      - Represents physical and virtual networks and generates request events.
      - ``virne.network``
@@ -50,9 +50,9 @@ Core Components
 Experiment Flow
 ---------------
 
-When ``python main.py`` is executed, Virne follows this sequence:
+When ``virne`` is executed, Virne follows this sequence:
 
-1. Hydra composes ``settings/main.yaml`` and applies command-line overrides.
+1. Hydra composes ``virne/configs/main.yaml`` and applies command-line overrides.
 2. ``BaseSystem.from_config`` creates the network data, environment, solver,
    controller, recorder, counter, and logger.
 3. The selected system emits VN arrival and departure events.

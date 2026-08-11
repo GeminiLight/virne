@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="resources/figures/virne-logo-text.png" width="200" alt="Virne logo">
+  <img src="https://raw.githubusercontent.com/GeminiLight/virne/main/resources/figures/virne-logo-text.png" width="200" alt="Virne logo">
   <h2>A Comprehensive Simulator & Benchmark for NFV-RA</h2>
   <p>
     <a href="https://deepwiki.com/GeminiLight/virne"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
@@ -33,7 +33,7 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 >
 > ✨ If you have any questions, please open a new issue or contact me via email (wtfly2018@gmail.com)
 
-![Virne architecture: simulation, solver, environment, and evaluation components](resources/figures/virne-architecture.png)
+![Virne architecture: simulation, solver, environment, and evaluation components](https://raw.githubusercontent.com/GeminiLight/virne/main/resources/figures/virne-architecture.png)
 
 ### Citations
 
@@ -95,23 +95,31 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 
 ### Installation
 
-The installation script supports CPU environments on Linux and macOS, plus
-CUDA 12.6, 13.0, and 13.2 on Linux. Clone the repository, then create and
-activate a Python 3.12 or newer environment:
+Create and activate a Python 3.12 or newer environment, then install the
+latest Virne release from PyPI:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install virne
+```
+
+The standard installation includes the complete Virne runtime and works
+without optional compiled PyG extensions. Verify the installed command with:
+
+```bash
+virne --version
+```
+
+To select a specific CPU or CUDA build of PyTorch and install the matching
+optional `pyg_lib` acceleration wheel, use the source installer instead. It
+supports CPU environments on Linux and macOS, plus CUDA 12.6, 13.0, and 13.2
+on Linux:
 
 ```bash
 git clone https://github.com/GeminiLight/virne.git
 cd virne
-python3 -m venv .venv
-source .venv/bin/activate
-```
 
-Install either the CPU build or a supported CUDA build. The script defaults to
-CPU and installs PyTorch 2.13.0 with PyG 2.8.0.post1. It also installs the
-matching optional `pyg_lib` acceleration wheel without hard-coding the
-operating system or Python ABI:
-
-```bash
 # CPU-only PyTorch and PyG
 bash install.sh -c cpu
 
@@ -119,8 +127,8 @@ bash install.sh -c cpu
 bash install.sh -c 12.6
 ```
 
-The script installs Virne in editable mode and prints all three versions. You
-can verify them again with:
+The script installs Virne in editable mode and prints the installed versions.
+You can verify them again with:
 
 ```bash
 python -c "import torch, torch_geometric, virne; print(virne.__version__, torch.__version__, torch_geometric.__version__)"
@@ -128,11 +136,11 @@ python -c "import torch, torch_geometric, virne; print(virne.__version__, torch.
 
 ### Run a Small Experiment
 
-Use a fast heuristic and ten VN requests for the first run. Calling
-`python main.py` without overrides starts the larger default RL experiment.
+Use a fast heuristic and ten VN requests for the first run. Calling `virne`
+without overrides starts the larger default RL experiment.
 
 ```bash
-python main.py \
+virne \
   solver.solver_name=nrm_rank \
   v_sim_setting.num_v_nets=10 \
   training.use_cuda=false \

@@ -1,4 +1,4 @@
-from virne.cli import main, run as run
+from virne.cli import main
 
 
 if __name__ == '__main__':

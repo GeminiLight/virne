@@ -61,7 +61,7 @@ study:
 
    for max_v_nodes in 4 6 8 10; do
      for eval_seed in 0 1 2 3 4; do
-       python main.py \
+       virne \
          solver.solver_name=nrm_rank \
          v_sim_setting.num_v_nets=100 \
          v_sim_setting.v_net_size.high=${max_v_nodes} \
@@ -94,7 +94,7 @@ For an RL solver, load the same checkpoint for every condition:
 
 .. code-block:: bash
 
-   python main.py \
+   virne \
      solver.solver_name=ppo_dual_gat+ \
      training.num_train_epochs=0 \
      solver.pretrained_model_path=/absolute/path/to/model.pkl \
@@ -120,7 +120,7 @@ also record peak memory:
 .. code-block:: bash
 
    for p_nodes in 50 100 200; do
-     /usr/bin/time -v python main.py \
+     /usr/bin/time -v virne \
        solver.solver_name=nrm_rank \
        p_net_setting.topology.num_nodes=${p_nodes} \
        v_sim_setting.num_v_nets=100 \

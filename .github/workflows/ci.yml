@@ -31,12 +31,32 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install --editable . pytest
+          python -m pip install build==1.5.0 pytest==9.1.1
+          python -m build
+          python -m pip install dist/*.whl
           python -m pip check
 
       - name: Test installed package
         working-directory: /tmp
-        run: python -c "import importlib.util, gymnasium, torch, torch_geometric, virne; assert gymnasium.__version__ == '1.3.0'; assert torch.__version__.startswith('2.13.'); assert torch_geometric.__version__ == '2.8.0.post1'; assert importlib.util.find_spec('gym') is None"
+        run: |
+          python -c "import importlib.resources, importlib.util, gymnasium, torch, torch_geometric, virne; assert gymnasium.__version__ == '1.3.0'; assert torch.__version__.startswith('2.13.'); assert torch_geometric.__version__ == '2.8.0.post1'; assert importlib.util.find_spec('gym') is None; assert importlib.resources.files('virne').joinpath('configs/main.yaml').is_file()"
+          virne --version
+          virne --help
+          virne --cfg job
+
+      - name: Smoke test installed CLI
+        working-directory: /tmp
+        run: |
+          virne \
+            hydra.run.dir=/tmp/virne-smoke-${{ matrix.python-version }} \
+            experiment.run_id=ci-wheel-smoke \
+            experiment.if_save_config=false \
+            solver.solver_name=nrm_rank \
+            v_sim_setting.num_v_nets=10 \
+            training.use_cuda=false \
+            recorder.if_save_records=false \
+            recorder.if_temp_save_records=false \
+            'logger.backends=[console]'
 
       - name: Run all tests
         run: |

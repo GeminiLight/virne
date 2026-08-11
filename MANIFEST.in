@@ -1,1 +1,1 @@
-recursive-include settings *.yaml
+recursive-include virne/configs *.yaml
