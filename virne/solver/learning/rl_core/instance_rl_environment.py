@@ -62,10 +62,10 @@ class InstanceRLEnv(RLBaseEnv):
         self.reward_calculator = reward_calculator_cls(self.config)
         self.intermediate_reward = self.config.rl.reward_calculator.intermediate_reward
 
-    def reset(self):
+    def reset(self, *, seed=None, options=None):
         self.solution = Solution.from_v_net(self.v_net)
         self.p_net = copy.deepcopy(self.p_net_backup)
-        return super().reset()
+        return super().reset(seed=seed, options=options)
 
     def compute_reward(self, *args, **kwargs) -> float:
         reward = self.reward_calculator.compute(self.p_net, self.v_net, self.solution)
@@ -82,18 +82,20 @@ class InstanceRLEnv(RLBaseEnv):
         self.solution['place_result'] = False
         self.solution['description'] = 'No feasible physical node'
         solution_info = self.counter.count_solution(self.v_net, self.solution)
-        return (
-            self.get_observation(),
+        return self._make_step_result(
             self.compute_reward(self.solution),
             True,
-            self.get_info(solution_info),
+            solution_info,
         )
 
     def reject(self):
         self.solution['early_rejection'] = True
         solution_info = self.solution.to_dict()
-        done = True
-        return self.get_observation(), self.compute_reward(self.solution), done, self.get_info(solution_info)
+        return self._make_step_result(
+            self.compute_reward(self.solution),
+            True,
+            solution_info,
+        )
 
     def revoke(self):
         assert len(self.placed_v_net_nodes) != 0
@@ -105,7 +107,11 @@ class InstanceRLEnv(RLBaseEnv):
         self.controller.undo_place_and_route(self.v_net, self.p_net, last_v_node_id, paired_p_node_id, self.solution)
         solution_info = self.counter.count_partial_solution(self.v_net, self.solution)
         self.revoked_actions_dict[str(self.solution.node_slots), last_v_node_id].append(paired_p_node_id)
-        return self.get_observation(), self.compute_reward(self.solution), False, self.get_info(solution_info)
+        return self._make_step_result(
+            self.compute_reward(self.solution),
+            False,
+            solution_info,
+        )
 
 
 class SolutionStepInstanceRLEnv(InstanceRLEnv):
@@ -121,7 +127,11 @@ class SolutionStepInstanceRLEnv(InstanceRLEnv):
         # Failure
         else:
             solution = Solution.from_v_net(self.v_net)
-        return self.get_observation(), self.compute_reward(), True, self.get_info(solution.to_dict())
+        return self._make_step_result(
+            self.compute_reward(),
+            True,
+            solution.to_dict(),
+        )
 
     def get_observation(self):
         return {'v_net': self.v_net, 'p_net': self.p_net}
@@ -146,7 +156,7 @@ class PlaceStepInstanceRLEnv(InstanceRLEnv):
             Completed Success: (Node Mapping & Link Mapping)
             Falilure: (not Node place, not Link mapping)
         """
-        done = True
+        terminated = True
         if self._no_feasible_action:
             return self.fail_no_feasible_action()
         # Case: Reject
@@ -167,9 +177,12 @@ class PlaceStepInstanceRLEnv(InstanceRLEnv):
             node_place_result, node_place_info = self.controller.node_mapper.place(self.v_net, self.p_net, self.curr_v_node_id, p_node_id, self.solution)
             # Case 1: Node Place Success / Uncompleted
             if node_place_result and self.num_placed_v_net_nodes < self.v_net.num_nodes:
-                done = False
                 solution_info = self.solution.to_dict()
-                return self.get_observation(), self.compute_reward(self.solution), False, self.get_info(self.solution.to_dict())
+                return self._make_step_result(
+                    self.compute_reward(self.solution),
+                    False,
+                    solution_info,
+                )
             # Case 2: Node Place Failure
             if not node_place_result:
                 self.solution['place_result'] = False
@@ -195,9 +208,11 @@ class PlaceStepInstanceRLEnv(InstanceRLEnv):
                 else:
                     self.solution['result'] = True
                     solution_info = self.counter.count_solution(self.v_net, self.solution)
-        if done:
-            pass
-        return self.get_observation(), self.compute_reward(solution_info), done, self.get_info(solution_info)
+        return self._make_step_result(
+            self.compute_reward(solution_info),
+            terminated,
+            solution_info,
+        )
 
 
 class JointPRStepInstanceRLEnv(InstanceRLEnv):
@@ -232,7 +247,7 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
         if not self.reusable and (p_node_id in self.selected_p_net_nodes):
             self.solution['place_result'] = False
             solution_info = self.counter.count_solution(self.v_net, self.solution)
-            done = True
+            terminated = True
             # solution_info = self.solution.to_dict()
         # Case: Try to Place and Route
         else:
@@ -257,7 +272,7 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
                     return self.revoke()
                 else:
                     solution_info = self.counter.count_solution(self.v_net, self.solution)
-                    done = True
+                    terminated = True
     
                 # solution_info = self.solution.to_dict()
             else:
@@ -265,16 +280,18 @@ class JointPRStepInstanceRLEnv(InstanceRLEnv):
                 if self.num_placed_v_net_nodes == self.v_net.num_nodes:
                     self.solution['result'] = True
                     solution_info = self.counter.count_solution(self.v_net, self.solution)
-                    done = True
+                    terminated = True
                 # Step Success
                 else:
-                    done = False
+                    terminated = False
                     solution_info = self.counter.count_partial_solution(self.v_net, self.solution)
-                    
-        if done:
-            pass
+
         # print(f'{t2-t1:.6f}={t3-t1:.6f}+{t2-t3:.6f}')
-        return self.get_observation(), self.compute_reward(self.solution), done, self.get_info(solution_info)
+        return self._make_step_result(
+            self.compute_reward(self.solution),
+            terminated,
+            solution_info,
+        )
 
     # def compute_reward(self, solution):
     #     """Calculate deserved reward according to the result of taking action."""

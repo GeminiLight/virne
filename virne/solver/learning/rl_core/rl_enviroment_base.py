@@ -4,11 +4,10 @@
 
 
 from pprint import pprint
-import gym
 import copy
 import numpy as np
 import networkx as nx
-from gym import spaces
+from gymnasium import Env, spaces
 from collections import defaultdict
 
 from virne.network.attribute.attribute_benchmark_manager import AttributeBenchmarkManager
@@ -18,7 +17,7 @@ from virne.network import PhysicalNetwork, VirtualNetwork
 from virne.core import Controller, Recorder, Counter, Solution
 
 
-class RLBaseEnv(gym.Env):
+class RLBaseEnv(Env):
 
     p_net: PhysicalNetwork
     v_net: VirtualNetwork
@@ -28,7 +27,7 @@ class RLBaseEnv(gym.Env):
     solution: Solution
 
     def __init__(self, allow_rejection=False, allow_revocable=False, **kwargs):
-        super(RLBaseEnv, self).__init__()
+        super().__init__()
         self.obs_handler = ObservationHandler()
         self._refresh_node_indices()
         self.allow_rejection = allow_rejection
@@ -53,10 +52,21 @@ class RLBaseEnv(gym.Env):
             node_id: index for index, node_id in enumerate(self.v_node_ids)
         }
 
-    def reset(self):
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
         self.extra_info_dict = {}
         self.revoked_actions_dict = defaultdict(list)
-        return self.get_observation()
+        return self.get_observation(), {}
+
+    def _make_step_result(self, reward, terminated, info, *, truncated=False):
+        """Build a Gymnasium step result from the environment's current state."""
+        return (
+            self.get_observation(),
+            reward,
+            terminated,
+            truncated,
+            self.get_info(info),
+        )
 
     def if_rejection(self, action):
         return self.allow_rejection and action == self.rejection_action

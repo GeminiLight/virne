@@ -81,6 +81,11 @@ def select_action(
     # action = action.squeeze(-1).cpu()
     return action, action_logprob
 
+
+def _step_instance_env(instance_env, action):
+    observation, reward, terminated, truncated, info = instance_env.step(action)
+    return observation, reward, terminated or truncated, info
+
 def greedy_search_solution(
         policy, 
         instance_env, 
@@ -97,7 +102,7 @@ def greedy_search_solution(
         tensor_obs = preprocess_obs_func(obs, device=device)
         action, action_logprob = select_action(
             policy, tensor_obs, mask=mask, sample=False, softmax_temp=softmax_temp, mask_actions=mask_actions, maskable_policy=maskable_policy)
-        obs, reward, done, info = instance_env.step(action)
+        obs, reward, done, info = _step_instance_env(instance_env, action)
         if done:
             return instance_env.solution
     raise Exception('')
@@ -118,7 +123,7 @@ def sample_search_solution(
         tensor_obs = preprocess_obs_func(obs, device=device)
         action, action_logprob = select_action(
             policy, tensor_obs, mask=mask, sample=True, softmax_temp=softmax_temp, mask_actions=mask_actions, maskable_policy=maskable_policy)
-        obs, reward, done, info = instance_env.step(action)
+        obs, reward, done, info = _step_instance_env(instance_env, action)
         if done:
             return instance_env.solution
     raise Exception('')
@@ -134,7 +139,7 @@ def random_search_solution(
         candidate_actions = [action for action, mask in enumerate(mask) if mask]
         action = random.choice(candidate_actions)
 
-        obs, reward, done, info = instance_env.step(action)
+        obs, reward, done, info = _step_instance_env(instance_env, action)
 
         if done:
             return instance_env.solution
@@ -220,7 +225,7 @@ class RandomSearcher(Searcher):
             candidate_actions = [action for action, mask in enumerate(mask) if mask]
             action = random.choice(candidate_actions)
 
-            obs, reward, done, info = instance_env.step(action)
+            obs, reward, done, info = _step_instance_env(instance_env, action)
 
             if done:
                 return instance_env.solution
@@ -265,7 +270,10 @@ class GreedyWithRestartSearcher(Searcher):
             action_id_order = action_id_order
             
             for i in range(2):
-                obs, reward, done, info = instance_env.step(action_id_order[i])
+                obs, reward, done, info = _step_instance_env(
+                    instance_env,
+                    action_id_order[i],
+                )
 
                 if done and not instance_env.solution['result']:
                     pass
@@ -396,7 +404,10 @@ class BeamSearcher(Searcher):
 
                 for action in ranked_actions:
                     child_env = copy.deepcopy(env)
-                    child_obs, _, child_done, _ = child_env.step(int(action))
+                    child_obs, _, child_done, _ = _step_instance_env(
+                        child_env,
+                        int(action),
+                    )
                     child_log_prob = cumulative_log_prob + float(
                         np.log(max(action_probs[action], np.finfo(np.float32).tiny))
                     )
@@ -497,7 +508,7 @@ class RecoverableSearcher(Searcher):
                 mask_actions=self.mask_actions,
                 maskable_policy=self.maskable_policy,
             )
-            obs, reward, done, info = instance_env.step(action)
+            obs, reward, done, info = _step_instance_env(instance_env, action)
 
             if done:
                 # SUCCESS
@@ -609,7 +620,8 @@ class OneShotSearcher:
 #                 results = self.mp_pool.map(env_step, list(zip(need_stepped_env_list, need_stepped_action_list)))
 #                 for i, result in enumerate(results):
 #                     env_id = need_stepped_env_id_list[i]
-#                     env, (obs, reward, done, info) = result
+#                     env, (obs, reward, terminated, truncated, info) = result
+#                     done = terminated or truncated
 #                     env_list[env_id] = env
 #                     obs_list[env_id] = obs
 #                     done_list[env_id] = done
@@ -617,7 +629,8 @@ class OneShotSearcher:
 #                 for i, env in enumerate(env_list):
 #                     # continue do
 #                     if not done_list[i]:
-#                         obs, reward, done, info = env.step(actions[i])
+#                         obs, reward, terminated, truncated, info = env.step(actions[i])
+#                         done = terminated or truncated
 #                         obs_list[i] = obs
 #                         done_list[i] = done
 #             t2 = time.time()

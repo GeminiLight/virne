@@ -4,7 +4,7 @@
 
 
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 
@@ -82,7 +82,14 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
             instance_obs['action_mask'] = np.expand_dims(sub_env.generate_action_mask(), axis=0),
             tensor_instance_obs = self.preprocess_obs(instance_obs, device=self.device)
             action, action_logprob = self.select_action(tensor_instance_obs, sample=True)
-            next_instance_obs, instance_reward, instance_done, instance_info = sub_env.step(action)
+            (
+                next_instance_obs,
+                instance_reward,
+                instance_terminated,
+                instance_truncated,
+                instance_info,
+            ) = sub_env.step(action)
+            instance_done = instance_terminated or instance_truncated
 
             p_node_id = action
 
@@ -112,9 +119,16 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
             tensor_instance_obs = self.preprocess_obs(instance_obs, device=self.device)
             action, action_logprob = self.select_action(tensor_instance_obs, sample=True)
             value = self.estimate_value(tensor_instance_obs) if hasattr(self.policy, 'evaluate') else None
-            next_instance_obs, instance_reward, instance_done, instance_info = sub_env.step(action)
+            (
+                next_instance_obs,
+                instance_reward,
+                instance_terminated,
+                instance_truncated,
+                instance_info,
+            ) = sub_env.step(action)
+            instance_done = instance_terminated or instance_truncated
 
-            sub_buffer.add(instance_obs, action, instance_reward, instance_done, action_logprob, value=value)
+            sub_buffer.add(instance_obs, action, instance_reward, instance_terminated, action_logprob, value=value)
             next_instance_obs['p_node_id'] = p_node_id
             next_instance_obs['hidden_state'] = np.squeeze(hidden_state.cpu().detach().numpy(), axis=0)
             next_instance_obs['encoder_outputs'] = encoder_outputs
@@ -125,7 +139,10 @@ class A3CGcnSeq2SeqSolver(InstanceAgent, A2CSolver):
 
             instance_obs = next_instance_obs
 
-        last_value = 0.0 if hasattr(self.policy, 'evaluate') else None
+        last_value = self._get_bootstrap_value(
+            next_instance_obs,
+            instance_truncated,
+        )
         solution = sub_env.solution
         return solution, sub_buffer, last_value
 

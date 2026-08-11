@@ -91,4 +91,4 @@ fi
     --find-links "https://data.pyg.org/whl/torch-${TORCH_VERSION}+${pyg_wheel_tag}.html"
 
 "${virne_python}" -c \
-    "import torch, torch_geometric, virne; print(f'Virne {virne.__version__}; PyTorch {torch.__version__}; PyG {torch_geometric.__version__}')"
+    "import gymnasium, torch, torch_geometric, virne; print(f'Virne {virne.__version__}; Gymnasium {gymnasium.__version__}; PyTorch {torch.__version__}; PyG {torch_geometric.__version__}')"

@@ -48,7 +48,7 @@ Virne provides the following core capabilities:
 
       Reinforcement Learning Support
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
+      Provides standardized RL pipelines and Gymnasium-compatible environments for rapid development and benchmarking of RL-based solutions.
 
    .. grid-item-card::
       :class-item: sd-font-weight-bold
@@ -79,11 +79,11 @@ algorithms.
 
 .. figure:: _static/virne-rl-support.png
   :width: 1000
-  :alt: Unified Gym-style Environment and RL Pipeline in Virne
+  :alt: Unified Gymnasium-compatible environment and RL pipeline in Virne
   :align: center
   :figclass: virne-diagram
 
-  A shared Gym-style environment connects observations, policies, rollouts,
+  A shared Gymnasium-compatible environment connects observations, policies, rollouts,
   training, and evaluation.
 
 Citations

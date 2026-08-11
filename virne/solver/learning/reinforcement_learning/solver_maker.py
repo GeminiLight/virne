@@ -3,7 +3,7 @@
 # ==============================================================================
 
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 

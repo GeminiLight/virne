@@ -4,7 +4,7 @@
 
 
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from typing import Any, Dict, Tuple, List, Union, Optional, Type, Callable
 
 
@@ -104,4 +104,3 @@ for solver_info in extented_gnn_mlp_solvers:
     base_solver_cls = solver_info['rl_solver_cls']
 
     make_solver_class(solver_name, instance_env_cls, base_solver_cls, policy_builder, obs_as_tensor)
-

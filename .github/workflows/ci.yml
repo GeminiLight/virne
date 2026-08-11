@@ -30,7 +30,7 @@ jobs:
 
       - name: Test installed package
         working-directory: /tmp
-        run: python -c "import torch, torch_geometric, virne; assert torch.__version__.startswith('2.11.'); assert torch_geometric.__version__ == '2.8.0.post1'"
+        run: python -c "import importlib.util, gymnasium, torch, torch_geometric, virne; assert gymnasium.__version__ == '1.3.0'; assert torch.__version__.startswith('2.11.'); assert torch_geometric.__version__ == '2.8.0.post1'; assert importlib.util.find_spec('gym') is None"
 
       - name: Run all tests
         run: |

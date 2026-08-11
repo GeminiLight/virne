@@ -3,7 +3,7 @@
 # ==============================================================================
 
 
-import gym
+from gymnasium.vector import SyncVectorEnv
 import copy
 import time
 from sympy import im
@@ -93,10 +93,20 @@ class InstanceAgent(object):
 
     def learn_with_instance_parallelly(self, instance):
         v_net, p_net = instance['v_net'], instance['p_net']
-        vectorized_env = gym.vector.SyncVectorEnv([
+        vectorized_env = SyncVectorEnv([
             lambda: self.InstanceEnv(p_net, v_net, self.controller, self.recorder, self.counter, self.logger, self.config)
         ]*2)
-        instance_obs = vectorized_env.reset()
+        instance_obs, _ = vectorized_env.reset()
+
+    def _get_bootstrap_value(self, final_observation, truncated):
+        if hasattr(self, 'policy') and not hasattr(self.policy, 'evaluate'):
+            return None
+        if not truncated:
+            return 0.0
+        final_observation = self.preprocess_obs(final_observation, self.device)
+        return float(
+            self.estimate_value(final_observation).detach().reshape(-1)[0]
+        )
 
     def learn_with_instance(self, instance):
         # sub env for sub agent
@@ -104,7 +114,8 @@ class InstanceAgent(object):
         v_net, p_net = instance['v_net'], instance['p_net']
         instance_buffer = RolloutBuffer()
         instance_env = self.InstanceEnv(p_net, v_net, self.controller, self.recorder, self.counter, self.logger, self.config)
-        instance_obs = instance_env.reset()
+        instance_obs, _ = instance_env.reset()
+        instance_truncated = False
         while True:
             tensor_instance_obs = self.preprocess_obs(instance_obs, self.device)
 
@@ -117,8 +128,23 @@ class InstanceAgent(object):
                 # print(feature_time)
 
             value = self.estimate_value(tensor_instance_obs)
-            next_instance_obs, instance_reward, instance_done, instance_info = instance_env.step(action)
-            instance_buffer.add(instance_obs, action, instance_reward, instance_done, action_logprob, value=value, next_obs=next_instance_obs)
+            (
+                next_instance_obs,
+                instance_reward,
+                instance_terminated,
+                instance_truncated,
+                instance_info,
+            ) = instance_env.step(action)
+            instance_done = instance_terminated or instance_truncated
+            instance_buffer.add(
+                instance_obs,
+                action,
+                instance_reward,
+                instance_terminated,
+                action_logprob,
+                value=value,
+                next_obs=next_instance_obs,
+            )
             # instance_buffer.action_masks.append(mask if isinstance(mask, np.ndarray) else mask.cpu().numpy())
 
             if instance_done:
@@ -127,10 +153,12 @@ class InstanceAgent(object):
             instance_obs = next_instance_obs
 
         solution = instance_env.solution
-        # Every per-instance rollout ends at a terminal state, whose bootstrap
-        # value is zero. Evaluating a terminal observation is unnecessary and
-        # can propagate invalid terminal-only features into the rollout.
-        last_value = 0.0
+        # Natural termination keeps the historical zero bootstrap. A future
+        # external truncation must bootstrap from the final observation.
+        last_value = self._get_bootstrap_value(
+            next_instance_obs,
+            instance_truncated,
+        )
         return solution, instance_buffer, last_value
 
     def merge_instance_experience(self, instance, solution, instance_buffer, last_value):

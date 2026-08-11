@@ -1,6 +1,6 @@
 import numpy as np
 import networkx as nx
-from gym import spaces
+from gymnasium import spaces
 from omegaconf import open_dict
 from virne.network.attribute.attribute_benchmark_manager import AttributeBenchmarkManager
 from virne.solver.learning.rl_core import JointPRStepInstanceRLEnv

@@ -54,7 +54,7 @@ class TwoStepEnv:
             self.solution.result = True
             self.solution.v_net_r2c_ratio = 2.0
         self.solution['node_slots'] = dict(enumerate(self.path))
-        return self.get_observation(), 0.0, done, {}
+        return self.get_observation(), 0.0, done, False, {}
 
 
 class RetryEnv(TwoStepEnv):
@@ -67,7 +67,7 @@ class RetryEnv(TwoStepEnv):
         self.solution.result = int(action) == 1
         self.solution['result'] = self.solution.result
         self.solution.v_net_r2c_ratio = 1.0 if self.solution.result else 0.0
-        return self.get_observation(), 0.0, True, {}
+        return self.get_observation(), 0.0, True, False, {}
 
 
 class BranchPolicy(torch.nn.Module):
