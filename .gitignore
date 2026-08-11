@@ -1,6 +1,7 @@
 # .gitignore
 .vscode
 .hydra
+.venv*/
 
 # cache
 *.log

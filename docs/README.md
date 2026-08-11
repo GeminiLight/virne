@@ -16,6 +16,16 @@ Then install the documentation toolchain:
 python -m pip install -r docs/requirements.txt
 ```
 
+For a reproducible CPU development environment, use the committed lock file:
+
+```shell
+uv sync --locked --group docs
+```
+
+This installs Virne, the test tools, and the documentation toolchain from
+`uv.lock`. Use `install.sh` instead when selecting a CUDA build or installing
+the optional `pyg_lib` acceleration wheel.
+
 For a documentation-only preview, installing `docs/requirements.txt` is sufficient. Sphinx mocks optional machine-learning and optimization packages; NumPy and PyYAML remain real because Virne uses them while importing the registry and configuration utilities.
 
 Read the Docs performs the project and documentation installation automatically through `.readthedocs.yaml`.

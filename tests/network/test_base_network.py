@@ -1,3 +1,5 @@
+from scipy import sparse
+
 from virne.network.base_network import BaseNetwork
 
 
@@ -25,3 +27,18 @@ def test_network_lookup_supports_tuple_node_ids_from_grid_topology():
 
     network.description = 'grid'
     assert network['description'] == 'grid'
+
+
+def test_adjacency_matrix_uses_supported_networkx_api_and_preserves_matrix_semantics():
+    network = BaseNetwork()
+    network.add_edges_from([(0, 1), (1, 2)])
+
+    adjacency = network.adjacency_matrix
+
+    assert isinstance(adjacency, sparse.csr_matrix)
+    assert adjacency.shape == (3, 3)
+    assert adjacency.toarray().tolist() == [
+        [0, 1, 0],
+        [1, 0, 1],
+        [0, 1, 0],
+    ]

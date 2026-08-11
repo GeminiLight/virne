@@ -10,7 +10,7 @@ MAX_LOGSTD = 10
 
 
 class InnerProductDecoder(torch.nn.Module):
-    """The inner product decoder from the `"Variational Graph Auto-Encoders"
+    r"""The inner product decoder from the `"Variational Graph Auto-Encoders"
     <https://arxiv.org/abs/1611.07308>`_ paper
     .. math::
         \sigma(\mathbf{Z}\mathbf{Z}^{\top})
@@ -18,7 +18,7 @@ class InnerProductDecoder(torch.nn.Module):
     space produced by the encoder."""
 
     def forward(self, z, edge_index, sigmoid=True):
-        """Decodes the latent variables :obj:`z` into edge probabilities for
+        r"""Decodes the latent variables :obj:`z` into edge probabilities for
         the given node-pairs :obj:`edge_index`.
         Args:
             z (Tensor): The latent space :math:`\mathbf{Z}`.
@@ -30,7 +30,7 @@ class InnerProductDecoder(torch.nn.Module):
         return torch.sigmoid(value) if sigmoid else value
 
     def forward_all(self, z, sigmoid=True):
-        """Decodes the latent variables :obj:`z` into a probabilistic dense
+        r"""Decodes the latent variables :obj:`z` into a probabilistic dense
         adjacency matrix.
         Args:
             z (Tensor): The latent space :math:`\mathbf{Z}`.
@@ -73,7 +73,7 @@ class GAE(torch.nn.Module):
         return self.decoder(*args, **kwargs)
 
     def recon_loss(self, z, pos_edge_index, x):
-        """Given latent variables :obj:`z`, computes the binary cross
+        r"""Given latent variables :obj:`z`, computes the binary cross
         entropy loss for positive edges :obj:`pos_edge_index` and negative
         sampled edges.
         Args:
@@ -88,7 +88,7 @@ class GAE(torch.nn.Module):
         return a_loss + x_loss
 
     def test(self, z, pos_edge_index, neg_edge_index):
-        """Given latent variables :obj:`z`, positive edges
+        r"""Given latent variables :obj:`z`, positive edges
         :obj:`pos_edge_index` and negative edges :obj:`neg_edge_index`,
         computes area under the ROC curve (AUC) and average precision (AP)
         scores.
@@ -113,7 +113,7 @@ class GAE(torch.nn.Module):
 
 
 class VGAE(GAE):
-    """The Variational Graph Auto-Encoder model from the
+    r"""The Variational Graph Auto-Encoder model from the
     `"Variational Graph Auto-Encoders" <https://arxiv.org/abs/1611.07308>`_
     paper.
     Args:
@@ -142,7 +142,7 @@ class VGAE(GAE):
         return z
 
     def kl_loss(self, mu=None, logstd=None):
-        """Computes the KL loss, either for the passed arguments :obj:`mu`
+        r"""Computes the KL loss, either for the passed arguments :obj:`mu`
         and :obj:`logstd`, or based on latent variables from last encoding.
         Args:
             mu (Tensor, optional): The latent space for :math:`\mu`. If set to
@@ -183,7 +183,7 @@ class ARGA(GAE):
         reset(self.discriminator)
 
     def reg_loss(self, z):
-        """Computes the regularization loss of the encoder.
+        r"""Computes the regularization loss of the encoder.
         Args:
             z (Tensor): The latent space :math:`\mathbf{Z}`.
         """
@@ -192,7 +192,7 @@ class ARGA(GAE):
         return real_loss
 
     def discriminator_loss(self, z):
-        """Computes the loss of the discriminator.
+        r"""Computes the loss of the discriminator.
         Args:
             z (Tensor): The latent space :math:`\mathbf{Z}`.
         """
@@ -204,7 +204,7 @@ class ARGA(GAE):
 
 
 class ARGVA(ARGA):
-    """The Adversarially Regularized Variational Graph Auto-Encoder model from
+    r"""The Adversarially Regularized Variational Graph Auto-Encoder model from
     the `"Adversarially Regularized Graph Autoencoder for Graph Embedding"
     <https://arxiv.org/abs/1802.04407>`_ paper.
     paper.

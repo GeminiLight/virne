@@ -9,6 +9,7 @@ hydra:
     dir: ./results
   job:
     name: virne
+    chdir: true
 output_subdir: null
 
 # ${now:%Y-%m-%d}/${now:%H-%M-%S}

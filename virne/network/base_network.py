@@ -8,6 +8,7 @@ import copy
 import json
 import numpy as np
 import networkx as nx
+from scipy import sparse
 
 from typing import Optional, Dict, List, Any, Union
 from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
@@ -193,7 +194,8 @@ class BaseNetwork(nx.Graph):
     @property
     def adjacency_matrix(self):
         """Get the adjacency matrix of Network."""
-        return nx.to_scipy_sparse_matrix(self, format='csr')
+        adjacency_array = nx.to_scipy_sparse_array(self, format='csr')
+        return sparse.csr_matrix(adjacency_array)
 
     ### Attributes ###
     def get_graph_attrs(self, names):

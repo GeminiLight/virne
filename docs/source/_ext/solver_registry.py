@@ -13,7 +13,6 @@ from sphinx.ext.autodoc.mock import mock
 # NumPy remains real because Virne calculates positional embeddings at import time.
 # The remaining packages are not needed to inspect class metadata or the registry.
 MOCK_IMPORTS = [
-    'colorama',
     'colorlog',
     'gymnasium',
     'matplotlib',
@@ -22,6 +21,7 @@ MOCK_IMPORTS = [
     'pandas',
     'pyg_lib',
     'sklearn',
+    'scipy',
     'sympy',
     'torch',
     'torch_cluster',
