@@ -6,6 +6,7 @@
 import os
 import csv
 import copy
+import math
 from typing import Any, Dict
 import numpy as np
 import pandas as pd
@@ -17,6 +18,29 @@ from virne.core.solution import Solution
 from omegaconf import OmegaConf
 
 from virne.network import VirtualNetwork, PhysicalNetwork
+
+
+def _calculate_resource_utilization(available, initial, resource_name):
+    """Calculate utilization while handling absent resource dimensions."""
+    available = float(available)
+    initial = float(initial)
+    if not math.isfinite(available) or not math.isfinite(initial):
+        raise ValueError(
+            f'{resource_name} resources must be finite: {available}, {initial}'
+        )
+    if math.isclose(initial, 0.0, rel_tol=0.0, abs_tol=1e-12):
+        if math.isclose(available, 0.0, rel_tol=0.0, abs_tol=1e-12):
+            return 0.0
+        raise ValueError(
+            f'{resource_name} resource accounting is inconsistent: '
+            f'initial capacity is zero but {available} remains available'
+        )
+    utilization = 1.0 - available / initial
+    if math.isclose(utilization, 0.0, rel_tol=1e-9, abs_tol=1e-12):
+        return 0.0
+    if math.isclose(utilization, 1.0, rel_tol=1e-9, abs_tol=1e-12):
+        return 1.0
+    return utilization
 
 ###-----------###
 #   Objective   #
@@ -162,8 +186,16 @@ class Recorder:
         self.state['p_net_available_resource'] = self.counter.calculate_sum_network_resource(p_net)
         self.state['p_net_node_available_resource'] = self.counter.calculate_sum_network_resource(p_net, link=False)
         self.state['p_net_link_available_resource'] = self.counter.calculate_sum_network_resource(p_net, node=False)
-        self.state['p_net_node_resource_utilization'] = 1. - (self.state['p_net_node_available_resource'] / self.init_p_net_info['p_net_node_available_resource'])
-        self.state['p_net_link_resource_utilization'] = 1. - (self.state['p_net_link_available_resource'] / self.init_p_net_info['p_net_link_available_resource'])
+        self.state['p_net_node_resource_utilization'] = _calculate_resource_utilization(
+            self.state['p_net_node_available_resource'],
+            self.init_p_net_info['p_net_node_available_resource'],
+            'Node',
+        )
+        self.state['p_net_link_resource_utilization'] = _calculate_resource_utilization(
+            self.state['p_net_link_available_resource'],
+            self.init_p_net_info['p_net_link_available_resource'],
+            'Link',
+        )
         # Leave event
         if self.state['event_type'] == 0:
             deployment_record = self.get_record(v_net_id=solution['v_net_id'])
@@ -185,9 +217,14 @@ class Recorder:
                 self.state['total_cost'] += solution['v_net_cost']
                 self.state['total_time_revenue'] += solution['v_net_time_revenue']
                 self.state['total_time_cost'] += solution['v_net_time_cost']
-                self.state['long_term_r2c_ratio'] = self.state['total_revenue'] / self.state['total_cost'] if self.state['total_cost'] else 0
-                self.state['long_term_time_r2c_ratio'] = self.state['total_time_revenue'] / self.state['total_time_cost'] if self.state['total_time_cost'] else 0
-                assert self.state['long_term_time_r2c_ratio'] <= 1, f"long_term_time_r2c_ratio: {self.state['long_term_time_r2c_ratio']} ({self.state['total_time_revenue']} / {self.state['total_time_cost']})"
+                self.state['long_term_r2c_ratio'] = self.counter.calculate_r2c_ratio(
+                    self.state['total_revenue'],
+                    self.state['total_cost'],
+                )
+                self.state['long_term_time_r2c_ratio'] = self.counter.calculate_r2c_ratio(
+                    self.state['total_time_revenue'],
+                    self.state['total_time_cost'],
+                )
                 v_net_id = solution['v_net_id']
                 for v_node_id, p_node_id in solution['node_slots'].items():
                     self.p_net_nodes_for_v_net_dict[p_node_id].append(v_net_id)
@@ -276,13 +313,19 @@ class Recorder:
     def save_summary(self, summary_info, fname='summary.csv'):
         """Save the summary to a csv file."""
         summary_path = os.path.join(self.summary_dir,  fname)
-        def write_csv(path, data):
+        def write_csv(path, data, schema_namespace=None):
             fieldnames = list(data.keys())
             write_header = not os.path.exists(path) or os.path.getsize(path) == 0
             if not write_header:
                 with open(path, 'r', newline='') as csv_file:
                     existing_fieldnames = next(csv.reader(csv_file), [])
                 if set(existing_fieldnames) != set(fieldnames):
+                    if schema_namespace is not None:
+                        path_root, path_extension = os.path.splitext(path)
+                        versioned_path = (
+                            f'{path_root}-{schema_namespace}{path_extension}'
+                        )
+                        return write_csv(versioned_path, data)
                     raise ValueError(
                         f'Summary schema mismatch for {path}: '
                         f'{existing_fieldnames} != {fieldnames}'
@@ -293,6 +336,7 @@ class Recorder:
                 if write_header:
                     writer.writeheader()
                 writer.writerow(data)
+            return path
         write_csv(summary_path, summary_info)
         #     if_use_node_status_flags: true
         #     if_use_aggregated_link_attrs: true
@@ -332,9 +376,20 @@ class Recorder:
             },
         }
         solver_summary_path = os.path.join(self.save_root_dir, solver_name, f'solver_summary.csv')
-        write_csv(solver_summary_path, global_summary_info)
+        metric_schema_namespace = (
+            f'metrics-v{summary_info.get("metric_schema_version", self.counter.metric_schema_version)}'
+        )
+        write_csv(
+            solver_summary_path,
+            global_summary_info,
+            schema_namespace=metric_schema_namespace,
+        )
         global_summary_path = os.path.join(self.save_root_dir, f'global_summary.csv')
-        write_csv(global_summary_path, global_summary_info)
+        write_csv(
+            global_summary_path,
+            global_summary_info,
+            schema_namespace=metric_schema_namespace,
+        )
         global_summary_path = os.path.join(self.save_root_dir, f'training_summary.csv')
         training_summary_info = {
             'solver_name': solver_name,

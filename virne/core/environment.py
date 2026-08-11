@@ -84,6 +84,7 @@ class BaseEnvironment:
 
     def _refresh_v_net_index(self) -> None:
         """Index virtual networks by their external IDs without assuming contiguity."""
+        self.v_net_simulator.validate_v_net_lifecycles()
         v_net_by_id = {}
         for position, v_net in enumerate(self.v_net_simulator.v_nets):
             v_net_id = int(getattr(v_net, 'id', position))
@@ -218,6 +219,15 @@ class BaseEnvironment:
         Returns:
             reason (str): the reason of failure.
         """
+        explicit_reason = solution.get('failure_reason', '')
+        if explicit_reason in {
+            'early_rejection',
+            'constraint',
+            'place',
+            'route',
+            'unknown',
+        }:
+            return explicit_reason
         if solution['early_rejection']:
             return 'reject'
         if not solution['place_result']:
@@ -237,20 +247,26 @@ class BaseEnvironment:
         self.p_net = copy.deepcopy(self.p_net_backup)
         if reason in ['unknown', -1]:
             self.solution['description'] = 'Unknown Reason'
+            self.solution['failure_reason'] = 'unknown'
         elif reason in ['reject', 0]:
             self.solution['description'] = 'Early Rejection'
             self.solution['early_rejection'] = True
+            self.solution['failure_reason'] = 'early_rejection'
         elif reason == 'admission':
             self.solution['description'] = 'Admission Rejection'
             self.solution['early_rejection'] = True
+            self.solution['failure_reason'] = 'early_rejection'
         elif reason == 'constraint':
             self.solution['description'] = 'Constraint Violation'
+            self.solution['failure_reason'] = 'constraint'
         elif reason in ['place', 1]:
             self.solution['description'] = 'Place Failure'
             self.solution['place_result'] = False
+            self.solution['failure_reason'] = 'place'
         elif reason in ['route', 2]:
             self.solution['description'] = 'Route Failure'
             self.solution['route_result'] = False
+            self.solution['failure_reason'] = 'route'
         else:
             raise NotImplementedError(f"Unknown reason: {reason}")
         # self.logger.warning(f"Rollback for {reason} failure")
@@ -329,8 +345,6 @@ class BaseEnvironment:
     def _deploy_solution_transactionally(self) -> None:
         """Deploy and verify one solution, restoring the PNet on every failure."""
         try:
-            before_node_resource = self.counter.calculate_sum_node_resource(self.p_net_backup)
-            before_link_resource = self.counter.calculate_sum_link_resource(self.p_net_backup)
             current_resource = self.counter.calculate_sum_network_resource(self.p_net)
             backup_resource = self.counter.calculate_sum_network_resource(self.p_net_backup)
             if not math.isclose(current_resource, backup_resource, rel_tol=1e-9, abs_tol=1e-9):
@@ -339,13 +353,21 @@ class BaseEnvironment:
             if not self.controller.deploy(self.v_net, self.p_net, self.solution):
                 raise ValueError('Controller rejected a solution marked as successful')
 
-            after_node_resource = self.counter.calculate_sum_node_resource(self.p_net)
-            after_link_resource = self.counter.calculate_sum_link_resource(self.p_net)
-            actual_node_cost = (
-                (before_node_resource - after_node_resource)
-                / self.counter.num_node_resource_attrs
+            actual_node_resource = math.fsum(
+                float(self.p_net_backup.nodes[p_node_id][node_attr.name])
+                - float(self.p_net.nodes[p_node_id][node_attr.name])
+                for p_node_id in self.p_net_backup.nodes
+                for node_attr in self.counter.node_resource_attrs
             )
-            actual_link_cost = before_link_resource - after_link_resource
+            actual_node_cost = self.counter.normalize_node_resource_value(
+                actual_node_resource
+            )
+            actual_link_cost = math.fsum(
+                float(self.p_net_backup.links[p_link][link_attr.name])
+                - float(self.p_net.links[p_link][link_attr.name])
+                for p_link in self.p_net_backup.links
+                for link_attr in self.counter.link_resource_attrs
+            )
             if not math.isclose(
                 actual_node_cost,
                 float(self.solution['v_net_node_cost']),
@@ -539,6 +561,7 @@ class SolutionStepEnvironment(BaseEnvironment):
         # Success
         if solution['result']:
             self.solution['description'] = 'Success'
+            self.solution['failure_reason'] = ''
             self._deploy_solution_transactionally()
         # Failure
         else:
@@ -608,6 +631,8 @@ class JointPRStepEnvironment(BaseEnvironment):
             # VN Success ?
             if self.num_placed_v_net_nodes == self.v_net.num_nodes:
                 self.solution['result'] = True
+                self.solution['description'] = 'Success'
+                self.solution['failure_reason'] = ''
             else:
                 record = self.solution.to_dict()
                 return self.get_observation(), self.compute_reward(), False, self.get_info(record)

@@ -247,6 +247,70 @@ def test_place_and_route_failure_rolls_back_only_the_current_step():
     assert solution.link_paths == {}
 
 
+@pytest.mark.parametrize(
+    'solver_name',
+    ['order_joint_pr', 'random_joint_pr', 'ffd_joint_pr'],
+)
+def test_joint_pr_place_failure_rolls_back_the_complete_attempt(solver_name):
+    config = make_solver_config(solver_name)
+    controller = make_controller(config=config)
+    solver = make_solver(SolverRegistry.get(solver_name), config, controller)
+    p_net = make_p_net([(0, 2), (1, 2), (2, 2)], [])
+    v_net = make_v_net([(0, 1), (1, 1), (2, 3)], [])
+    before = resource_snapshot(p_net)
+
+    solution = solver.solve({'p_net': p_net, 'v_net': v_net})
+
+    assert solution.result is False
+    assert solution.place_result is False
+    assert resource_snapshot(p_net) == before
+    assert solution.node_slots == {}
+    assert solution.node_slots_info == {}
+    assert solution.link_paths == {}
+    assert solution.link_paths_info == {}
+
+
+def test_joint_pr_route_failure_rolls_back_the_complete_attempt():
+    config = make_solver_config('order_joint_pr')
+    controller = make_controller(config=config)
+    solver = make_solver(SolverRegistry.get('order_joint_pr'), config, controller)
+    p_net = make_p_net(
+        [(0, 10), (1, 10), (2, 10)],
+        [(0, 1, 5), (1, 2, 5), (0, 2, 4)],
+    )
+    v_net = make_v_net(
+        [(0, 1), (1, 1), (2, 1)],
+        [(0, 1, 5), (0, 2, 5), (1, 2, 5)],
+    )
+    before = resource_snapshot(p_net)
+
+    solution = solver.solve({'p_net': p_net, 'v_net': v_net})
+
+    assert solution.result is False
+    assert solution.place_result is True
+    assert solution.route_result is False
+    assert resource_snapshot(p_net) == before
+    assert solution.node_slots == {}
+    assert solution.node_slots_info == {}
+    assert solution.link_paths == {}
+    assert solution.link_paths_info == {}
+
+
+def test_joint_pr_respects_configured_k_shortest():
+    config = make_solver_config('order_joint_pr', k_shortest=7)
+    controller = make_controller(config=config)
+    place_and_route = Mock(wraps=controller.place_and_route)
+    controller.place_and_route = place_and_route
+    solver = make_solver(SolverRegistry.get('order_joint_pr'), config, controller)
+    p_net = make_p_net([(0, 10)], [])
+    v_net = make_v_net([(0, 1)], [])
+
+    solution = solver.solve({'p_net': p_net, 'v_net': v_net})
+
+    assert solution.result is True
+    assert place_and_route.call_args.kwargs['k'] == 7
+
+
 def test_bulk_unsafe_mapping_and_node_slots_record_violations():
     controller = make_controller()
     p_net = make_p_net([(0, 2), (1, 2)], [(0, 1, 2)])
@@ -453,6 +517,9 @@ def test_component_aware_heuristics_map_disconnected_virtual_network(
         'pl_rank',
         'nea_rank',
         'rw_rank',
+        'order_joint_pr',
+        'random_joint_pr',
+        'ffd_joint_pr',
     ],
 )
 def test_registered_heuristics_support_grid_tuple_node_ids(solver_name):

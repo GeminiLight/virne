@@ -5,6 +5,7 @@
 
 import os
 import copy
+import math
 import numpy as np
 from typing import Optional, Union, List, Sequence
 from dataclasses import dataclass, field, asdict
@@ -36,8 +37,15 @@ class VirtualNetworkEvent:
             raise ValueError("Event type must be 0 (leave) or 1 (arrival)")
         if self.v_net_id < 0:
             raise ValueError("Virtual network ID must be non-negative")
-        if self.time < 0:
+        try:
+            event_time = float(self.time)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Event time must be numeric") from exc
+        if not math.isfinite(event_time):
+            raise ValueError("Event time must be finite")
+        if event_time < 0:
             raise ValueError("Event time must be non-negative")
+        self.time = event_time
         
     def __repr__(self):
         return f"VirtualNetworkEvent(v_net_id={self.v_net_id}, time={self.time}, type={self.type}, id={self.id})"
@@ -171,6 +179,7 @@ class VirtualNetworkRequestSimulator(object):
 
     def _renew_events(self):
         """Generate events, including virtual network arrival and leave events, as VirtualNetworkEvent objects"""
+        self.validate_v_net_lifecycles()
         enter_list = [{'v_net_id': int(getattr(v_net, 'id', i)), 'time': float(getattr(v_net, 'arrival_time', 0.0)), 'type': 1} for i, v_net in enumerate(self.v_nets)]
         leave_list = [{'v_net_id': int(getattr(v_net, 'id', i)), 'time': float(getattr(v_net, 'arrival_time', 0.0) + getattr(v_net, 'lifetime', 0.0)), 'type': 0} for i, v_net in enumerate(self.v_nets)]
         event_list = enter_list + leave_list
@@ -186,6 +195,39 @@ class VirtualNetworkRequestSimulator(object):
         self.events = self._normalize_events(raw_events)
         self._construct_v2event_dict()
         return self.events
+
+    @staticmethod
+    def _validate_lifecycle_values(v_net_id, arrival_time, lifetime):
+        """Validate the half-open service interval ``[arrival, departure)``."""
+        try:
+            arrival_time = float(arrival_time)
+            lifetime = float(lifetime)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f'Virtual network {v_net_id} arrival time and lifetime must be numeric'
+            ) from exc
+        if not math.isfinite(arrival_time) or arrival_time < 0.0:
+            raise ValueError(
+                f'Virtual network {v_net_id} arrival time must be finite and non-negative'
+            )
+        if not math.isfinite(lifetime) or lifetime <= 0.0:
+            raise ValueError(
+                f'Virtual network {v_net_id} lifetime must be finite and positive'
+            )
+        if not math.isfinite(arrival_time + lifetime):
+            raise ValueError(
+                f'Virtual network {v_net_id} departure time must be finite'
+            )
+
+    def validate_v_net_lifecycles(self):
+        """Validate every VN before event generation or environment execution."""
+        for position, v_net in enumerate(self.v_nets):
+            v_net_id = int(getattr(v_net, 'id', position))
+            self._validate_lifecycle_values(
+                v_net_id,
+                getattr(v_net, 'arrival_time', None),
+                getattr(v_net, 'lifetime', None),
+            )
 
     def _construct_v2event_dict(self):
         """Construct a dictionary for mapping virtual network id to event id using VirtualNetworkEvent"""
@@ -220,6 +262,11 @@ class VirtualNetworkRequestSimulator(object):
                 **arrival_setting,
             )
         self.v_nets_arrival_time = np.cumsum(arrival_time_interval)
+        for v_net_id, (arrival_time, lifetime) in enumerate(zip(
+            self.v_nets_arrival_time,
+            self.v_nets_lifetime,
+        )):
+            self._validate_lifecycle_values(v_net_id, arrival_time, lifetime)
         if 'max_latency' in self.v_sim_setting:
             self.v_nets_max_latency = generate_data_with_distribution(size=num_v_nets, **self.v_sim_setting['max_latency'])
 
@@ -279,6 +326,7 @@ class VirtualNetworkRequestSimulator(object):
             raise ValueError(f"Number of virtual networks ({len(v_nets)}) should be half of the number of events ({len(events)})")
         # Create a new VirtualNetworkRequestSimulator object
         v_net_simulator = VirtualNetworkRequestSimulator(v_nets=v_nets, events=events, v_sim_setting=v_sim_setting)
+        v_net_simulator.validate_v_net_lifecycles()
         # Cache by dataset_dir
         cache[dataset_dir] = copy.deepcopy(v_net_simulator)
         return copy.deepcopy(v_net_simulator)

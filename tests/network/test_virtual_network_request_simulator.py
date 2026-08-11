@@ -245,6 +245,23 @@ class TestVirtualNetworkRequestSimulator:
         ]
         assert events_at_ten == [(0, 0), (1, 1)]
 
+    @pytest.mark.parametrize('lifetime', [0.0, -1.0, float('nan'), float('inf')])
+    def test_v_net_lifetime_must_be_finite_and_positive(self, lifetime):
+        """Invalid service intervals must fail before events reach the environment."""
+        v_net = SimpleNamespace(id=7, arrival_time=1.0, lifetime=lifetime)
+        simulator = VirtualNetworkRequestSimulator(v_nets=[v_net])
+
+        with pytest.raises(
+            ValueError,
+            match='Virtual network 7 lifetime must be finite and positive',
+        ):
+            simulator._renew_events()
+
+    @pytest.mark.parametrize('time', [float('nan'), float('inf')])
+    def test_event_time_must_be_finite(self, time):
+        with pytest.raises(ValueError, match='Event time must be finite'):
+            VirtualNetworkEvent(id=0, type=1, v_net_id=0, time=time)
+
     def test_normalize_events_sorts_ties_and_reindexes_legacy_ids(self):
         events = [
             VirtualNetworkEvent(id=20, type=1, v_net_id=1, time=10.0),

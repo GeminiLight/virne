@@ -151,12 +151,10 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Parameter
-from torch_sparse import SparseTensor, set_diag
-
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn.dense.linear import Linear
 from torch_geometric.typing import (Adj, NoneType, OptPairTensor, OptTensor,
-                                    Size)
+                                    Size, SparseTensor, torch_sparse)
 from torch_geometric.utils import add_self_loops, remove_self_loops, softmax
 from torch_geometric.nn.inits import glorot, zeros
 
@@ -389,7 +387,7 @@ class EdgeFusionGATConv(MessagePassing):
                     num_nodes=num_nodes)
             elif isinstance(edge_index, SparseTensor):
                 if self.edge_dim is None:
-                    edge_index = set_diag(edge_index)
+                    edge_index = torch_sparse.set_diag(edge_index)
                 else:
                     raise NotImplementedError(
                         "The usage of 'edge_attr' and 'add_self_loops' "

@@ -95,30 +95,35 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 
 ### Installation
 
-The installation script targets Linux and Python 3.10. Clone the repository,
-then create and activate a Conda environment:
+The installation script supports CPU environments on Linux and macOS, plus
+CUDA 12.6, 12.8, and 13.0 on Linux. Clone the repository, then create and
+activate a Python 3.10 or 3.11 environment:
 
 ```bash
 git clone https://github.com/GeminiLight/virne.git
 cd virne
-conda create -n virne python=3.10
-conda activate virne
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-Install either the CPU or CUDA 12.4 build:
+Install either the CPU build or a supported CUDA build. The script defaults to
+CPU and installs PyTorch 2.11.0 with PyG 2.8.0.post1. It also installs the
+matching optional PyG acceleration wheels without hard-coding the operating
+system or Python ABI:
 
 ```bash
 # CPU-only PyTorch and PyG
 bash install.sh -c cpu
 
-# CUDA 12.4 with PyTorch 2.6.0
-bash install.sh -c 12.4
+# CUDA 12.6 (use 12.8 or 13.0 when appropriate for your driver and GPU)
+bash install.sh -c 12.6
 ```
 
-Verify the installation from the repository root:
+The script installs Virne in editable mode and prints all three versions. You
+can verify them again with:
 
 ```bash
-python -c "import virne; print(virne.__version__)"
+python -c "import torch, torch_geometric, virne; print(virne.__version__, torch.__version__, torch_geometric.__version__)"
 ```
 
 ### Run a Small Experiment

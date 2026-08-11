@@ -3,8 +3,10 @@ Installation
 
 .. important::
 
-    The installation script currently targets Linux and Python 3.10. Virne
-    depends on ``gym==0.22.0`` and is not yet compatible with newer Gym APIs.
+    Virne currently depends on ``gym==0.22.0`` and is not yet compatible with
+    newer Gym APIs. This constraint is independent of the upgraded PyTorch and
+    PyG stack. NumPy therefore remains capped below 2.0 until the Gymnasium
+    migration is complete.
 
 Get the Source
 --------------
@@ -14,38 +16,42 @@ Get the Source
     git clone https://github.com/GeminiLight/virne.git
     cd virne
 
-Create a Conda Environment
---------------------------
+Create a Virtual Environment
+----------------------------
 
 .. code-block:: bash
 
-    conda create -n virne python=3.10
-    conda activate virne
+    python3 -m venv .venv
+    source .venv/bin/activate
 
 Install with the Script
 -----------------------
 
-The installation script currently targets Linux with Python 3.10. It supports a CPU-only environment or CUDA 12.4. Run it from the repository root after activating the Conda environment.
+The script supports CPU environments on Linux and macOS, plus CUDA 12.6, 12.8,
+and 13.0 on Linux. It installs PyTorch 2.11.0, PyG 2.8.0.post1, and Virne itself
+in editable mode. Matching PyG acceleration wheels are selected for the active
+platform and Python ABI. Run it from the repository root after activating a
+Python 3.10 or 3.11 environment.
 
 .. code-block:: bash
 
     # CPU-only PyTorch and PyG
     bash install.sh -c cpu
 
-    # CUDA 12.4 with PyTorch 2.6.0
-    bash install.sh -c 12.4
+    # CUDA 12.6; 12.8 and 13.0 are also supported
+    bash install.sh -c 12.6
 
-If ``-c`` is omitted, the script detects an NVIDIA GPU and otherwise installs the CPU build.
+If ``-c`` is omitted, the script installs the CPU build. This explicit default
+avoids selecting a CUDA runtime that is incompatible with the host driver.
 
 Verify the Installation
 -----------------------
 
-Keep the ``virne`` Conda environment active and run this command from the
-repository root:
+Keep the virtual environment active and run:
 
 .. code-block:: bash
 
-    python -c "import virne; print(virne.__version__)"
+    python -c "import torch, torch_geometric, virne; print(virne.__version__, torch.__version__, torch_geometric.__version__)"
 
-The command should print the installed Virne version. You can then continue to
-the :doc:`Quickstart <running>`.
+The command should print the installed Virne, PyTorch, and PyG versions. You can
+then continue to the :doc:`Quickstart <running>`.

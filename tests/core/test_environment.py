@@ -192,6 +192,7 @@ def test_admission_rejection_has_explicit_reason(tmp_path):
 
     assert arrival_record['result'] is False
     assert arrival_record['early_rejection'] is True
+    assert arrival_record['failure_reason'] == 'early_rejection'
     assert arrival_record['description'] == 'Admission Rejection'
     assert env.recorder.state['success_count'] == 0
 
@@ -205,9 +206,64 @@ def test_constraint_rejection_has_explicit_reason(tmp_path):
 
     assert arrival_record['result'] is False
     assert arrival_record['early_rejection'] is False
+    assert arrival_record['failure_reason'] == 'constraint'
     assert arrival_record['description'] == 'Constraint Violation'
     summary = env.recorder.summary_records(env.recorder.memory)
+    assert summary['failure_count'] == 1
+    assert summary['constraint_failure_count'] == 1
+    assert summary['unknown_failure_count'] == 0
     assert summary['total_violation'] == 1.0
+
+
+def test_unclassified_solver_failure_is_counted_as_unknown(tmp_path):
+    env, v_net = make_environment(tmp_path)
+
+    _, _, _, arrival_record = env.step(Solution.from_v_net(v_net))
+
+    assert arrival_record['result'] is False
+    assert arrival_record['failure_reason'] == 'unknown'
+    summary = env.recorder.summary_records(env.recorder.memory)
+    assert summary['failure_count'] == 1
+    assert summary['unknown_failure_count'] == 1
+    assert (
+        summary['early_rejection_count']
+        + summary['constraint_failure_count']
+        + summary['place_failure_count']
+        + summary['route_failure_count']
+        + summary['unknown_failure_count']
+    ) == summary['failure_count']
+
+
+def test_zero_capacity_resource_dimensions_have_zero_utilization(tmp_path):
+    config = make_config(tmp_path)
+    p_net = PhysicalNetwork(
+        config={
+            'node_attrs_setting': NODE_ATTRS,
+            'link_attrs_setting': LINK_ATTRS,
+        }
+    )
+    p_net.add_node(0, cpu=0.0)
+    v_net = VirtualNetwork(
+        config={
+            'node_attrs_setting': NODE_ATTRS,
+            'link_attrs_setting': LINK_ATTRS,
+            'graph_attrs_setting': {
+                'id': 0,
+                'arrival_time': 1.0,
+                'lifetime': 1.0,
+            },
+        }
+    )
+    v_net.add_node(0, cpu=0.0)
+    counter = Counter(NODE_ATTRS, LINK_ATTRS, {}, config)
+    recorder = Recorder(counter, config)
+    recorder.count_init_p_net_info(p_net)
+    recorder.update_state({'event_id': 0, 'event_type': 1, 'event_time': 1.0})
+
+    record = recorder.count(v_net, p_net, Solution.from_v_net(v_net))
+
+    assert record['p_net_node_resource_utilization'] == 0.0
+    assert record['p_net_link_resource_utilization'] == 0.0
 
 
 def test_equal_time_departure_releases_resources_before_next_arrival(tmp_path):
@@ -293,6 +349,92 @@ def test_float_resource_accounting_is_tolerant_and_restores_resources(tmp_path):
     assert [env.p_net.links[e]['bw'] for e in env.p_net.links] == pytest.approx([10.0, 10.0])
 
 
+def test_metric_schema_v2_deploys_and_restores_multi_resource_demands(tmp_path):
+    multi_node_attrs = [
+        {
+            'name': name,
+            'type': 'resource',
+            'owner': 'node',
+            'generative': False,
+        }
+        for name in ['cpu', 'ram']
+    ]
+    config = make_config(tmp_path)
+    config.metrics = {'schema_version': 2}
+    config.simulation.v_sim_setting_num_node_resource_attrs = 2
+    p_net = PhysicalNetwork(
+        config={
+            'node_attrs_setting': multi_node_attrs,
+            'link_attrs_setting': LINK_ATTRS,
+        }
+    )
+    p_net.add_nodes_from([
+        (0, {'cpu': 10.0, 'ram': 10.0}),
+        (1, {'cpu': 10.0, 'ram': 10.0}),
+        (2, {'cpu': 10.0, 'ram': 10.0}),
+    ])
+    p_net.add_edges_from([
+        (0, 1, {'bw': 10.0}),
+        (1, 2, {'bw': 10.0}),
+    ])
+    v_net = VirtualNetwork(
+        config={
+            'node_attrs_setting': multi_node_attrs,
+            'link_attrs_setting': LINK_ATTRS,
+            'graph_attrs_setting': {
+                'id': 0,
+                'arrival_time': 1.0,
+                'lifetime': 4.0,
+            },
+        }
+    )
+    v_net.add_nodes_from([
+        (0, {'cpu': 2.0, 'ram': 4.0}),
+        (1, {'cpu': 3.0, 'ram': 1.0}),
+    ])
+    v_net.add_edge(0, 1, bw=4.0)
+    simulator = VirtualNetworkRequestSimulator(v_nets=[v_net], v_sim_setting={})
+    simulator._renew_events()
+    counter = Counter(multi_node_attrs, LINK_ATTRS, {}, config)
+    controller = Controller(multi_node_attrs, LINK_ATTRS, [], config.solver)
+    recorder = Recorder(counter, config)
+    env = SolutionStepEnvironment(
+        p_net,
+        simulator,
+        controller,
+        recorder,
+        counter,
+        Mock(),
+        config,
+    )
+    recorder.count_init_p_net_info(env.p_net)
+    env.num_processed_v_nets = 0
+    env.start_run_time = time.time()
+    env.ready(0)
+    solution = Solution.from_v_net(v_net)
+    solution.result = True
+    solution.node_slots = OrderedDict([(0, 0), (1, 2)])
+    solution.node_slots_info = OrderedDict([
+        ((0, 0), {'cpu': 2.0, 'ram': 4.0}),
+        ((1, 2), {'cpu': 3.0, 'ram': 1.0}),
+    ])
+    solution.link_paths = OrderedDict([((0, 1), [(0, 1), (1, 2)])])
+    solution.link_paths_info = OrderedDict([
+        (((0, 1), (0, 1)), {'bw': 4.0}),
+        (((0, 1), (1, 2)), {'bw': 4.0}),
+    ])
+
+    _, _, done, arrival_record = env.step(solution)
+
+    assert done is True
+    assert arrival_record['metric_schema_version'] == 2
+    assert arrival_record['v_net_node_cost'] == 10.0
+    assert arrival_record['v_net_revenue'] == 14.0
+    assert arrival_record['v_net_cost'] == 18.0
+    assert [env.p_net.nodes[n]['cpu'] for n in env.p_net.nodes] == [10.0, 10.0, 10.0]
+    assert [env.p_net.nodes[n]['ram'] for n in env.p_net.nodes] == [10.0, 10.0, 10.0]
+
+
 def test_invalid_solver_solution_is_rejected_before_mutating_p_net(tmp_path):
     env, v_net = make_environment(tmp_path)
     before = copy.deepcopy(env.p_net)
@@ -363,6 +505,39 @@ def test_save_summary_does_not_mutate_input(tmp_path):
     env.recorder.save_summary(summary)
 
     assert summary == expected
+
+
+def test_save_summary_preserves_legacy_aggregate_files(tmp_path):
+    env, _ = make_environment(tmp_path)
+    env.config.rl = OmegaConf.create({
+        'reward_calculator': {'name': 'vanilla', 'intermediate_reward': -1},
+        'mask_actions': True,
+        'feature_constructor': {
+            'if_use_node_status_flags': False,
+            'if_use_aggregated_link_attrs': False,
+            'if_use_degree_metric': False,
+            'if_use_more_topological_metrics': False,
+        },
+    })
+    env.config.training = OmegaConf.create({'num_train_epochs': 0})
+    solver_summary_path = tmp_path / 'environment-audit' / 'solver_summary.csv'
+    global_summary_path = tmp_path / 'global_summary.csv'
+    solver_summary_path.write_text('legacy_field\nlegacy_value\n')
+    global_summary_path.write_text('legacy_field\nlegacy_value\n')
+    summary = {
+        'solver_name': 'environment-audit',
+        'run_id': 'environment-audit',
+        'metric_schema_version': 1,
+    }
+
+    env.recorder.save_summary(summary)
+
+    assert solver_summary_path.read_text() == 'legacy_field\nlegacy_value\n'
+    assert global_summary_path.read_text() == 'legacy_field\nlegacy_value\n'
+    assert (
+        tmp_path / 'environment-audit' / 'solver_summary-metrics-v1.csv'
+    ).exists()
+    assert (tmp_path / 'global_summary-metrics-v1.csv').exists()
 
 
 def test_time_window_system_fails_fast_with_actionable_message():
