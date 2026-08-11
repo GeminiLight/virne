@@ -18,7 +18,7 @@ from torch_geometric.typing import Adj, OptPairTensor, OptTensor, Size
 
 
 class NNConv(MessagePassing):
-    """The continuous kernel-based convolutional operator from the
+    r"""The continuous kernel-based convolutional operator from the
     `"Neural Message Passing for Quantum Chemistry"
     <https://arxiv.org/abs/1704.01212>`_ paper.
     This convolution is also known as the edge-conditioned convolution from the
@@ -160,7 +160,7 @@ from torch_geometric.nn.inits import glorot, zeros
 
 
 class EdgeFusionGATConv(MessagePassing):
-    """The graph attentional operator from the `"Graph Attention Networks"
+    r"""The graph attentional operator from the `"Graph Attention Networks"
     <https://arxiv.org/abs/1710.10903>`_ paper
 
     .. math::

@@ -96,8 +96,8 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 ### Installation
 
 The installation script supports CPU environments on Linux and macOS, plus
-CUDA 12.6, 12.8, and 13.0 on Linux. Clone the repository, then create and
-activate a Python 3.10 or 3.11 environment:
+CUDA 12.6, 13.0, and 13.2 on Linux. Clone the repository, then create and
+activate a Python 3.12 or newer environment:
 
 ```bash
 git clone https://github.com/GeminiLight/virne.git
@@ -107,15 +107,15 @@ source .venv/bin/activate
 ```
 
 Install either the CPU build or a supported CUDA build. The script defaults to
-CPU and installs PyTorch 2.11.0 with PyG 2.8.0.post1. It also installs the
-matching optional PyG acceleration wheels without hard-coding the operating
-system or Python ABI:
+CPU and installs PyTorch 2.13.0 with PyG 2.8.0.post1. It also installs the
+matching optional `pyg_lib` acceleration wheel without hard-coding the
+operating system or Python ABI:
 
 ```bash
 # CPU-only PyTorch and PyG
 bash install.sh -c cpu
 
-# CUDA 12.6 (use 12.8 or 13.0 when appropriate for your driver and GPU)
+# CUDA 12.6 (use 13.0 or 13.2 when appropriate for your driver and GPU)
 bash install.sh -c 12.6
 ```
 

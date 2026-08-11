@@ -5,11 +5,11 @@ version: 2
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.10"
+    python: "3.12"
   jobs:
     post_install:
       - python -m pip install --upgrade pip setuptools
-      - python -m pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+      - python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
       - python -m pip install --no-build-isolation --editable .
       - python -m pip install -r docs/requirements.txt
 

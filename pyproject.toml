@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 60.0.0"]
+requires = ["setuptools >= 84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,16 +7,16 @@ name = "virne"
 version = "1.0.0"
 description = "A comprehensive simulator and benchmark for Resource Allocation in Network Function Virtualization (NFV-RA)."
 readme = "README.md"
-requires-python = ">= 3.10"
+requires-python = ">= 3.12"
 authors = [{ name = "GeminiLight", email = "wtfly2018@gmail.com" }]
-license = { text = "Apache License, Version 2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 keywords = ["Network Function Virtualization", "Virtual Network Embedding", "Reinforcement Learning"]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering :: Artificial Intelligence',
     'Topic :: Software Development :: Libraries',
@@ -26,24 +26,20 @@ classifiers = [
 ]
 dependencies = [
     "gymnasium == 1.3.0",
-    "numpy >= 1.23.5, < 2.0",
-    "pandas >= 1.5.3",
-    "matplotlib >= 3.7.1",
-    "scipy >= 1.9.0",
-    "pyyaml >= 6.0",
-    "torch == 2.11.0",
-    "tensorboard >= 2.8.0",
-    "wandb >= 0.12.0",
-    "higher >= 0.2.1",
-    "networkx >= 2.6.0",
-    "tqdm >= 4.62.0",
-    "ortools >= 9.1.9490",
-    "scikit-learn >= 1.0.0",
-    "colorama >= 0.4.0",
-    "hydra-core >= 1.0.0",
-    "colorlog >= 6.0.0",
-    "ortools >= 9.1.9490",
-    "scikit-learn >= 1.0.0",
+    "numpy >= 2.5.2, < 3.0",
+    "pandas >= 3.0.5",
+    "matplotlib >= 3.11.1",
+    "scipy >= 1.18.0",
+    "pyyaml >= 6.0.3",
+    "torch == 2.13.0",
+    "tensorboard >= 2.21.0",
+    "wandb >= 0.28.1",
+    "networkx >= 3.6.1",
+    "tqdm >= 4.70.0",
+    "ortools >= 9.15.6755",
+    "scikit-learn >= 1.9.0",
+    "hydra-core >= 1.3.5",
+    "colorlog >= 6.12.0",
     "torch_geometric == 2.8.0.post1"
 ]
 
@@ -60,6 +56,27 @@ lint = [
 ]
 # test = ['pytest', 'pytest-cov', 'pytest-xdist']
 
+[dependency-groups]
+dev = [
+    "pytest == 9.1.1",
+    "ruff == 0.16.2",
+]
+docs = [
+    "sphinx == 9.1.0",
+    "myst-parser == 5.1.0",
+    "sphinx-design == 0.7.0",
+    "sphinx-copybutton == 0.5.2",
+    "furo == 2025.12.19",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.setuptools]
 include-package-data = true
 
@@ -72,8 +89,7 @@ include = ["virne", "virne.*"]
 safe = true
 line-length = 100
 skip-string-normalization = true
-# Sync with requires-python
-# target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py312"]
 
 [tool.isort]
 atomic = true
@@ -86,7 +102,7 @@ lines_after_imports = 2
 multi_line_output = 3
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 pretty = true
 show_error_codes = true
 show_error_context = true
@@ -112,11 +128,11 @@ convention = "google"
 max-line-length = 500
 
 [tool.ruff]
-# Sync with requires-python
-target-version = "py38"
+target-version = "py312"
 line-length = 100
-show-source = true
 src = ["virne", "tests", "examples"]
+
+[tool.ruff.lint]
 select = [
     "E", "W",  # pycodestyle
     "F",       # pyflakes
@@ -150,10 +166,6 @@ ignore = [
     # ANN201: missing return type annotation for public function
     # ANN202: missing return type annotation for private function
     "ANN001","ANN003","ANN201","ANN202",
-    # ANN101: missing type annotation for `self` in method
-    # ANN102: missing type annotation for `cls` in classmethod
-    "ANN101",
-    "ANN102",
     # ANN401: dynamically typed expressions (typing.Any) are disallowed
     "ANN401",
     # S101: use of `assert` detected
@@ -164,15 +176,15 @@ ignore = [
     "PLR0402",
 ]
 
-[tool.ruff.flake8-annotations]
+[tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = true
 
-[tool.ruff.flake8-quotes]
+[tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
 multiline-quotes = "double"
 inline-quotes = "single"
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
 [tool.pytest.ini_options]

@@ -9,7 +9,7 @@ from virne.utils.config import add_simulation_into_config, generate_run_id
 
 
 
-@hydra.main(config_path="settings", config_name="main")
+@hydra.main(version_base="1.3", config_path="settings", config_name="main")
 def run(config):
     print(f"\n{'-' * 20}    Start     {'-' * 20}\n")
     # ---- Before running the simulation ---- #

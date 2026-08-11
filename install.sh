@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly TORCH_VERSION="2.11.0"
+readonly TORCH_VERSION="2.13.0"
 readonly PYG_VERSION="2.8.0.post1"
-readonly SUPPORTED_ACCELERATORS="cpu 12.6 12.8 13.0"
+readonly SUPPORTED_ACCELERATORS="cpu 12.6 13.0 13.2"
 
 accelerator="cpu"
 virne_python="${VIRNE_PYTHON:-python3}"
 
 usage() {
-    echo "Usage: $0 [-c cpu|12.6|12.8|13.0]"
+    echo "Usage: $0 [-c cpu|12.6|13.0|13.2]"
     echo "Set VIRNE_PYTHON to choose the Python executable (default: python3)."
 }
 
@@ -60,13 +60,13 @@ cpu)
     torch_index="https://download.pytorch.org/whl/cu126"
     pyg_wheel_tag="cu126"
     ;;
-12.8)
-    torch_index="https://download.pytorch.org/whl/cu128"
-    pyg_wheel_tag="cu128"
-    ;;
 13.0)
     torch_index="https://download.pytorch.org/whl/cu130"
     pyg_wheel_tag="cu130"
+    ;;
+13.2)
+    torch_index="https://download.pytorch.org/whl/cu132"
+    pyg_wheel_tag="cu132"
     ;;
 esac
 
@@ -82,12 +82,12 @@ fi
 # pyproject.toml is the source of truth for PyG and all remaining dependencies.
 "${virne_python}" -m pip install --editable .
 
-# PyG can run without compiled extensions, but Virne installs the supported
-# acceleration and SparseTensor packages. Remove old wheels first because their
-# version numbers do not encode the PyTorch ABI they were compiled against.
+# PyG can run without compiled extensions. Remove old wheels first because their
+# version numbers do not encode the PyTorch ABI they were compiled against, then
+# install the extension currently published for PyTorch 2.13.
 "${virne_python}" -m pip uninstall --yes \
     pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv
-"${virne_python}" -m pip install pyg_lib torch_scatter torch_sparse \
+"${virne_python}" -m pip install pyg_lib \
     --find-links "https://data.pyg.org/whl/torch-${TORCH_VERSION}+${pyg_wheel_tag}.html"
 
 "${virne_python}" -c \
