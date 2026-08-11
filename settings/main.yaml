@@ -25,6 +25,11 @@ experiment:
   if_load_p_net: false
   if_load_v_nets: false 
 
+# Metric schema 2 sums all node resource dimensions. Configurations without
+# this section retain the historical schema 1 averaging behavior.
+metrics:
+  schema_version: 2
+
 # For Network System
 system:
   renew_v_net_simulator: false

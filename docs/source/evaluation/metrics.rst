@@ -5,6 +5,18 @@ Virne records both per-event data and run-level summaries. This page connects
 the benchmark definitions to the fields that users will find in
 ``summary.csv``.
 
+Metric Schema Versions
+----------------------
+
+New runs use ``metrics.schema_version: 2``. In schema 2, node demand, revenue,
+and cost are the sum of every configured node-resource dimension, matching the
+link-resource aggregation and the physical resources consumed during
+deployment. Historical configurations that omit ``metrics.schema_version``
+continue to use schema 1, which divides the node-resource sum by the number of
+node-resource attributes. Both per-event records and ``summary.csv`` include
+``metric_schema_version`` so results with different semantics are not compared
+silently.
+
 Core Metrics
 ------------
 
@@ -95,6 +107,17 @@ Summary Field Reference
    * - End-to-end runtime
      - ``clock_running_time``
      - Wall-clock seconds for the complete run; not solver-only AST.
+   * - Metric schema
+     - ``metric_schema_version``
+     - Resource aggregation semantics used by the run (1 or 2).
+   * - Failed requests
+     - ``failure_count``
+     - Arrived requests that were not accepted.
+   * - Failure breakdown
+     - ``early_rejection_count``, ``constraint_failure_count``,
+       ``place_failure_count``, ``route_failure_count``, and
+       ``unknown_failure_count``
+     - Mutually exclusive categories whose sum equals ``failure_count``.
 
 Output Files
 ------------
@@ -106,6 +129,10 @@ Each run normally contains:
 * ``summary.csv``: one row of run-level metrics and experiment metadata.
 * ``records/*.csv``: per-event state, solution, feasibility, resource, and
   reward fields.
+
+When an existing aggregate ``solver_summary.csv`` or ``global_summary.csv``
+uses an older column layout, Virne preserves it and writes the new rows to a
+``-metrics-vN.csv`` file instead of mixing incompatible schemas.
 
 The :doc:`Quickstart <../start/running>` shows the default output
 layout. For fair comparisons, keep the PN/VN settings and seeds fixed, report

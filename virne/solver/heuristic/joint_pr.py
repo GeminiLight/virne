@@ -3,7 +3,6 @@
 # ==============================================================================
 
 
-from copy import Error
 import random
 
 from virne.core import Solution
@@ -17,7 +16,7 @@ class BaseJointPRSolver(Solver):
         super(BaseJointPRSolver, self).__init__(controller, recorder, counter, logger, config, **kwargs)
 
     def solve(self, instance):
-        v_net, p_net = v_net, p_net  = instance['v_net'], instance['p_net']
+        v_net, p_net = instance['v_net'], instance['p_net']
 
         solution = Solution.from_v_net(v_net)
         for v_node_id in list(v_net.nodes):
@@ -26,17 +25,32 @@ class BaseJointPRSolver(Solver):
             if len(candidate_p_net_nodes) == 0:
                 # Failure
                 solution['place_result'] = False
+                self._rollback(p_net, solution)
                 return solution
             p_node_id = self.select_p_net_node(p_net, candidate_p_net_nodes)
-            place_and_route_result, place_and_route_info = self.controller.place_and_route(v_net, p_net, v_node_id, p_node_id, solution, 
-                                                shortest_method=self.shortest_method, k=1)
+            place_and_route_result, _ = self.controller.place_and_route(
+                v_net,
+                p_net,
+                v_node_id,
+                p_node_id,
+                solution,
+                shortest_method=self.shortest_method,
+                k=self.k_shortest,
+            )
             if not place_and_route_result:
                 # Failure
-                solution['route_result'] = False
+                self._rollback(p_net, solution)
                 return solution
         # Success
         solution['result'] = True
         return solution
+
+    def _rollback(self, p_net, solution):
+        """Restore all resources consumed by the current mapping attempt."""
+        for v_link in reversed(list(solution['link_paths'])):
+            self.controller.link_mapper.undo_route(v_link, p_net, solution)
+        for v_node_id in reversed(list(solution['node_slots'])):
+            self.controller.node_mapper.undo_place(v_node_id, p_net, solution)
 
     def select_p_net_node(self, p_net, candidate_p_net_nodes):
         raise NotImplementedError
@@ -79,4 +93,4 @@ class FFDJointPRSolver(BaseJointPRSolver):
         for p_net_node in sorted_p_node:
             if p_net_node in candidate_p_net_nodes:
                 return p_net_node
-        raise Error
+        raise RuntimeError('No ranked physical node found in candidate nodes')

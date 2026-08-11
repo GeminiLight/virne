@@ -38,6 +38,8 @@ class Solution(ClassDict):
         v_net_time_cost: The total time cost of the virtual network being mapped.
         v_net_time_revenue: The total time revenue of the virtual network being mapped.
         v_net_time_rc_ratio: The time revenue-to-cost ratio of the virtual network being mapped.
+        metric_schema_version: The metric semantics used for revenue and cost.
+        failure_reason: A stable machine-readable failure category.
         description: A string describing the solution.
         v_net_total_hard_constraint_violation: The total violation of the solution.
         v_net_single_step_constraint_offset: The current violation of the solution.
@@ -108,6 +110,8 @@ class Solution(ClassDict):
         self.v_net_time_cost: float = 0.0
         self.v_net_time_revenue: float = 0.0
         self.v_net_time_rc_ratio: float = 0.0
+        self.metric_schema_version: int = 1
+        self.failure_reason: str = ''
         self.description: str = ''
         # Constraint Violations
         self.v_net_total_hard_constraint_violation: float = 0.0
