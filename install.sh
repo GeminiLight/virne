@@ -1,137 +1,94 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+readonly TORCH_VERSION="2.11.0"
+readonly PYG_VERSION="2.8.0.post1"
+readonly SUPPORTED_ACCELERATORS="cpu 12.6 12.8 13.0"
 
-print_step() {
-    echo -e "${BLUE}[Step] $1${NC}"
+accelerator="cpu"
+virne_python="${VIRNE_PYTHON:-python3}"
+
+usage() {
+    echo "Usage: $0 [-c cpu|12.6|12.8|13.0]"
+    echo "Set VIRNE_PYTHON to choose the Python executable (default: python3)."
 }
 
-# Check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# Check for CUDA GPU
-check_cuda_gpu() {
-    if command_exists nvidia-smi; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-get_nvcc_version() {
-    if command_exists nvcc; then
-        nvcc --version | grep "release" | awk '{print $6}' | cut -c2- | cut -d. -f1-2
-    else
-        echo "N/A"
-    fi
-}
-
-# Check nvcc version
-check_nvcc_version() {
-    if command_exists nvcc; then
-        nvcc_version=$(nvcc --version | grep "release" | awk '{print $6}' | cut -c2-)
-        nvcc_major=$(echo $nvcc_version | cut -d. -f1)
-        nvcc_minor=$(echo $nvcc_version | cut -d. -f2)
-        if [[ "$nvcc_major" -gt 12 || ( "$nvcc_major" -eq 12 && "$nvcc_minor" -ge 4 ) ]]; then
-            return 0
-        else
-            return 1
-        fi
-    else
-        return 1
-    fi
-}
-
-
-
-# Supported accelerator targets (use "cpu" for no CUDA)
-supported_cuda_versions=("cpu" "12.4")
-cuda=""
-
-# Parse options
-while getopts ":c:" opt; do
-    case $opt in
+while getopts ":c:h" opt; do
+    case "${opt}" in
     c)
-        if [[ " ${supported_cuda_versions[*]} " == *" ${OPTARG} "* ]]; then
-            cuda="${OPTARG}"
-        else
-            echo "Unsupported accelerator target '${OPTARG}'. Supported values: ${supported_cuda_versions[*]}."
-            exit 1
-        fi
+        accelerator="${OPTARG}"
+        ;;
+    h)
+        usage
+        exit 0
         ;;
     :)
-        echo "Option -$OPTARG requires an argument."
+        echo "Option -${OPTARG} requires an argument." >&2
+        usage >&2
         exit 1
         ;;
     \?)
-        echo "Invalid option: -$OPTARG."
+        echo "Invalid option: -${OPTARG}." >&2
+        usage >&2
         exit 1
         ;;
     esac
 done
 
-print_step "Checking prerequisites..."
-if ! command_exists conda; then
-    echo "Conda is not installed. Please install Conda first."
-    exit 1
-fi
-if ! command_exists pip; then
-    echo "pip is not installed. Please install pip first."
+if [[ " ${SUPPORTED_ACCELERATORS} " != *" ${accelerator} "* ]]; then
+    echo "Unsupported accelerator '${accelerator}'. Supported values: ${SUPPORTED_ACCELERATORS}." >&2
     exit 1
 fi
 
-print_step "Upgrading pip..."
-pip install --upgrade pip
-
-print_step "Installing basic dependencies..."
-pip install numpy pandas matplotlib networkx
-pip install pyyaml tqdm colorama hydra-core colorlog wandb
-pip install ortools scikit-learn
-
-# Auto-detect CUDA if not specified
-if [[ -z "$cuda" ]]; then
-    if check_cuda_gpu; then
-        print_step "NVIDIA GPU detected."
-        if check_nvcc_version; then
-            print_step "CUDA >= 12.4 detected."
-            nvcc_version=$(get_nvcc_version)
-            cuda=12.4
-            echo "INFO: CUDA $nvcc_version detected."
-        else
-            print_step "CUDA < 12.4 or nvcc not found. Installing CUDA toolkit 12.4 via conda."
-            conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit -y
-            export CUDA_HOME=$CONDA_PREFIX
-            cuda="12.4"
-            echo "INFO: CUDA 12.4 installed."
-        fi
-    else
-        print_step "No NVIDIA GPU detected. Installing CPU version."
-        cuda="cpu"
-    fi
+if ! command -v "${virne_python}" >/dev/null 2>&1; then
+    echo "Python executable '${virne_python}' was not found." >&2
+    exit 1
 fi
 
-print_step "Installing PyTorch..."
-pip install tensorboard higher
-if [[ "${cuda}" == "cpu" ]]; then
-    echo "Installing PyTorch (CPU version)..."
-    pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu --force-reinstall
+platform="$(uname -s)"
+if [[ "${platform}" == "Darwin" && "${accelerator}" != "cpu" ]]; then
+    echo "CUDA builds are not available on macOS. Use '-c cpu'." >&2
+    exit 1
+fi
+
+case "${accelerator}" in
+cpu)
+    torch_index="https://download.pytorch.org/whl/cpu"
     pyg_wheel_tag="cpu"
+    ;;
+12.6)
+    torch_index="https://download.pytorch.org/whl/cu126"
+    pyg_wheel_tag="cu126"
+    ;;
+12.8)
+    torch_index="https://download.pytorch.org/whl/cu128"
+    pyg_wheel_tag="cu128"
+    ;;
+13.0)
+    torch_index="https://download.pytorch.org/whl/cu130"
+    pyg_wheel_tag="cu130"
+    ;;
+esac
+
+echo "Installing Virne with PyTorch ${TORCH_VERSION}, PyG ${PYG_VERSION}, accelerator ${accelerator}."
+"${virne_python}" -m pip install --upgrade pip
+
+if [[ "${platform}" == "Darwin" ]]; then
+    "${virne_python}" -m pip install "torch==${TORCH_VERSION}"
 else
-    echo "Installing PyTorch with CUDA ${cuda}..."
-    pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
-    pyg_wheel_tag="cu124"
+    "${virne_python}" -m pip install "torch==${TORCH_VERSION}" --index-url "${torch_index}"
 fi
 
-print_step "Installing additional packages..."
-pip install torch_geometric
-pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f "https://data.pyg.org/whl/torch-2.6.0+${pyg_wheel_tag}.html"
-pip install gym==0.22.0
-pip install --force-reinstall scipy
+# pyproject.toml is the source of truth for PyG and all remaining dependencies.
+"${virne_python}" -m pip install --editable .
 
-echo -e "${GREEN}Installation complete.${NC}"
+# PyG can run without compiled extensions, but Virne installs the supported
+# acceleration and SparseTensor packages. Remove old wheels first because their
+# version numbers do not encode the PyTorch ABI they were compiled against.
+"${virne_python}" -m pip uninstall --yes \
+    pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv
+"${virne_python}" -m pip install pyg_lib torch_scatter torch_sparse \
+    --find-links "https://data.pyg.org/whl/torch-${TORCH_VERSION}+${pyg_wheel_tag}.html"
+
+"${virne_python}" -c \
+    "import torch, torch_geometric, virne; print(f'Virne {virne.__version__}; PyTorch {torch.__version__}; PyG {torch_geometric.__version__}')"

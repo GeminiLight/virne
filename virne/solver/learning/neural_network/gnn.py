@@ -2,10 +2,9 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_scatter import scatter
 from torch_geometric.nn import MessagePassing, GCNConv, GATConv, PNAConv, NNConv, SAGEConv, global_add_pool, global_max_pool, global_mean_pool
 from torch_geometric.data import Data, Batch
-from torch_geometric.utils import to_dense_batch
+from torch_geometric.utils import scatter, to_dense_batch
 
 from .graph_conv import EdgeFusionGATConv
 
@@ -316,7 +315,7 @@ class GraphAttentionPooling(nn.Module):
         coefs = torch.sigmoid((x * transformed_global[batch] * 10).sum(dim=1))
         weighted = coefs.unsqueeze(-1) * x
 
-        return scatter(weighted, batch, dim=0, dim_size=size, reduce='add')
+        return scatter(weighted, batch, dim=0, dim_size=size, reduce='sum')
 
     def get_coefs(self, x):
         mean = x.mean(dim=0)
