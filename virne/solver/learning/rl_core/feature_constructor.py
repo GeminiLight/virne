@@ -1,5 +1,5 @@
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from omegaconf import DictConfig, OmegaConf
 from typing import Any, Dict, Optional, Type
 

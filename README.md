@@ -25,7 +25,7 @@ Virne offers a unified and comprehensive framework for NFV-RA, with the followin
 
 * 1️⃣ **Highly Customizable Simulations**: Simulates diverse network environments (e.g., cloud, edge, 5G), with user-defined topologies, resources, and service requirements.
 * 2️⃣ **Extensive Algorithm Suite**: Registers exact, heuristic, meta-heuristic, and learning-based solvers behind a common interface.
-* 3️⃣ **Reinforcement Learning Support**: Provides standardized RL pipelines and Gym-style environments for rapid development and benchmarking of RL-based solutions.
+* 3️⃣ **Reinforcement Learning Support**: Provides standardized RL pipelines and Gymnasium-compatible environments for rapid development and benchmarking of RL-based solutions.
 * 4️⃣ **In-depth Evaluation Aspects**: Enables insightful analysis beyond effectiveness, covering multiple practicality perspectives (e.g., solvability, generalization, and scalability).
 
 > [!IMPORTANT]

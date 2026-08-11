@@ -68,15 +68,32 @@ class SafeInstanceAgent(InstanceAgent):
 
                     value = self.estimate_value(tensor_instance_obs) if hasattr(self.policy, 'evaluate') else None
                     cost_value = self.estimate_cost(tensor_instance_obs) if hasattr(self.policy, 'evaluate_cost') else None
-                    next_instance_obs, instance_reward, instance_done, instance_info = instance_env.step(action)
-                    sub_buffer.add(instance_obs, action, instance_reward, instance_done, action_logprob, value=value)
+                    (
+                        next_instance_obs,
+                        instance_reward,
+                        instance_terminated,
+                        instance_truncated,
+                        instance_info,
+                    ) = instance_env.step(action)
+                    instance_done = instance_terminated or instance_truncated
+                    sub_buffer.add(
+                        instance_obs,
+                        action,
+                        instance_reward,
+                        instance_terminated,
+                        action_logprob,
+                        value=value,
+                    )
                     sub_buffer.costs.append(instance_env.solution['v_net_single_step_hard_constraint_offset'])
                     sub_buffer.cost_values.append(cost_value)
                     cost_list.append(instance_env.solution['v_net_single_step_hard_constraint_offset'])
                     if instance_done:
                         break
                     instance_obs = next_instance_obs
-                last_value = 0.0 if hasattr(self.policy, 'evaluate') else None
+                last_value = self._get_bootstrap_value(
+                    next_instance_obs,
+                    instance_truncated,
+                )
                 solution = instance_env.solution
                 # print(f'{v_net.num_nodes:2d}', f'{sum(sub_buffer.costs):2.2f}', f'{sum(sub_buffer.costs)/ v_net.num_nodes:2.2f}', sub_buffer.costs)
                 epoch_logprobs += sub_buffer.logprobs

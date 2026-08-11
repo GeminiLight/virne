@@ -15,7 +15,7 @@ from sphinx.ext.autodoc.mock import mock
 MOCK_IMPORTS = [
     'colorama',
     'colorlog',
-    'gym',
+    'gymnasium',
     'matplotlib',
     'networkx',
     'ortools',

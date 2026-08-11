@@ -4,6 +4,9 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 import torch
+import gymnasium as gym
+from gymnasium import spaces
+from gymnasium.utils.env_checker import check_env
 from omegaconf import OmegaConf
 
 from virne.core import Solution
@@ -18,6 +21,7 @@ from virne.solver.learning.obs_handler import ObservationHandler
 from virne.solver.learning.utils import get_unexistent_link_pairs
 from virne.solver.learning.rl_core.feature_constructor import FeatureConstructorRegistry
 from virne.solver.learning.rl_core.instance_agent import InstanceAgent
+from virne.solver.learning.rl_core.buffer import RolloutBuffer
 from virne.solver.learning.rl_core.instance_rl_environment import (
     InstanceRLEnv,
     JointPRStepInstanceRLEnv,
@@ -136,9 +140,12 @@ def test_no_feasible_action_terminates_without_controller_mutation():
     observation = env.get_observation()
     assert observation['action_mask'].sum() == 1
 
-    _, _, done, info = env.step(int(np.flatnonzero(observation['action_mask'])[0]))
+    _, _, terminated, truncated, info = env.step(
+        int(np.flatnonzero(observation['action_mask'])[0])
+    )
 
-    assert done is True
+    assert terminated is True
+    assert truncated is False
     assert env.solution.place_result is False
     assert info['description'] == 'No feasible physical node'
     env.controller.place_and_route.assert_not_called()
@@ -163,10 +170,102 @@ def test_first_failed_action_does_not_try_to_revoke_empty_solution():
     env.num_actions = env.p_net.num_nodes + 1
     env.controller.place_and_route.return_value = (False, {})
 
-    _, _, done, _ = env.step(0)
+    _, _, terminated, truncated, _ = env.step(0)
 
-    assert done is True
+    assert terminated is True
+    assert truncated is False
     assert env.solution.revoke_times == 0
+
+
+def test_joint_environment_fixed_action_trace_preserves_mapping_results():
+    env = make_minimal_joint_env(
+        candidate_nodes=[0, 1],
+        v_node_ids=(0, 1),
+    )
+    env.p_net_backup = env.p_net.copy()
+
+    def find_candidate_nodes(_v_net, _p_net, _v_node_id, filter):
+        return [node_id for node_id in (0, 1) if node_id not in filter]
+
+    def place_and_route(_v_net, _p_net, v_node_id, p_node_id, solution, **kwargs):
+        solution.node_slots[v_node_id] = p_node_id
+        return True, {}
+
+    env.controller.find_candidate_nodes.side_effect = find_candidate_nodes
+    env.controller.place_and_route.side_effect = place_and_route
+    env.counter.count_partial_solution.side_effect = (
+        lambda _v_net, solution: solution.to_dict()
+    )
+
+    observation, info = env.reset(seed=7)
+    assert info == {}
+    np.testing.assert_array_equal(observation['action_mask'], [True, True])
+
+    observation, reward, terminated, truncated, _ = env.step(1)
+    assert reward == 0.0
+    assert terminated is False
+    assert truncated is False
+    np.testing.assert_array_equal(observation['action_mask'], [True, False])
+
+    observation, reward, terminated, truncated, _ = env.step(0)
+    assert reward == 0.0
+    assert terminated is True
+    assert truncated is False
+    assert env.solution.result is True
+    assert env.solution.node_slots == {0: 1, 1: 0}
+    assert env.solution.selected_actions == [1, 0]
+    np.testing.assert_array_equal(observation['action_mask'], [True, False])
+
+
+def test_terminal_gae_characterization_values_are_stable():
+    buffer = RolloutBuffer()
+    buffer.add({}, 0, 1.0, False, 0.0, value=0.5)
+    buffer.add({}, 1, 2.0, True, 0.0, value=1.0)
+
+    buffer.compute_returns_and_advantages(
+        last_value=0.0,
+        gamma=0.9,
+        gae_lambda=0.8,
+        method='gae',
+    )
+
+    np.testing.assert_allclose(buffer.advantages, [2.12, 1.0])
+    np.testing.assert_allclose(buffer.returns, [2.62, 2.0])
+
+
+def test_sync_vector_environment_uses_gymnasium_reset_and_step_contracts():
+    def make_env():
+        env = make_minimal_joint_env(candidate_nodes=[])
+        env.p_net_backup = env.p_net.copy()
+        env.observation_space = spaces.Dict({
+            'action_mask': spaces.MultiBinary(env.num_actions),
+        })
+        return env
+
+    vector_env = gym.vector.SyncVectorEnv([make_env, make_env])
+    try:
+        observations, infos = vector_env.reset(seed=11)
+        np.testing.assert_array_equal(
+            observations['action_mask'],
+            [[True, False], [True, False]],
+        )
+        assert infos == {}
+
+        _, _, terminated, truncated, _ = vector_env.step(np.array([0, 0]))
+        np.testing.assert_array_equal(terminated, [True, True])
+        np.testing.assert_array_equal(truncated, [False, False])
+    finally:
+        vector_env.close()
+
+
+def test_instance_environment_passes_gymnasium_contract_check():
+    env = make_minimal_joint_env(candidate_nodes=[])
+    env.p_net_backup = env.p_net.copy()
+    env.observation_space = spaces.Dict({
+        'action_mask': spaces.MultiBinary(env.num_actions),
+    })
+
+    check_env(env, skip_render_check=True)
 
 
 def test_empty_link_index_has_pyg_compatible_shape():
@@ -327,11 +426,11 @@ def test_terminal_rollout_uses_zero_bootstrap_without_evaluating_terminal_obs():
             self.solution = Solution.from_v_net(v_net)
             self.curr_v_node_id = list(v_net.nodes)[0]
 
-        def reset(self):
-            return {'value': 1.0}
+        def reset(self, *, seed=None, options=None):
+            return {'value': 1.0}, {}
 
         def step(self, action):
-            return {'value': np.nan}, 0.0, True, {}
+            return {'value': np.nan}, 0.0, True, False, {}
 
     agent = InstanceAgent(TerminalEnv)
     agent.controller = Mock()
@@ -350,6 +449,40 @@ def test_terminal_rollout_uses_zero_bootstrap_without_evaluating_terminal_obs():
 
     assert last_value == 0.0
     agent.estimate_value.assert_called_once_with({'value': 1.0})
+
+
+def test_truncated_rollout_bootstraps_without_marking_transition_terminal():
+    class TruncatedEnv:
+        def __init__(self, p_net, v_net, *args):
+            self.solution = Solution.from_v_net(v_net)
+            self.curr_v_node_id = list(v_net.nodes)[0]
+
+        def reset(self, *, seed=None, options=None):
+            return {'value': 1.0}, {}
+
+        def step(self, action):
+            return {'value': 2.0}, 0.0, False, True, {}
+
+    agent = InstanceAgent(TruncatedEnv)
+    agent.controller = Mock()
+    agent.recorder = Mock()
+    agent.counter = Mock()
+    agent.logger = Mock()
+    agent.config = OmegaConf.create({})
+    agent.device = torch.device('cpu')
+    agent.preprocess_obs = Mock(side_effect=lambda observation, device: observation)
+    agent.select_action = Mock(return_value=(0, np.array(0.0)))
+    agent.estimate_value = Mock(
+        side_effect=[torch.tensor([1.0]), torch.tensor([2.0])]
+    )
+
+    _, buffer, last_value = agent.learn_with_instance({
+        'p_net': make_p_net(),
+        'v_net': make_v_net(),
+    })
+
+    assert buffer.dones == [False]
+    assert last_value == 2.0
 
 
 def test_single_node_v_net_features_have_valid_empty_edges():

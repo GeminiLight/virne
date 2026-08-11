@@ -22,20 +22,25 @@ class OnlineAgent(object):
     def learn_singly(self, env, num_epochs=1, **kwargs):
         # main env
         for epoch_id in range(num_epochs):
-            obs = env.reset()
+            obs, _ = env.reset()
             success_count = 0
             for i in range(env.v_net_simulator.num_v_nets):
                 tensor_obs = self.preprocess_obs(obs, self.device)
                 action, action_logprob = self.select_action(tensor_obs, sample=True)
                 value = self.estimate_value(tensor_obs)
-                next_obs, reward, done, info = env.step(action)
-                self.buffer.add(obs, action, reward, done, action_logprob, value=value)
+                next_obs, reward, terminated, truncated, info = env.step(action)
+                done = terminated or truncated
+                self.buffer.add(obs, action, reward, terminated, action_logprob, value=value)
                 obs = next_obs
                 self.time_step += 1
                 # update parameters
                 if done and self.buffer.size() >= self.batch_size:  # done and 
                     with torch.no_grad():
-                        last_value = float(self.estimate_value(self.preprocess_obs(next_obs, self.device)).detach()[0]) if not done else 0.
+                        last_value = (
+                            float(self.estimate_value(self.preprocess_obs(next_obs, self.device)).detach()[0])
+                            if truncated
+                            else 0.0
+                        )
                     # if self.config.rl.norm_reward:
                         # self.running_stats.update(self.buffer.rewards)
                         # self.buffer.rewards = ((np.array(self.buffer.rewards) - self.running_stats.mean) / (np.sqrt(self.running_stats.var + 1e-9))).tolist()
@@ -54,10 +59,11 @@ class OnlineAgent(object):
 
         pbar = tqdm.tqdm(desc=f'Validate', total=env.v_net_simulator.num_v_nets)
         
-        instance = env.reset(0)
+        instance, _ = env.reset(seed=0)
         while True:
             solution = self.solve(instance)
-            next_instance, _, done, info = env.step(solution)
+            next_instance, _, terminated, truncated, info = env.step(solution)
+            done = terminated or truncated
 
             if pbar is not None: 
                 pbar.update(1)

@@ -55,6 +55,13 @@ This design keeps simulation, feasibility checking, policy architecture, and
 training logic separable. Different RL solvers can therefore share the same
 network scenarios and evaluation pipeline.
 
+Instance-level RL environments follow the Gymnasium 1.3 API: ``reset()``
+returns ``(observation, info)`` and ``step()`` returns ``(observation, reward,
+terminated, truncated, info)``. Virne's solution-building episodes currently
+end through natural termination, so they return ``truncated=False``. Training
+code still keeps both flags distinct so future external time limits can
+bootstrap value estimates correctly.
+
 Run a Minimal Training Check
 ----------------------------
 

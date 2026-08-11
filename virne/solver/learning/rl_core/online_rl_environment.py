@@ -4,10 +4,8 @@
 
 
 from pprint import pprint
-import gym
 import copy
 import numpy as np
-from gym import spaces
 from collections import defaultdict
 from virne.core import BaseEnvironment
 from .rl_enviroment_base import RLBaseEnv
@@ -28,6 +26,10 @@ class OnlineRLEnvBase(BaseEnvironment, RLBaseEnv):
         self.ranked_v_net_nodes = self.v_net.ranked_nodes
         self.v_net_reward = 0
         return 
+
+    def reset(self, *, seed=None, options=None):
+        BaseEnvironment.reset(self, seed=seed)
+        return RLBaseEnv.reset(self, seed=seed, options=options)
 
 
 class PlaceStepRLEnv(OnlineRLEnvBase):
@@ -59,7 +61,7 @@ class PlaceStepRLEnv(OnlineRLEnvBase):
             # Case 1: Node Place Success / Uncompleted
             if node_place_result and len(self.placed_v_net_nodes) < self.v_net.num_nodes:
                 info = {**self.recorder.state, **self.solution.to_dict()}
-                return self.get_observation(), self.compute_reward(info), False, self.get_info(info)
+                return self._make_step_result(self.compute_reward(info), False, info)
             # Case 2: Node Place Failure
             if not node_place_result:
                 self.rollback_for_failure(reason='place')
@@ -90,11 +92,11 @@ class PlaceStepRLEnv(OnlineRLEnvBase):
         deploy_success = record['result']
         deploy_failure = not record['place_result'] or not record['route_result']
         if deploy_success or deploy_failure:
-            done = self.transit_obs()
+            terminated = self.transit_obs()
         else:
-            done = False
+            terminated = False
 
-        return self.get_observation(), reward, done, self.get_info(record)
+        return self._make_step_result(reward, terminated, record)
 
 
 class JointPRStepRLEnv(OnlineRLEnvBase):
@@ -142,7 +144,7 @@ class JointPRStepRLEnv(OnlineRLEnvBase):
                 else:
                     solution_info = self.recorder.counter.count_partial_solution(self.v_net, self.solution)
                     info = {**self.recorder.state, **solution_info}
-                    return self.get_observation(), self.compute_reward(info), False, self.get_info(info)
+                    return self._make_step_result(self.compute_reward(info), False, info)
 
         record = self.recorder.count(self.v_net, self.p_net, self.solution)
         reward = self.compute_reward(record)
@@ -151,11 +153,11 @@ class JointPRStepRLEnv(OnlineRLEnvBase):
 
         # Leave events transition
         if self.solution['early_rejection'] or not place_and_route_result or self.solution['result']:
-            done = self.transit_obs()
+            terminated = self.transit_obs()
         else:
-            done = False
+            terminated = False
 
-        return self.get_observation(), reward, done, self.get_info(record)
+        return self._make_step_result(reward, terminated, record)
 
 
 class NodePairStepRLEnv(JointPRStepRLEnv):
@@ -187,8 +189,8 @@ class SolutionStepRLEnv(OnlineRLEnvBase):
         extra_info = {'v_net_reward': self.v_net_reward, 'cumulative_reward': self.cumulative_reward}
         record = self.add_record(record, extra_info)
 
-        done = self.transit_obs()
-        return self.get_observation(), reward, done, self.get_info(record)
+        terminated = self.transit_obs()
+        return self._make_step_result(reward, terminated, record)
 
     def action_masks(self):
         return self.generate_action_mask()
