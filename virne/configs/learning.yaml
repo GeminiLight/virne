@@ -71,8 +71,24 @@ rl:
   target_kl: null
   gae_lambda: 0.98
   repeat_times: 10
-  # DQN
-  explore_rate: 0.9
+  # Off-policy algorithms for the discrete physical-node action space
+  dqn:
+    replay_capacity: 10000
+    learning_starts: 128
+    target_update_interval: 100
+    epsilon_start: 1.0
+    epsilon_end: 0.1
+    epsilon_decay: 10000
+    gradient_steps_per_transition: 1
+  ddpg:
+    replay_capacity: 10000
+    learning_starts: 128
+    tau: 0.005
+    epsilon_start: 1.0
+    epsilon_end: 0.1
+    epsilon_decay: 10000
+    policy_temperature: 1.0
+    gradient_steps_per_transition: 1
   # Safe RL
   safe_rl:
     srl_cost_budget: 0.2

@@ -95,6 +95,19 @@ class RolloutBuffer:
             main_item_list = getattr(self, item)
             sub_item_list = getattr(buffer, item)
             main_item_list += sub_item_list
+        self.curr_idx = self.size()
+
+    def trim(self, max_size):
+        """Keep only the newest ``max_size`` transitions in the buffer."""
+        if max_size <= 0:
+            raise ValueError(f'max_size must be positive, got {max_size}.')
+        if self.size() <= max_size:
+            return
+        for item in self.all_items:
+            item_list = getattr(self, item)
+            if len(item_list) > max_size:
+                setattr(self, item, item_list[-max_size:])
+        self.curr_idx = self.size()
 
     def compute_returns_and_advantages(self, last_value=0., gamma=0.99, gae_lambda=0.98, method='gae', values=None) -> None:
         """

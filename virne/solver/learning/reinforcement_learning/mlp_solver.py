@@ -18,7 +18,15 @@ from virne.core import Controller, Recorder, Counter, Solution, Logger
 from virne.solver import SolverRegistry
 from virne.solver.learning.rl_policy import MlpActorCritic
 from virne.solver.learning.rl_core import JointPRStepInstanceRLEnv, PlaceStepInstanceRLEnv
-from virne.solver.learning.rl_core.rl_solver import PGSolver, A2CSolver, PPOSolver, A3CSolver
+from virne.solver.learning.rl_core.rl_solver import (
+    A2CSolver,
+    A3CSolver,
+    DDPGSolver,
+    DQNSolver,
+    DoubleDQNSolver,
+    PGSolver,
+    PPOSolver,
+)
 from virne.solver.learning.rl_core.instance_agent import InstanceAgent
 from virne.solver.learning.rl_core.tensor_convertor import TensorConvertor
 from virne.solver.learning.rl_core.policy_builder import PolicyBuilder
@@ -94,14 +102,19 @@ extended_mlp_solvers = [
     {'solver_name': 'pg_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'PgMlpSolver', 'rl_solver_cls': PGSolver},
     {'solver_name': 'ppo_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'PpoMlpSolver', 'rl_solver_cls': PPOSolver},
     {'solver_name': 'a2c_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'A2cMlpSolver', 'rl_solver_cls': A2CSolver},
-    {'solver_name': 'a3c_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'A3cMlpSolver', 'rl_solver_cls': A3CSolver}
+    {'solver_name': 'a3c_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'A3cMlpSolver', 'rl_solver_cls': A3CSolver},
+    {'solver_name': 'dqn_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'DqnMlpSolver', 'rl_solver_cls': DQNSolver},
+    {'solver_name': 'double_dqn_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'DoubleDqnMlpSolver', 'rl_solver_cls': DoubleDQNSolver},
+    {'solver_name': 'ddpg_mlp+', 'policy_key': 'mlp', 'solver_cls_name': 'DdpgMlpSolver', 'rl_solver_cls': DDPGSolver},
 ]
 for solver_info in extended_mlp_solvers:
     # make and register the solver class
     solver_name = solver_info['solver_name']
     policy_key = '_'.join(solver_info['solver_name'].split('_')[1:])[:-1]
-    policy_builder = build_policy
+    base_solver_cls = solver_info['rl_solver_cls']
+    policy_builder = PolicyBuilder.build_mlp_action_policy \
+        if issubclass(base_solver_cls, (DQNSolver, DDPGSolver)) \
+        else build_policy
     obs_as_tensor = TensorConvertor.obs_as_tensor_for_mlp
     instance_env_cls = MlpInstanceEnv
-    base_solver_cls = solver_info['rl_solver_cls']
     make_solver_class(solver_name, instance_env_cls, base_solver_cls, policy_builder, obs_as_tensor)

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from virne.solver.learning.rl_policy.gnn_mlp_policy import DeepEdgeFeatureGATActorCritic
-from ..rl_policy import GcnMlpActorCritic, GatMlpActorCritic, MlpActorCritic, CnnActorCritic, AttActorCritic
+from ..rl_policy import GcnMlpActorCritic, GatMlpActorCritic, MlpActionPolicy, MlpActorCritic, CnnActorCritic, AttActorCritic
 from ..rl_policy import BiGcnActorCritic, BiGatActorCritic, BiDeepEdgeFeatureGatActorCritic
 from ..utils import get_pyg_data
 from ..obs_handler import POSITIONAL_EMBEDDING_DIM, P_NODE_STATUS_DIM, V_NODE_STATUS_DIM, V_NET_STATUS_DIM
@@ -82,6 +82,19 @@ class PolicyBuilder:
         p_net_x_dim = get_p_net_x_dim(agent.config)
         v_node_feature_dim = get_v_node_x_dim(agent.config)
         policy = MlpActorCritic(
+            feature_dim=p_net_x_dim + v_node_feature_dim,
+            action_dim=agent.config.simulation.p_net_setting_num_nodes,
+            **PolicyBuilder.get_general_nn_config(agent.config),
+        ).to(agent.device)
+        optimizer = OptimizerBuilder.build_optimizer(agent.config, policy)
+        return policy, optimizer
+
+    @staticmethod
+    def build_mlp_action_policy(agent: Any) -> Tuple[nn.Module, torch.optim.Optimizer]:
+        """Build per-node action scores for DQN and discrete DDPG."""
+        p_net_x_dim = get_p_net_x_dim(agent.config)
+        v_node_feature_dim = get_v_node_x_dim(agent.config)
+        policy = MlpActionPolicy(
             feature_dim=p_net_x_dim + v_node_feature_dim,
             action_dim=agent.config.simulation.p_net_setting_num_nodes,
             **PolicyBuilder.get_general_nn_config(agent.config),
