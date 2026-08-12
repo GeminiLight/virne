@@ -6,6 +6,7 @@
 import os
 import csv
 import copy
+import math
 import time
 from collections.abc import Mapping
 from omegaconf import OmegaConf, open_dict
@@ -223,6 +224,43 @@ class RLSolver(Solver):
         with torch.no_grad():
             estimated_value = self.policy.evaluate(observation).squeeze(-1).detach().cpu().item()
         return estimated_value
+
+    def calculate_fixed_advantages(self, returns, rollout_values):
+        """Calculate policy advantages from values frozen during rollout collection."""
+        if len(rollout_values) != returns.numel():
+            raise ValueError(
+                'Expected one rollout value per return, but got '
+                f'{len(rollout_values)} values and {returns.numel()} returns.'
+            )
+        old_values = torch.tensor(
+            [
+                float(value.detach().cpu().reshape(-1)[0])
+                if isinstance(value, torch.Tensor)
+                else float(value)
+                for value in rollout_values
+            ],
+            dtype=returns.dtype,
+            device=returns.device,
+        )
+        return returns - old_values
+
+    def normalize_advantages(self, advantages):
+        if self.config.rl.norm_advantage and advantages.numel() > 1:
+            return (
+                advantages - advantages.mean()
+            ) / (advantages.std() + 1e-9)
+        return advantages
+
+    def calculate_update_sample_times(self):
+        """Return the mini-batch updates needed for the configured PPO epochs."""
+        if self.buffer.size() <= 0:
+            raise ValueError('Cannot update a policy from an empty rollout buffer.')
+        if self.batch_size <= 0:
+            raise ValueError(f'batch_size must be positive, got {self.batch_size}.')
+        if self.repeat_times < 0:
+            raise ValueError(f'repeat_times must be non-negative, got {self.repeat_times}.')
+        target_samples = self.buffer.size() * self.repeat_times
+        return max(1, math.ceil(target_samples / self.batch_size))
 
     def to_sub_solver(self):
         temp_dict = {}
@@ -480,7 +518,7 @@ class A2CSolver(RLSolver):
         actor_loss = - (action_logprobs * advantages).mean()
         critic_loss = F.mse_loss(returns, values)
         entropy_loss = dist_entropy.mean()
-        loss = actor_loss + self.coef_critic_loss * critic_loss + self.coef_entropy_loss * entropy_loss
+        loss = actor_loss + self.coef_critic_loss * critic_loss - self.coef_entropy_loss * entropy_loss
 
         grad_clipped = self.update_grad(loss)
 
@@ -525,8 +563,6 @@ class PPOSolver(RLSolver):
     def update(self, ):
         # assert self.buffer.size() >= self.batch_size
         device = torch.device('cpu')
-        # copy the old policy parameters
-        old_policy = copy.deepcopy(self.policy)
 
         batch_observations = self.preprocess_obs(self.buffer.observations, device)
         # # batch_actions = torch.LongTensor(np.concatenate(self.buffer.actions, axis=0)).to(self.device)
@@ -536,7 +572,11 @@ class PPOSolver(RLSolver):
         batch_returns = torch.FloatTensor(self.buffer.returns)
         if self.config.rl.norm_reward:
             batch_returns = (batch_returns - batch_returns.mean()) / (batch_returns.std() + 1e-9)
-        sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        sample_times = self.calculate_update_sample_times()
         for i in range(sample_times):
             sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
             # observations  = get_observations_sample(batch_observations, sample_indices, self.device)
@@ -544,15 +584,13 @@ class PPOSolver(RLSolver):
             observations = self.preprocess_obs(sample_obersevations, self.device)
             actions = batch_actions[sample_indices].to(self.device)
             returns = batch_returns[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             
-            # calculate advantage
-            advantages = returns - values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-  
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
@@ -625,21 +663,24 @@ class ARPPOSolver(RLSolver):
         mean_batch_rewards = batch_rewards.mean()
 
         batch_returns = torch.FloatTensor(self.buffer.returns)
-        sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        sample_times = self.calculate_update_sample_times()
         for i in range(sample_times):
             sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
             observations = get_observations_sample(batch_observations, sample_indices, device=self.device)
             actions = batch_actions[sample_indices].to(self.device)
             returns = batch_returns[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # masks = batch_masks[sample_indices].to(self.device) if batch_masks is not None else None
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             
-            # calculate advantage
-            advantages = returns - values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages

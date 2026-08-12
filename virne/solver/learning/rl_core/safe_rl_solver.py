@@ -77,8 +77,12 @@ class FixedPenaltyPPOSolver(PPOSolver, SafeRLSolver):
         batch_costs = torch.FloatTensor(self.buffer.costs)
         batch_cost_returns = torch.FloatTensor(self.buffer.cost_returns)
         batch_returns = torch.FloatTensor(self.buffer.returns)
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        ) - batch_cost_returns * self.penalty_params.detach().cpu()
         # update the policy params repeatly
-        sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
+        sample_times = self.calculate_update_sample_times()
         for i in range(sample_times):
             sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
             sample_obersevations = [self.buffer.observations[i] for i in sample_indices]
@@ -86,13 +90,12 @@ class FixedPenaltyPPOSolver(PPOSolver, SafeRLSolver):
             actions = batch_actions[sample_indices].to(self.device)
             returns = batch_returns[sample_indices].to(self.device)
             cost_returns = batch_cost_returns[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
-            # calculate advantage
-            advantages = returns - cost_returns * self.penalty_params - values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
@@ -157,6 +160,14 @@ class LagrangianPPOSolver(PPOSolver, SafeRLSolver):
         batch_costs = torch.FloatTensor(self.buffer.costs)
         batch_cost_returns = torch.FloatTensor(self.buffer.cost_returns)
         batch_returns = torch.FloatTensor(self.buffer.returns)
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        batch_cost_advantages = self.calculate_fixed_advantages(
+            batch_cost_returns,
+            self.buffer.cost_values,
+        )
         # only optimize the penalty param once
         penalty_loss = - self.penalty_params * (avg_cost - self.cost_budget)
         self.optimizer.zero_grad()
@@ -165,7 +176,7 @@ class LagrangianPPOSolver(PPOSolver, SafeRLSolver):
         cur_penalty = softplus(self.penalty_params).item()
         self.logger.info('loss: ', penalty_loss.item(), 'penalty_params: ', self.penalty_params, 'avg_cost: ', avg_cost)
         # update the policy params repeatly
-        sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
+        sample_times = self.calculate_update_sample_times()
         for i in range(sample_times):
             sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
             sample_obersevations = [self.buffer.observations[i] for i in sample_indices]
@@ -173,17 +184,17 @@ class LagrangianPPOSolver(PPOSolver, SafeRLSolver):
             actions = batch_actions[sample_indices].to(self.device)
             returns = batch_returns[sample_indices].to(self.device)
             cost_returns = batch_cost_returns[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
+            cost_advantages = self.normalize_advantages(
+                batch_cost_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices]
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             cost_values = self.estimate_cost_with_grad(observations)
             
-            # calculate advantage
-            advantages = returns - values.detach()
-            cost_advantages = cost_returns - cost_values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-                cost_advantages = (cost_advantages - cost_advantages.mean()) / (cost_advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
@@ -263,6 +274,14 @@ class NeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
         batch_cost_returns = torch.FloatTensor(self.buffer.cost_returns)
         batch_returns = torch.FloatTensor(self.buffer.returns)
         batch_cost_violations = batch_cost_returns - self.cost_budget
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        batch_cost_advantages = self.calculate_fixed_advantages(
+            batch_cost_returns,
+            self.buffer.cost_values,
+        )
         # update the policy params repeatly
         # sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         sample_times = self.repeat_times
@@ -272,16 +291,16 @@ class NeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
             observations = self.preprocess_obs(sample_obersevations, self.device)
             actions, returns = batch_actions[sample_indices].to(self.device), batch_returns[sample_indices].to(self.device)
             cost_returns = batch_cost_returns[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
+            cost_advantages = self.normalize_advantages(
+                batch_cost_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             cost_values = self.estimate_cost_with_grad(observations)
-            # calculate advantage
-            advantages = returns - values.detach()
-            cost_advantages = (cost_returns - self.cost_budget) - (cost_values.detach() - self.cost_budget)
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-                cost_advantages = (cost_advantages - cost_advantages.mean()) / (cost_advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
@@ -386,6 +405,14 @@ class RobustNeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
         import pdb; pdb.set_trace()
         self.logger.info(f'feasibility_flags: {batch_feasibiliy_flags.mean().item():.4f}')
         batch_cost_violations = batch_cost_returns - self.cost_budget
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        batch_cost_advantages = self.calculate_fixed_advantages(
+            batch_cost_returns,
+            self.buffer.cost_values,
+        )
         # update the policy params repeatly
         # sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         sample_times = self.repeat_times
@@ -396,16 +423,16 @@ class RobustNeuralLagrangianPPOSolver(PPOSolver, SafeRLSolver):
             actions, returns = batch_actions[sample_indices].to(self.device), batch_returns[sample_indices].to(self.device)
             cost_returns = batch_cost_returns[sample_indices].to(self.device)
             feasibility_flags = batch_feasibiliy_flags[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
+            cost_advantages = self.normalize_advantages(
+                batch_cost_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             cost_values = self.estimate_cost_with_grad(observations)
-            # calculate advantage
-            advantages = returns - values.detach()
-            cost_advantages = (cost_returns - self.cost_budget) - (cost_values.detach() - self.cost_budget)
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-                cost_advantages = (cost_advantages - cost_advantages.mean()) / (cost_advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
@@ -514,6 +541,14 @@ class RewardCPOSolver(PPOSolver, SafeRLSolver):
         batch_cost_violations = batch_cost_returns - batch_cost_budgets
 
         batch_returns = torch.FloatTensor(self.buffer.returns)
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        batch_cost_advantages = self.calculate_fixed_advantages(
+            batch_cost_returns,
+            self.buffer.cost_values,
+        )
         # update the policy params repeatly
         # sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         sample_times = self.repeat_times
@@ -524,17 +559,17 @@ class RewardCPOSolver(PPOSolver, SafeRLSolver):
             actions, returns = batch_actions[sample_indices].to(self.device), batch_returns[sample_indices].to(self.device)
             cost_returns = batch_cost_returns[sample_indices].to(self.device)
             cost_budgets = batch_cost_budgets[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
+            cost_advantages = self.normalize_advantages(
+                batch_cost_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             cost_values = self.estimate_cost_with_grad(observations)
             
-            # calculate advantage
-            advantages = returns - values.detach()
-            cost_advantages = cost_returns - cost_values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-                cost_advantages = (cost_advantages - cost_advantages.mean()) / (cost_advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
@@ -640,6 +675,14 @@ class AdaptiveStateWiseSafePPOSolver(PPOSolver, SafeRLSolver):
         batch_cost_returns = torch.FloatTensor(self.buffer.cost_returns)
         batch_costs = batch_cost_returns
         batch_returns = torch.FloatTensor(self.buffer.returns)
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        batch_cost_advantages = self.calculate_fixed_advantages(
+            batch_costs,
+            self.buffer.cost_values,
+        )
         # update the policy params repeatly
         # sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         sample_times = self.repeat_times
@@ -649,6 +692,12 @@ class AdaptiveStateWiseSafePPOSolver(PPOSolver, SafeRLSolver):
             actions = batch_actions[sample_indices].to(self.device)
             returns = batch_returns[sample_indices].to(self.device)
             costs = batch_costs[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
+            cost_advantages = self.normalize_advantages(
+                batch_cost_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
@@ -668,11 +717,6 @@ class AdaptiveStateWiseSafePPOSolver(PPOSolver, SafeRLSolver):
             
             # Official
             # calculate advantage
-            advantages = returns - values.detach()
-            cost_advantages = costs - cost_values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-                cost_advantages = (cost_advantages - cost_advantages.mean()) / (cost_advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages

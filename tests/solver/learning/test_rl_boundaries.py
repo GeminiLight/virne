@@ -29,7 +29,7 @@ from virne.solver.learning.rl_core.instance_rl_environment import (
     NodeSlotsStepInstanceRLEnv,
 )
 from virne.solver.learning.rl_core.rl_enviroment_base import RLBaseEnv
-from virne.solver.learning.rl_core.rl_solver import RLSolver
+from virne.solver.learning.rl_core.rl_solver import A2CSolver, PPOSolver, RLSolver
 
 
 NODE_ATTRS = [
@@ -231,6 +231,132 @@ def test_terminal_gae_characterization_values_are_stable():
 
     np.testing.assert_allclose(buffer.advantages, [2.12, 1.0])
     np.testing.assert_allclose(buffer.returns, [2.62, 2.0])
+
+
+def test_a2c_entropy_is_a_bonus_when_minimizing_the_loss():
+    solver = A2CSolver.__new__(A2CSolver)
+    solver.buffer = RolloutBuffer()
+    solver.buffer.observations = [{}, {}]
+    solver.buffer.actions = [0, 1]
+    solver.buffer.returns = [1.0, 2.0]
+    solver.preprocess_obs = lambda observations, device: observations
+    solver.device = torch.device('cpu')
+    solver.evaluate_actions = Mock(return_value=(
+        torch.tensor([1.0, 2.0]),
+        torch.tensor([0.0, 0.0]),
+        torch.tensor([0.4, 0.6]),
+        {},
+    ))
+    solver.coef_critic_loss = 0.5
+    solver.coef_entropy_loss = 0.01
+    solver.config = OmegaConf.create({
+        'rl': {'norm_advantage': False},
+        'training': {'distributed_training': False},
+    })
+    solver.update_grad = Mock(return_value=torch.tensor(0.0))
+    solver.optimizer = SimpleNamespace(defaults={'lr': 0.001})
+    solver.logger = Mock()
+    solver.lr_scheduler = None
+    solver.update_time = 0
+
+    solver.update()
+
+    minimized_loss = solver.update_grad.call_args.args[0]
+    assert minimized_loss.item() == pytest.approx(-0.005)
+
+
+def make_minimal_ppo_solver(current_values):
+    class PolicyThatMustNotBeCopied:
+        def __deepcopy__(self, memo):
+            raise AssertionError('PPO update must not copy an unused old policy')
+
+    solver = PPOSolver.__new__(PPOSolver)
+    solver.buffer = RolloutBuffer()
+    for index, (rollout_value, return_value) in enumerate(
+        zip([1.0, 2.0], [3.0, 5.0], strict=True)
+    ):
+        solver.buffer.add(
+            {'index': index},
+            0,
+            0.0,
+            True,
+            np.array([0.0], dtype=np.float32),
+            value=rollout_value,
+        )
+        solver.buffer.returns.append(return_value)
+    solver.preprocess_obs = lambda observations, device: observations
+    solver.device = torch.device('cpu')
+    solver.policy = PolicyThatMustNotBeCopied()
+    solver.evaluate_actions = Mock(return_value=(
+        torch.tensor(current_values, dtype=torch.float32),
+        torch.tensor([0.2, -0.1]),
+        torch.zeros(2),
+        {},
+    ))
+    solver.batch_size = 2
+    solver.repeat_times = 0
+    solver.eps_clip = 0.2
+    solver.coef_critic_loss = 0.0
+    solver.coef_entropy_loss = 0.0
+    solver.coef_mask_loss = 0.0
+    solver.criterion_critic = torch.nn.MSELoss()
+    solver.config = OmegaConf.create({
+        'rl': {
+            'norm_reward': False,
+            'norm_advantage': False,
+            'target_kl': None,
+        },
+        'training': {
+            'distributed_training': False,
+            'log_interval': 1,
+        },
+    })
+    solver.update_grad = Mock(return_value=torch.tensor(0.0))
+    solver.logger = Mock()
+    solver.lr_scheduler = None
+    solver.update_time = 0
+    return solver
+
+
+def test_ppo_actor_advantages_do_not_drift_with_current_critic(monkeypatch):
+    monkeypatch.setattr(
+        torch,
+        'randint',
+        lambda *args, **kwargs: torch.tensor([0, 1]),
+    )
+    actor_losses = []
+    for current_values in ([10.0, 20.0], [-10.0, -20.0]):
+        solver = make_minimal_ppo_solver(current_values)
+
+        solver.update()
+
+        actor_losses.append(solver.logger.log.call_args.kwargs['data']['loss/actor_loss'])
+
+    np.testing.assert_allclose(actor_losses[0], actor_losses[1])
+
+
+@pytest.mark.parametrize(
+    ('buffer_size', 'batch_size', 'repeat_times', 'expected_updates'),
+    [
+        (128, 128, 10, 10),
+        (256, 128, 10, 20),
+        (129, 128, 10, 11),
+        (32, 128, 0, 1),
+    ],
+)
+def test_ppo_update_count_uses_ceiling_without_an_extra_divisible_batch(
+    buffer_size,
+    batch_size,
+    repeat_times,
+    expected_updates,
+):
+    solver = PPOSolver.__new__(PPOSolver)
+    solver.buffer = Mock()
+    solver.buffer.size.return_value = buffer_size
+    solver.batch_size = batch_size
+    solver.repeat_times = repeat_times
+
+    assert solver.calculate_update_sample_times() == expected_updates
 
 
 def test_sync_vector_environment_uses_gymnasium_reset_and_step_contracts():
