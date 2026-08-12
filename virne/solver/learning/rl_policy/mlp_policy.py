@@ -14,6 +14,25 @@ class MlpActorCritic(BaseActorCritic):
         self.critic = Critic(feature_dim, action_dim, num_layers, embedding_dim, dropout_prob, batch_norm)
 
 
+class MlpActionPolicy(nn.Module):
+    """Per-physical-node action scores for discrete off-policy solvers."""
+
+    def __init__(self, feature_dim, action_dim, num_layers=3, embedding_dim=128,
+                 dropout_prob=0., batch_norm=False, **kwargs):
+        super().__init__()
+        self.actor = Actor(
+            feature_dim,
+            action_dim,
+            num_layers,
+            embedding_dim,
+            dropout_prob,
+            batch_norm,
+        )
+
+    def act(self, obs):
+        return self.actor(obs)
+
+
 class Actor(nn.Module):
     def __init__(self, feature_dim, action_dim, num_layers=3, embedding_dim=128, dropout_prob=0., batch_norm=False, **kwargs):
         super(Actor, self).__init__()

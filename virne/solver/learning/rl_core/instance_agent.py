@@ -127,7 +127,8 @@ class InstanceAgent(object):
                 feature_time = time_b - time_a
                 # print(feature_time)
 
-            value = self.estimate_value(tensor_instance_obs)
+            value = 0.0 if getattr(self, 'is_off_policy', False) \
+                else self.estimate_value(tensor_instance_obs)
             (
                 next_instance_obs,
                 instance_reward,
@@ -162,6 +163,14 @@ class InstanceAgent(object):
         return solution, instance_buffer, last_value
 
     def merge_instance_experience(self, instance, solution, instance_buffer, last_value):
+        if getattr(self, 'is_off_policy', False):
+            # Off-policy algorithms learn from both successful and failed
+            # transitions and keep them across updates as replay memory.
+            self.buffer.merge(instance_buffer)
+            self.buffer.trim(self.replay_capacity)
+            self.time_step += 1
+            return self.buffer
+
         ### -- if_use_negative_sample -- ##
         if self.config.rl.if_use_negative_sample:
             baseline_solution_info = self.get_baseline_solution_info(instance, self.if_use_baseline_solver)
@@ -203,7 +212,10 @@ class InstanceAgent(object):
                 # update parameters
                 # env.v_net.num_nodes | env.v_net_simulator.v_nets[0].num_nodes
                 if self.buffer.size() >= self.target_steps:
-                    loss = self.update()
+                    update_steps = self.get_update_steps(instance_buffer) \
+                        if hasattr(self, 'get_update_steps') else 1
+                    for _ in range(update_steps):
+                        loss = self.update()
 
                 instance, reward, done, info = env.step(solution)
 

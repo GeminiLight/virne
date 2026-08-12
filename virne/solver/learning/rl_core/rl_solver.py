@@ -314,8 +314,7 @@ class RLSolver(Solver):
 
     def save_model(self, checkpoint_fname):
         checkpoint_fname = os.path.join(self.model_dir, checkpoint_fname)
-        # torch.save(self.policy.state_dict(), checkpoint_fname)
-        torch.save({
+        checkpoint = {
             'checkpoint_version': 2,
             'feature_schema_version': int(OmegaConf.select(
                 self.config,
@@ -330,8 +329,18 @@ class RLSolver(Solver):
             'policy': self.policy.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             # 'lr_scheduler_state_dict': self.lr_scheduler.state_dict()
-        }, checkpoint_fname)
+        }
+        checkpoint.update(self.get_additional_checkpoint_state())
+        torch.save(checkpoint, checkpoint_fname)
         self.logger.critical(f'Save model to {checkpoint_fname}\n')
+
+    def get_additional_checkpoint_state(self):
+        """Return algorithm-specific state stored alongside the main policy."""
+        return {}
+
+    def load_additional_checkpoint_state(self, checkpoint):
+        """Restore algorithm-specific state from a checkpoint."""
+        return None
 
     def load_model(self, checkpoint_path):
         print('Attempting to load the pretrained model')
@@ -358,6 +367,7 @@ class RLSolver(Solver):
             self.policy.load_state_dict(policy_state, strict=True)
             if optimizer_state is not None:
                 self.optimizer.load_state_dict(optimizer_state)
+            self.load_additional_checkpoint_state(checkpoint)
 
             if feature_schema_version is None:
                 feature_schema_version = 1
@@ -722,253 +732,419 @@ class ARPPOSolver(RLSolver):
 
 
 class DPGSolver(RLSolver):
-
-    """
-
-    """
-    
+    """Placeholder for continuous deterministic policy gradients."""
 
 
-class DDPGSolver(RLSolver):
+class _DiscreteOffPolicySolver(RLSolver):
+    """Shared replay and exploration mechanics for discrete off-policy RL."""
 
-    def __init__(self, controller, recorder, counter, logger, config, make_policy, obs_as_tensor, **kwargs):
-        super(DDPGSolver, self).__init__(controller, recorder, counter, logger, config, make_policy, obs_as_tensor, **kwargs)
-        self.repeat_times = kwargs.get('repeat_times', 10)
-        self.gae_lambda = kwargs.get('gae_lambda', 0.98)
-        self.eps_clip = kwargs.get('eps_clip', 0.2)
+    algorithm_name = None
 
-    def update(self, ):
-        # assert self.buffer.size() >= self.batch_size
-        device = torch.device('cpu')
+    def __init__(self, controller, recorder, counter, logger, config,
+                 make_policy, obs_as_tensor, **kwargs):
+        super().__init__(
+            controller,
+            recorder,
+            counter,
+            logger,
+            config,
+            make_policy,
+            obs_as_tensor,
+            **kwargs,
+        )
+        if self.config.training.distributed_training:
+            raise NotImplementedError(
+                'DQN and discrete DDPG do not support distributed training.'
+            )
 
-        batch_observations = self.preprocess_obs(self.buffer.observations, device)
-        # # batch_actions = torch.LongTensor(np.concatenate(self.buffer.actions, axis=0)).to(self.device)
-        batch_actions = torch.LongTensor(np.array(self.buffer.actions)).to(self.device)
-        batch_old_action_logprobs = torch.FloatTensor(np.concatenate(self.buffer.logprobs, axis=0))
-        batch_rewards = torch.FloatTensor(self.buffer.rewards)
-        batch_returns = torch.FloatTensor(self.buffer.returns)
-        if self.config.rl.norm_reward:
-            batch_returns = (batch_returns - batch_returns.mean()) / (batch_returns.std() + 1e-9)
-        sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
-        for i in range(sample_times):
-            sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
-            # observations  = get_observations_sample(batch_observations, sample_indices, self.device)
-            sample_obersevations = [self.buffer.observations[i] for i in sample_indices]
-            observations = self.preprocess_obs(sample_obersevations, self.device)
-            actions = batch_actions[sample_indices].to(self.device)
-            returns = batch_returns[sample_indices].to(self.device)
-            old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
-            # evaluate actions and observations
-            values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
-            
-            # calculate advantage
-            advantages = returns - values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-  
-            ratio = torch.exp(action_logprobs - old_action_logprobs)
-            surr1 = ratio * advantages
-            surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
-            actor_loss = - torch.min(surr1, surr2).mean()
-            critic_loss = self.criterion_critic(returns, values)
-            entropy_loss = dist_entropy.mean()
+        self.is_off_policy = True
+        self.replay_capacity = int(self._parameter(
+            'replay_capacity', 10000, kwargs
+        ))
+        self.learning_starts = int(self._parameter(
+            'learning_starts', self.batch_size, kwargs
+        ))
+        self.gradient_steps_per_transition = int(self._parameter(
+            'gradient_steps_per_transition', 1, kwargs
+        ))
+        self.epsilon_start = float(self._parameter(
+            'epsilon_start', 1.0, kwargs
+        ))
+        self.epsilon_end = float(self._parameter(
+            'epsilon_end', 0.1, kwargs
+        ))
+        self.epsilon_decay = float(self._parameter(
+            'epsilon_decay', 10000, kwargs
+        ))
+        if self.replay_capacity < self.batch_size:
+            raise ValueError(
+                'replay_capacity must be at least batch_size, got '
+                f'{self.replay_capacity} < {self.batch_size}.'
+            )
+        if self.learning_starts < 0:
+            raise ValueError(
+                f'learning_starts must be non-negative, got {self.learning_starts}.'
+            )
+        if self.gradient_steps_per_transition <= 0:
+            raise ValueError('gradient_steps_per_transition must be positive.')
+        if self.epsilon_decay <= 0:
+            raise ValueError(f'epsilon_decay must be positive, got {self.epsilon_decay}.')
+        if not 0 <= self.epsilon_end <= self.epsilon_start <= 1:
+            raise ValueError(
+                'Expected 0 <= epsilon_end <= epsilon_start <= 1, got '
+                f'{self.epsilon_end} and {self.epsilon_start}.'
+            )
 
-            mask_loss = other.get('mask_actions_probs', 0)
-            prediction_loss = other.get('prediction_loss', 0)
-
-            loss = actor_loss + self.coef_critic_loss * critic_loss - self.coef_entropy_loss * entropy_loss + self.coef_mask_loss * mask_loss + prediction_loss
-            # update parameters
-            grad_clipped = self.update_grad(loss)
-        
-            if self.update_time % self.config.training.log_interval == 0:
-                info = {
-                    'lr': self.optimizer.defaults['lr'],
-                    'loss/loss': loss.detach().cpu().numpy(),
-                    'loss/actor_loss': actor_loss.detach().cpu().numpy(),
-                    'loss/critic_loss': critic_loss.detach().cpu().numpy(),
-                    'loss/entropy_loss': entropy_loss.detach().cpu().numpy(),
-                    'value/logprob': action_logprobs.detach().mean().cpu().numpy(),
-                    'value/old_action_logprob': old_action_logprobs.mean().cpu().numpy(),
-                    'value/value': values.detach().mean().cpu().numpy(),
-                    'value/return': returns.mean().cpu().numpy(),
-                    'value/advantage': advantages.detach().mean().cpu().numpy(),
-                    'value/reward': batch_rewards.mean().cpu().numpy(),
-                    'grad/grad_clipped': grad_clipped.detach().cpu().numpy()
-                }
-                self.logger.log(data=info, step=self.update_time)
-
-            self.update_time += 1
-
-        self.lr_scheduler.step() if self.lr_scheduler is not None else None
-        
-        self.buffer.clear()
-
-        if self.config.training.distributed_training: self.sync_parameters()
-        return loss.detach()
-
-
-class DQNSolver(RLSolver):
-    
-    def __init__(self, controller, recorder, counter, logger, config, make_policy, obs_as_tensor, **kwargs):
-        super(DQNSolver, self).__init__(controller, recorder, counter, logger, config, make_policy, obs_as_tensor, **kwargs)
-        # DQN-specific parameters
-        self.target_update_interval = kwargs.get('target_update_interval', 100)
-        self.epsilon_start = kwargs.get('epsilon_start', 1.0)
-        self.epsilon_end = kwargs.get('epsilon_end', 0.1)
-        self.epsilon_decay = kwargs.get('epsilon_decay', 10000)
-        self.buffer_size = kwargs.get('buffer_size', 10000)
-        self.batch_size = kwargs.get('batch_size', 64)
-        self.config.rl.gamma = kwargs.get('gamma', 0.99)
-        self.lr = kwargs.get('lr', 0.001)
-        
-        self.policy, self.optimizer = self.make_policy(self)
-        self.target_policy = copy.deepcopy(self.policy)
-        self.replay_buffer = RolloutBuffer()
-        self.epsilon = self.epsilon_start
+        self.target_steps = max(self.batch_size, self.learning_starts)
         self.steps_done = 0
-        self.target_steps = self.batch_size
+        self.epsilon = self.epsilon_start
+
+    def _parameter(self, name, default, kwargs):
+        if name in kwargs:
+            return kwargs[name]
+        return OmegaConf.select(
+            self.config,
+            f'rl.{self.algorithm_name}.{name}',
+            default=default,
+        )
 
     def _calc_epsilon(self):
-        return self.epsilon_end + (self.epsilon_start - self.epsilon_end) * \
-                            np.exp(-1. * (self.steps_done) / self.epsilon_decay)
+        return float(
+            self.epsilon_end
+            + (self.epsilon_start - self.epsilon_end)
+            * np.exp(-float(self.steps_done) / self.epsilon_decay)
+        )
+
+    def _masked_scores(self, scores, observation):
+        if self.config.rl.mask_actions and 'action_mask' in observation:
+            return apply_mask_to_logit(scores, observation['action_mask'])
+        return scores
+
+    def _greedy_action(self, observation):
+        with torch.no_grad():
+            scores = self._masked_scores(
+                self.policy.act(observation), observation
+            )
+        return int(scores.argmax(dim=-1).reshape(-1)[0].item())
+
+    def _random_action(self, observation):
+        if self.config.rl.mask_actions and 'action_mask' in observation:
+            mask = observation['action_mask'].detach().bool().reshape(-1)
+            candidates = torch.nonzero(mask, as_tuple=False).reshape(-1)
+            if candidates.numel() == 0:
+                raise ValueError('Cannot sample from an empty action mask.')
+            index = torch.randint(candidates.numel(), (1,), device=candidates.device)
+            return int(candidates[index].item())
+        num_actions = self.policy.act(observation).shape[-1]
+        return int(np.random.randint(0, num_actions))
 
     def select_action(self, observation, sample=True):
-        """
-        Epsilon-greedy action selection.
-        """
-        def greedy_action(observation):
-            with torch.no_grad():
-                action_q_values = self.policy.act(observation)
-                if 'action_mask' in observation and self.config.rl.mask_actions and self.config.rl.maskable_policy:
-                    action_q_values = apply_mask_to_logit(action_q_values, observation['action_mask'])
-                action = action_q_values.argmax().item()
-            return action
-
         if sample:
             self.steps_done += 1
             self.epsilon = self._calc_epsilon()
-            if np.random.rand() < self.epsilon:
-                # Random action
-                action = np.random.randint(0, self.p_net_setting_num_nodes)
-            else:
-                action = greedy_action(observation)
+            action = self._random_action(observation) \
+                if np.random.random() < self.epsilon \
+                else self._greedy_action(observation)
         else:
-            action = greedy_action(observation)
+            action = self._greedy_action(observation)
+        return action, np.zeros((1, 1), dtype=np.float32)
 
-        zero_logprob = np.zeros((1, 1), dtype=np.float32)
-        return action, zero_logprob
+    def get_update_steps(self, instance_buffer):
+        return max(
+            1,
+            instance_buffer.size() * self.gradient_steps_per_transition,
+        )
 
+    def _sample_replay(self):
+        if self.buffer.size() < self.batch_size:
+            raise ValueError(
+                f'Need at least {self.batch_size} replay transitions, got '
+                f'{self.buffer.size()}.'
+            )
+        indices = torch.randint(
+            self.buffer.size(), size=(self.batch_size,)
+        ).tolist()
+        observations = self.preprocess_obs(
+            [self.buffer.observations[index] for index in indices],
+            self.device,
+        )
+        next_observations = self.preprocess_obs(
+            [self.buffer.next_observations[index] for index in indices],
+            self.device,
+        )
+        actions = torch.as_tensor(
+            [self.buffer.actions[index] for index in indices],
+            dtype=torch.long,
+            device=self.device,
+        )
+        rewards = torch.as_tensor(
+            [self.buffer.rewards[index] for index in indices],
+            dtype=torch.float32,
+            device=self.device,
+        )
+        dones = torch.as_tensor(
+            [self.buffer.dones[index] for index in indices],
+            dtype=torch.float32,
+            device=self.device,
+        )
+        return observations, actions, rewards, dones, next_observations
+
+    @staticmethod
+    def _freeze_target(network):
+        network.eval()
+        for parameter in network.parameters():
+            parameter.requires_grad_(False)
+
+
+class DQNSolver(_DiscreteOffPolicySolver):
+    """Deep Q-Network with persistent replay and a hard target network."""
+
+    algorithm_name = 'dqn'
+
+    def __init__(self, controller, recorder, counter, logger, config,
+                 make_policy, obs_as_tensor, **kwargs):
+        super().__init__(
+            controller,
+            recorder,
+            counter,
+            logger,
+            config,
+            make_policy,
+            obs_as_tensor,
+            **kwargs,
+        )
+        self.target_update_interval = int(self._parameter(
+            'target_update_interval', 100, kwargs
+        ))
+        if self.target_update_interval <= 0:
+            raise ValueError('target_update_interval must be positive.')
+        self.target_policy = copy.deepcopy(self.policy).to(self.device)
+        self._freeze_target(self.target_policy)
+
+    def _next_q_values(self, next_observations):
+        target_scores = self._masked_scores(
+            self.target_policy.act(next_observations), next_observations
+        )
+        return target_scores.max(dim=-1).values
 
     def update(self):
-        """
-        Update the Q-network based on a batch of experiences.
-        """
-        # if self.replay_buffer.size() < self.batch_size:
-            # return
-        batch_actions = torch.LongTensor(np.array(self.buffer.actions)).to(self.device)
-        batch_rewards = torch.FloatTensor(self.buffer.rewards)
-        batch_dones = torch.FloatTensor(self.buffer.dones)
-        sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
-        # observations  = get_observations_sample(batch_observations, sample_indices, self.device)
-        sample_obersevations = [self.buffer.observations[i] for i in sample_indices]
-        observations = self.preprocess_obs(sample_obersevations, self.device)
-        sample_next_obersevations = [self.buffer.next_observations[i] for i in sample_indices]
-        next_observations = self.preprocess_obs(sample_next_obersevations, self.device)
-        actions = batch_actions[sample_indices].to(self.device)
-        rewards = batch_rewards[sample_indices].to(self.device)
-        dones = batch_dones[sample_indices].to(self.device)
-
-        # Compute current Q values
-        q_values = self.policy.act(observations).gather(1, actions.unsqueeze(-1)).squeeze(-1)
-
-        # Compute target Q values
+        observations, actions, rewards, dones, next_observations = \
+            self._sample_replay()
+        q_values = self.policy.act(observations).gather(
+            1, actions.unsqueeze(-1)
+        ).squeeze(-1)
         with torch.no_grad():
-            max_next_q_values = self.target_policy.act(next_observations).max(dim=1)[0]
-            target_q_values = rewards + self.config.rl.gamma * max_next_q_values * (1 - dones)
-        # Compute loss
-        loss = F.mse_loss(q_values, target_q_values)
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.config.rl.max_grad_norm)
-        self.optimizer.step()
+            next_q_values = self._next_q_values(next_observations)
+            target_q_values = rewards + (
+                self.config.rl.gamma * next_q_values * (1.0 - dones)
+            )
 
-        # Periodically update the target network
+        loss = F.smooth_l1_loss(q_values, target_q_values)
+        grad_clipped = self.update_grad(loss)
+        self.update_time += 1
         if self.update_time % self.target_update_interval == 0:
             self.target_policy.load_state_dict(self.policy.state_dict())
 
-        self.update_time += 1
-        self.logger.log({
-            'loss/q_loss': loss.item(),
-            'value/q_value': q_values.mean().item(),
-            'value/target_q_value': target_q_values.mean().item(),
-            'value/reward': rewards.mean().item(),
-            'value/return': batch_rewards.mean().item(),
-            'value/done': dones.mean().item(),
-            'value/eplison': self.epsilon,
-            'lr': self.optimizer.defaults['lr'],
-        }, self.update_time)
-
-        self.buffer.clear()
+        if self.update_time % self.config.training.log_interval == 0:
+            self.logger.log(data={
+                'loss/q_loss': loss.item(),
+                'value/q_value': q_values.detach().mean().item(),
+                'value/target_q_value': target_q_values.mean().item(),
+                'value/reward': rewards.mean().item(),
+                'value/done': dones.mean().item(),
+                'value/epsilon': self.epsilon,
+                'grad/grad_clipped': None if grad_clipped is None
+                else grad_clipped.detach().cpu().item(),
+                'lr': self.optimizer.param_groups[0]['lr'],
+            }, step=self.update_time)
         return loss.detach()
 
+    def train(self):
+        super().train()
+        self.target_policy.eval()
+
+    def get_additional_checkpoint_state(self):
+        return {
+            'target_policy': self.target_policy.state_dict(),
+            'steps_done': int(self.steps_done),
+            'epsilon': float(self.epsilon),
+            'update_time': int(self.update_time),
+        }
+
+    def load_additional_checkpoint_state(self, checkpoint):
+        target_state = checkpoint.get('target_policy')
+        self.target_policy.load_state_dict(
+            self.policy.state_dict() if target_state is None else target_state
+        )
+        self.steps_done = int(checkpoint.get('steps_done', 0))
+        self.epsilon = float(checkpoint.get('epsilon', self._calc_epsilon()))
+        self.update_time = int(checkpoint.get('update_time', 0))
 
 
 class DoubleDQNSolver(DQNSolver):
+    """Double DQN target selection using the online Q-network."""
 
-    def __init__(self, controller, recorder, counter, logger, config, make_policy, obs_as_tensor, **kwargs):
-        super(DoubleDQNSolver, self).__init__(controller, recorder, counter, logger, config, make_policy, obs_as_tensor, **kwargs)
-        self.target_policy = copy.deepcopy(self.policy)
-        self.target_steps = self.target_update_interval
+    def _next_q_values(self, next_observations):
+        online_scores = self._masked_scores(
+            self.policy.act(next_observations), next_observations
+        )
+        next_actions = online_scores.argmax(dim=-1, keepdim=True)
+        return self.target_policy.act(next_observations).gather(
+            1, next_actions
+        ).squeeze(-1)
+
+
+class DDPGSolver(_DiscreteOffPolicySolver):
+    """DDPG-style actor-critic adapted to Virne's discrete node actions.
+
+    Vanilla DDPG assumes continuous actions. Here the actor emits masked node
+    logits, the critic estimates one Q-value per node, and the actor maximizes
+    the critic's expected Q under a differentiable categorical relaxation.
+    Both networks use slowly updated target copies and persistent replay.
+    """
+
+    algorithm_name = 'ddpg'
+
+    def __init__(self, controller, recorder, counter, logger, config,
+                 make_policy, obs_as_tensor, **kwargs):
+        super().__init__(
+            controller,
+            recorder,
+            counter,
+            logger,
+            config,
+            make_policy,
+            obs_as_tensor,
+            **kwargs,
+        )
+        self.tau = float(self._parameter('tau', 0.005, kwargs))
+        self.policy_temperature = float(self._parameter(
+            'policy_temperature', 1.0, kwargs
+        ))
+        if not 0 < self.tau <= 1:
+            raise ValueError(f'tau must be in (0, 1], got {self.tau}.')
+        if self.policy_temperature <= 0:
+            raise ValueError('policy_temperature must be positive.')
+
+        self.critic_policy, _ = self.make_policy(self)
+        self.critic_policy.to(self.device)
+        self.critic_optimizer = torch.optim.Adam(
+            self.critic_policy.parameters(),
+            lr=self.config.rl.learning_rate.critic,
+            weight_decay=self.config.rl.weight_decay,
+        )
+        self.target_policy = copy.deepcopy(self.policy).to(self.device)
+        self.target_critic_policy = copy.deepcopy(
+            self.critic_policy
+        ).to(self.device)
+        self._freeze_target(self.target_policy)
+        self._freeze_target(self.target_critic_policy)
+
+    @staticmethod
+    def _soft_update(target, source, tau):
+        with torch.no_grad():
+            for target_parameter, source_parameter in zip(
+                    target.parameters(), source.parameters()):
+                target_parameter.lerp_(source_parameter, tau)
+            for target_buffer, source_buffer in zip(
+                    target.buffers(), source.buffers()):
+                target_buffer.copy_(source_buffer)
 
     def update(self):
-        """
-        Update the Q-network based on a batch of experiences.
-        """
-        # if self.replay_buffer.size() < self.batch_size:
-            # return
-        batch_actions = torch.LongTensor(np.array(self.buffer.actions)).to(self.device)
-        batch_rewards = torch.FloatTensor(self.buffer.rewards)
-        batch_dones = torch.FloatTensor(self.buffer.dones)
-        sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
-        # observations  = get_observations_sample(batch_observations, sample_indices, self.device)
-        sample_obersevations = [self.buffer.observations[i] for i in sample_indices]
-        observations = self.preprocess_obs(sample_obersevations, self.device)
-        sample_next_obersevations = [self.buffer.next_observations[i] for i in sample_indices]
-        next_observations = self.preprocess_obs(sample_next_obersevations, self.device)
-        actions = batch_actions[sample_indices].to(self.device)
-        rewards = batch_rewards[sample_indices].to(self.device)
-        dones = batch_dones[sample_indices].to(self.device)
+        observations, actions, rewards, dones, next_observations = \
+            self._sample_replay()
 
-        # Compute current Q values
-        q_values = self.policy.act(observations).gather(1, actions.unsqueeze(-1)).squeeze(-1)
-
-        # Compute target Q values
+        current_q_values = self.critic_policy.act(observations).gather(
+            1, actions.unsqueeze(-1)
+        ).squeeze(-1)
         with torch.no_grad():
-            max_next_actions = self.policy.act(next_observations).max(dim=1)[1]
-            max_next_q_values = self.target_policy.act(next_observations).gather(1, max_next_actions.unsqueeze(-1)).squeeze(-1)
-            target_q_values = rewards + self.config.rl.gamma * max_next_q_values * (1 - dones)
-        # Compute loss
-        loss = F.mse_loss(q_values, target_q_values)
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), self.config.rl.max_grad_norm)
-        self.optimizer.step()
+            target_actor_scores = self._masked_scores(
+                self.target_policy.act(next_observations), next_observations
+            )
+            next_actions = target_actor_scores.argmax(dim=-1, keepdim=True)
+            next_q_values = self.target_critic_policy.act(
+                next_observations
+            ).gather(1, next_actions).squeeze(-1)
+            target_q_values = rewards + (
+                self.config.rl.gamma * next_q_values * (1.0 - dones)
+            )
 
-        # Periodically update the target network
-        if self.update_time % self.target_update_interval == 0:
-            self.target_policy.load_state_dict(self.policy.state_dict())
+        critic_loss = F.smooth_l1_loss(current_q_values, target_q_values)
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        critic_grad_clipped = torch.nn.utils.clip_grad_norm_(
+            self.critic_policy.parameters(), self.config.rl.max_grad_norm
+        ) if self.config.rl.clip_grad else None
+        self.critic_optimizer.step()
 
+        actor_scores = self._masked_scores(
+            self.policy.act(observations), observations
+        )
+        action_probabilities = F.softmax(
+            actor_scores / self.policy_temperature, dim=-1
+        )
+        with torch.no_grad():
+            critic_scores = self.critic_policy.act(observations)
+        actor_loss = -(
+            action_probabilities * critic_scores
+        ).sum(dim=-1).mean()
+        actor_grad_clipped = self.update_grad(actor_loss)
+
+        self._soft_update(self.target_policy, self.policy, self.tau)
+        self._soft_update(
+            self.target_critic_policy, self.critic_policy, self.tau
+        )
         self.update_time += 1
-        self.logger.log({
-            'loss/q_loss': loss.item(),
-            'value/q_value': q_values.mean().item(),
-            'value/target_q_value': target_q_values.mean().item(),
-            'value/reward': rewards.mean().item(),
-            'value/return': batch_rewards.mean().item(),
-            'value/done': dones.mean().item(),
-            'value/eplison': self.epsilon,
-            'lr': self.optimizer.defaults['lr'],
-        }, self.update_time)
 
-        self.buffer.clear()
-        return loss.detach()
+        if self.update_time % self.config.training.log_interval == 0:
+            self.logger.log(data={
+                'loss/actor_loss': actor_loss.detach().item(),
+                'loss/critic_loss': critic_loss.detach().item(),
+                'value/q_value': current_q_values.detach().mean().item(),
+                'value/target_q_value': target_q_values.mean().item(),
+                'value/reward': rewards.mean().item(),
+                'value/done': dones.mean().item(),
+                'value/epsilon': self.epsilon,
+                'grad/actor_grad_clipped': None
+                if actor_grad_clipped is None
+                else actor_grad_clipped.detach().cpu().item(),
+                'grad/critic_grad_clipped': None
+                if critic_grad_clipped is None
+                else critic_grad_clipped.detach().cpu().item(),
+                'lr': self.optimizer.param_groups[0]['lr'],
+            }, step=self.update_time)
+        return (actor_loss + critic_loss).detach()
+
+    def train(self):
+        super().train()
+        self.critic_policy.train()
+        self.target_policy.eval()
+        self.target_critic_policy.eval()
+
+    def get_additional_checkpoint_state(self):
+        return {
+            'critic_policy': self.critic_policy.state_dict(),
+            'critic_optimizer': self.critic_optimizer.state_dict(),
+            'target_policy': self.target_policy.state_dict(),
+            'target_critic_policy': self.target_critic_policy.state_dict(),
+            'steps_done': int(self.steps_done),
+            'epsilon': float(self.epsilon),
+            'update_time': int(self.update_time),
+        }
+
+    def load_additional_checkpoint_state(self, checkpoint):
+        critic_state = checkpoint.get('critic_policy')
+        if critic_state is None:
+            raise ValueError('Discrete DDPG checkpoint is missing critic_policy.')
+        self.critic_policy.load_state_dict(critic_state)
+        if 'critic_optimizer' in checkpoint:
+            self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer'])
+        self.target_policy.load_state_dict(
+            checkpoint.get('target_policy', self.policy.state_dict())
+        )
+        self.target_critic_policy.load_state_dict(
+            checkpoint.get('target_critic_policy', critic_state)
+        )
+        self.steps_done = int(checkpoint.get('steps_done', 0))
+        self.epsilon = float(checkpoint.get('epsilon', self._calc_epsilon()))
+        self.update_time = int(checkpoint.get('update_time', 0))

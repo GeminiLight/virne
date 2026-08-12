@@ -84,6 +84,21 @@ requests, saves a checkpoint, and then evaluates the trained policy:
    require larger training and evaluation sets, controlled seeds, and the
    protocol described in the benchmark paper.
 
+Discrete Off-policy Solvers
+---------------------------
+
+Virne also registers ``dqn_mlp+``, ``double_dqn_mlp+``, and ``ddpg_mlp+`` for
+the physical-node action space. They use persistent replay memory and target
+networks; invalid physical-node actions are masked during both exploration and
+Bellman target calculation. Their settings live under ``rl.dqn`` and
+``rl.ddpg`` in ``virne/configs/learning.yaml``.
+
+``ddpg_mlp+`` is a discrete-action adaptation, not vanilla continuous-action
+DDPG. Its actor emits masked node logits, its critic estimates one Q-value per
+physical node, and the actor is optimized through a differentiable categorical
+relaxation. This distinction should be retained when reporting the algorithm
+in experiments.
+
 The final checkpoint is written to:
 
 .. code-block:: text
