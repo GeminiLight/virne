@@ -76,6 +76,10 @@ class ConalSolver(InstanceAgent, PPOSolver):
         batch_feasibiliy_flags = torch.FloatTensor(self.buffer.feasibility_flags)
         batch_feasibility_budgets = torch.FloatTensor(self.buffer.feasibility_budgets)
         batch_cost_violations = batch_cost_returns - self.cost_budget
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
         # update the policy params repeatly
         # sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
         sample_times = self.repeat_times
@@ -87,15 +91,16 @@ class ConalSolver(InstanceAgent, PPOSolver):
             cost_returns = batch_cost_returns[sample_indices].to(self.device)
             feasibility_flags = batch_feasibiliy_flags[sample_indices].to(self.device)
             feasibility_budgets = batch_feasibility_budgets[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             cost_values = self.estimate_cost_with_grad(observations)
             # calculate advantage
-            advantages = returns - values.detach()
             cost_advantages = (cost_returns - self.cost_budget) - (cost_values.detach() - self.cost_budget)
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
+            if self.config.rl.norm_advantage and cost_advantages.numel() > 1:
                 cost_advantages = (cost_advantages - cost_advantages.mean()) / (cost_advantages.std() + 1e-9)
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
@@ -255,7 +260,11 @@ class PpoHeteroGatSolver(InstanceAgent, PPOSolver):
         batch_returns = torch.FloatTensor(self.buffer.returns)
         if self.config.rl.norm_reward:
             batch_returns = (batch_returns - batch_returns.mean()) / (batch_returns.std() + 1e-9)
-        sample_times = 1 + int(self.buffer.size() * self.repeat_times / self.batch_size)
+        batch_advantages = self.calculate_fixed_advantages(
+            batch_returns,
+            self.buffer.values,
+        )
+        sample_times = self.calculate_update_sample_times()
         for i in range(sample_times):
             sample_indices = torch.randint(0, self.buffer.size(), size=(self.batch_size,)).long()
             # observations  = get_observations_sample(batch_observations, sample_indices, self.device)
@@ -263,15 +272,13 @@ class PpoHeteroGatSolver(InstanceAgent, PPOSolver):
             observations = self.preprocess_obs(sample_obersevations, self.device)
             actions = batch_actions[sample_indices].to(self.device)
             returns = batch_returns[sample_indices].to(self.device)
+            advantages = self.normalize_advantages(
+                batch_advantages[sample_indices].to(self.device)
+            )
             old_action_logprobs = batch_old_action_logprobs[sample_indices].to(self.device)
             # evaluate actions and observations
             values, action_logprobs, dist_entropy, other = self.evaluate_actions(observations, actions, return_others=True)
             
-            # calculate advantage
-            advantages = returns - values.detach()
-            if self.config.rl.norm_advantage and values.numel() != 0:
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-  
             ratio = torch.exp(action_logprobs - old_action_logprobs)
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1. - self.eps_clip, 1. + self.eps_clip) * advantages
