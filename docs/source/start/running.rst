@@ -2,17 +2,18 @@ Quickstart
 ==========
 
 This example runs a small CPU simulation with a fast heuristic solver. It is a
-better first check than ``python main.py`` alone, because the default
+better first check than ``virne`` alone, because the default
 configuration trains an RL solver and processes 1,000 VN requests.
 
 Run a Small Experiment
 ----------------------
 
-From the repository root, with the ``virne`` Conda environment active, run:
+With the environment containing Virne active, run this from any writable
+directory:
 
 .. code-block:: bash
 
-   python main.py \
+   virne \
      solver.solver_name=nrm_rank \
      v_sim_setting.num_v_nets=10 \
      training.use_cuda=false \
@@ -53,16 +54,18 @@ can be overridden with ``key=value``. Prefix a new key with ``+``.
 .. code-block:: bash
 
    # Select another registered solver
-   python main.py solver.solver_name=random_rank
+   virne solver.solver_name=random_rank
 
    # Load a physical topology from a GML file
-   python main.py +p_net_setting.topology.file_path=./datasets/topology/Geant.gml
+   virne +p_net_setting.topology.file_path=/path/to/Geant.gml
 
    # Use the offline network system
-   python main.py system.if_offline_system=true
+   virne system.if_offline_system=true
 
    # Preview the resolved configuration without running a simulation
-   python main.py --cfg job
+   virne --cfg job
 
 Use the :doc:`solver registry <../solver/overview>` for valid solver names and
 :doc:`simulation scenarios <simulation>` for the canonical PN and VN settings.
+Source checkouts retain ``python main.py`` as a compatibility alias for the
+``virne`` command.

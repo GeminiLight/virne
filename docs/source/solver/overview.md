@@ -3,7 +3,7 @@
 Virne selects solvers through `solver.solver_name`. For example:
 
 ```bash
-python main.py solver.solver_name=nrm_rank
+virne solver.solver_name=nrm_rank
 ```
 
 ## How to Choose a Solver

@@ -13,7 +13,6 @@ import pandas as pd
 from collections import defaultdict, OrderedDict
 
 from sympy import solve
-from virne import solver
 from virne.core.solution import Solution
 from omegaconf import OmegaConf
 

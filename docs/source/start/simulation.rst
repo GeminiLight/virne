@@ -84,11 +84,11 @@ Lifetime
 Canonical Configuration Files
 -----------------------------
 
-The configuration files under ``settings/`` are the source of truth. In particular, refer to:
+The configuration files under ``virne/configs/`` are the source of truth. In particular, refer to:
 
-* `settings/main.yaml <https://github.com/GeminiLight/virne/blob/main/settings/main.yaml>`_ for system, solver, recorder, and logging options.
-* `settings/p_net_setting/default.yaml <https://github.com/GeminiLight/virne/blob/main/settings/p_net_setting/default.yaml>`_ for the default physical network.
-* `settings/v_sim_setting/default.yaml <https://github.com/GeminiLight/virne/blob/main/settings/v_sim_setting/default.yaml>`_ for the default virtual network request simulation.
-* `settings/p_net_setting/ <https://github.com/GeminiLight/virne/tree/main/settings/p_net_setting>`_ and `settings/v_sim_setting/ <https://github.com/GeminiLight/virne/tree/main/settings/v_sim_setting>`_ for the supported scenario variants.
+* `virne/configs/main.yaml <https://github.com/GeminiLight/virne/blob/main/virne/configs/main.yaml>`_ for system, solver, recorder, and logging options.
+* `virne/configs/p_net_setting/default.yaml <https://github.com/GeminiLight/virne/blob/main/virne/configs/p_net_setting/default.yaml>`_ for the default physical network.
+* `virne/configs/v_sim_setting/default.yaml <https://github.com/GeminiLight/virne/blob/main/virne/configs/v_sim_setting/default.yaml>`_ for the default virtual network request simulation.
+* `virne/configs/p_net_setting/ <https://github.com/GeminiLight/virne/tree/main/virne/configs/p_net_setting>`_ and `virne/configs/v_sim_setting/ <https://github.com/GeminiLight/virne/tree/main/virne/configs/v_sim_setting>`_ for the supported scenario variants.
 
 These files are intentionally not duplicated here so that configuration examples cannot drift from the executable defaults.

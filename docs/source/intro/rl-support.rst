@@ -70,7 +70,7 @@ requests, saves a checkpoint, and then evaluates the trained policy:
 
 .. code-block:: bash
 
-   python main.py \
+   virne \
      solver.solver_name=ppo_dual_gat+ \
      v_sim_setting.num_v_nets=10 \
      training.num_train_epochs=1 \
@@ -119,7 +119,7 @@ Key Training Settings
      - Enables or disables invalid-action masking.
 
 Defaults and the remaining optimizer and network settings live in
-``settings/main.yaml`` and ``settings/learning.yaml``.
+``virne/configs/main.yaml`` and ``virne/configs/learning.yaml``.
 
 Evaluate a Saved Model
 ----------------------
@@ -128,7 +128,7 @@ Set training epochs to zero and pass an **absolute** checkpoint path:
 
 .. code-block:: bash
 
-   python main.py \
+   virne \
      solver.solver_name=ppo_dual_gat+ \
      training.num_train_epochs=0 \
      solver.pretrained_model_path=/absolute/path/to/model.pkl
