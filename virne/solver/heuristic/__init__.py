@@ -2,6 +2,7 @@ from .bfs_trials import RandomRankBfsSolver, RandomWalkRankBfsSolver, OrderRankB
 from .joint_pr import FFDJointPRSolver, OrderJointPRSolver, RandomJointPRSolver
 from .node_rank import BaseNodeRankSolver, GRCRankSolver, FFDRankSolver,RandomRankSolver, PLRankSolver, \
                         OrderRankSolver, RandomWalkRankSolver, NRMRankSolver
+from .ldg import LDGSolver
 
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     'OrderRankSolver', 
     'RandomWalkRankSolver',
     'NRMRankSolver',
-    'RandomRankSolver'
+    'RandomRankSolver',
+    'LDGSolver'
 ]
