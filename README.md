@@ -175,3 +175,7 @@ This table is intentionally limited to useful starting points. See the
 for every command registered by the current code, or follow the
 [RL Pipeline](https://virne.readthedocs.io/en/latest/intro/rl-support.html) for
 the learning-based workflow.
+
+## Related
+
+- [nfv-resource-allocation](https://github.com/GeminiLight/nfv-resource-allocation) — a research task package built on this simulator: online VNE heuristics under a decision-isolated, integrity-audited evaluation runtime.
